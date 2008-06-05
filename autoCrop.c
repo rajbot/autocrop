@@ -94,41 +94,15 @@ int main(int    argc,
     l_int32 maxj=-1;
     l_float32 currentBestAngle = 0.0;
     
-    for (j=0;j<(h*0.25);j++) {
-        line = data + j * wpl;
-        //printf("%x: ", line);
-        printf("%d: ", j);
-        acc=0;
-        for (i=0; i<w; i++) {
-
-   
-            retval = pixGetPixel(pixg, i, j, &a);
-            assert(0 == retval);
-            retval = pixGetPixel(pixg, i, j+1, &b);
-            assert(0 == retval);            
-            //printf("%d ", val);
-            acc += (abs(a-b));
-        }
-        printf("%d \n", acc);
-        if (acc > maxDiff) {
-            maxj=j;   
-            maxDiff = acc;
-        }
-    }
-    
-    if (-1 == maxj) {
-        printf("maxj calculation failed!\n");
-    } else {
-        printf("maxj = %d with diff %d\n", maxj, maxDiff);
-    }
-    
-    calculateSumOfAbsDiffV(pixg, w, h, 0, h>>2, &maxj, &maxDiff);
-    printf("new maxj = %d with diff %d\n", maxj, maxDiff);
 
     l_float32   deg2rad = 3.1415926535 / 180.;
     l_float32 delta = -0.1;
     //check +/- delta
  
+    l_int32   cropTop=-1, cropBottom=-1, cropLeft=-1, cropRight=-1;
+    l_uint32  topDiff = 0, bottomDiff = 0;
+    l_float32 topSkew, bottomSkew;
+
     for (delta=-1.0; delta<=1.0; delta+=0.05) {
         /*
        //PIX *pixt = pixCreateTemplate(pixg); 
@@ -144,9 +118,26 @@ int main(int    argc,
         //pixWrite("/home/rkumar/public_html/outgrey.jpg", pixt, IFF_JFIF_JPEG); 
     
         calculateSumOfAbsDiffV(pixt, w, h, 0, h>>2, &maxj, &maxDiff);
-        printf("delta=%f, new maxj = %d with diff %d\n", delta, maxj, maxDiff);
+        //printf("top delta=%f, new maxj = %d with diff %d\n", delta, maxj, maxDiff);
+        if (maxDiff>topDiff) {
+            topDiff = maxDiff;
+            cropTop = maxj;
+            topSkew = delta;
+        }
+
+        calculateSumOfAbsDiffV(pixt, w, h, (int)(h*0.75), h-1, &maxj, &maxDiff);
+        //printf("bottom delta=%f, new maxj = %d with diff %d\n", delta, maxj, maxDiff);
+        if (maxDiff>bottomDiff) {
+            bottomDiff = maxDiff;
+            cropBottom = maxj;
+            bottomSkew = delta;
+        }
+
         //pixDestroy(&pixt);
     }
+    printf("cropTop    = %d (diff=%d, angle=%f)\n", cropTop, topDiff, topSkew);
+    printf("cropBottom = %d (diff=%d, angle=%f)\n", cropBottom, bottomDiff, bottomSkew);
+
     /*don't free this stuff.. it will be dealloced with the program terminates    
     pixDestroy(&pixs);
     pixDestroy(&pixd);
@@ -173,7 +164,7 @@ l_uint32 calculateSumOfAbsDiffV(PIX *pixg, l_uint32 w, l_uint32 h, l_uint32 top,
     assert(top<bottom);
     assert(bottom<h);
 
-    for (j=0;j<(h*0.25);j++) {
+    for (j=top;j<bottom;j++) {
         //printf("%d: ", j);
         acc=0;
         for (i=0; i<w; i++) {
