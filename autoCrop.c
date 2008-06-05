@@ -29,6 +29,7 @@ typedef unsigned int    UINT;
 typedef unsigned int    UINT32;
 
 static const l_float32  kInitialSweepAngle = 1.0;
+l_uint32 calculateSumOfAbsDiffV(PIX *pixg, l_uint32 w, l_uint32 h, l_int32 *retj, l_uint32 *retDiff);
 
 int main(int    argc,
      char **argv)
@@ -121,16 +122,31 @@ int main(int    argc,
         printf("maxj = %d with diff %d\n", maxj, maxDiff);
     }
     
-     l_float32   deg2rad = 3.1415926535 / 180.;
-    l_float32 delta = kInitialSweepAngle;
-    //check +/- delta
-    PIX *pixt = pixCreateTemplate(pixg);
-    pixVShearCenter(pixt,
-                    pixg,
-                    deg2rad*delta,
-                    L_BRING_IN_BLACK);
-    pixWrite("/home/rkumar/public_html/outgrey.jpg", pixt, IFF_JFIF_JPEG); 
+    calculateSumOfAbsDiffV(pixg, w, h, &maxj, &maxDiff);
+    printf("new maxj = %d with diff %d\n", maxj, maxDiff);
 
+    l_float32   deg2rad = 3.1415926535 / 180.;
+    l_float32 delta = -0.1;
+    //check +/- delta
+ 
+    for (delta=-1.0; delta<=1.0; delta+=0.05) {
+        /*
+       //PIX *pixt = pixCreateTemplate(pixg); 
+       pixVShearCenter(pixt,
+                        pixg,
+                        deg2rad*delta,
+                        L_BRING_IN_BLACK);
+        */
+        PIX *pixt = pixRotate(pixg,
+                        deg2rad*delta,
+                        L_ROTATE_AREA_MAP,
+                        L_BRING_IN_BLACK,0,0);
+        //pixWrite("/home/rkumar/public_html/outgrey.jpg", pixt, IFF_JFIF_JPEG); 
+    
+        calculateSumOfAbsDiffV(pixt, w, h, &maxj, &maxDiff);
+        printf("delta=%f, new maxj = %d with diff %d\n", delta, maxj, maxDiff);
+        //pixDestroy(&pixt);
+    }
     /*don't free this stuff.. it will be dealloced with the program terminates    
     pixDestroy(&pixs);
     pixDestroy(&pixd);
@@ -143,7 +159,7 @@ int main(int    argc,
 
 }
 
-l_uint32 calculateSumOfAbsDiff(PIX *pixg, l_uint32 w, l_uint32 h) {
+l_uint32 calculateSumOfAbsDiffV(PIX *pixg, l_uint32 w, l_uint32 h, l_int32 *retj, l_uint32 *retDiff) {
 
     UINT i, j;
     l_uint32 acc=0;
@@ -151,8 +167,11 @@ l_uint32 calculateSumOfAbsDiff(PIX *pixg, l_uint32 w, l_uint32 h) {
     l_uint32 maxDiff=0;
     l_int32 maxj=-1;
     
+    printf("W=%d\n", pixGetWidth( pixg ));
+    printf("H=%d\n",  pixGetHeight( pixg ));
+
     for (j=0;j<(h*0.25);j++) {
-        printf("%d: ", j);
+        //printf("%d: ", j);
         acc=0;
         for (i=0; i<w; i++) {
             l_int32 retval = pixGetPixel(pixg, i, j, &a);
@@ -162,12 +181,15 @@ l_uint32 calculateSumOfAbsDiff(PIX *pixg, l_uint32 w, l_uint32 h) {
             //printf("%d ", val);
             acc += (abs(a-b));
         }
-        printf("%d \n", acc);
+        //printf("%d \n", acc);
         if (acc > maxDiff) {
             maxj=j;   
             maxDiff = acc;
         }
         
     }
-    return maxDiff;
+
+    *retj = maxj;
+    *retDiff = maxDiff;
+    return (-1 != maxj);
 }
