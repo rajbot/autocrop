@@ -29,7 +29,7 @@ typedef unsigned int    UINT;
 typedef unsigned int    UINT32;
 
 static const l_float32  kInitialSweepAngle = 1.0;
-l_uint32 calculateSumOfAbsDiffV(PIX *pixg, l_uint32 w, l_uint32 h, l_uint32 top, l_uint32 bottom, l_int32 *retj, l_uint32 *retDiff);
+l_uint32 calculateSADv(PIX *pixg, l_uint32 w, l_uint32 h, l_uint32 top, l_uint32 bottom, l_int32 *retj, l_uint32 *retDiff);
 
 int main(int    argc,
      char **argv)
@@ -117,7 +117,7 @@ int main(int    argc,
                         L_BRING_IN_BLACK,0,0);
         //pixWrite("/home/rkumar/public_html/outgrey.jpg", pixt, IFF_JFIF_JPEG); 
     
-        calculateSumOfAbsDiffV(pixt, w, h, 0, h>>2, &maxj, &maxDiff);
+        calculateSADv(pixt, w, h, 0, h>>2, &maxj, &maxDiff);
         //printf("top delta=%f, new maxj = %d with diff %d\n", delta, maxj, maxDiff);
         if (maxDiff>topDiff) {
             topDiff = maxDiff;
@@ -125,7 +125,7 @@ int main(int    argc,
             topSkew = delta;
         }
 
-        calculateSumOfAbsDiffV(pixt, w, h, (int)(h*0.75), h-1, &maxj, &maxDiff);
+        calculateSADv(pixt, w, h, (int)(h*0.75), h-1, &maxj, &maxDiff);
         //printf("bottom delta=%f, new maxj = %d with diff %d\n", delta, maxj, maxDiff);
         if (maxDiff>bottomDiff) {
             bottomDiff = maxDiff;
@@ -150,7 +150,9 @@ int main(int    argc,
 
 }
 
-l_uint32 calculateSumOfAbsDiffV(PIX *pixg, l_uint32 w, l_uint32 h, l_uint32 top, l_uint32 bottom, l_int32 *retj, l_uint32 *retDiff) {
+
+//calculate sum of absolute differences of two rows of adjacent pixels
+l_uint32 calculateSADv(PIX *pixg, l_uint32 w, l_uint32 h, l_uint32 top, l_uint32 bottom, l_int32 *retj, l_uint32 *retDiff) {
 
     UINT i, j;
     l_uint32 acc=0;
