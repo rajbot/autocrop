@@ -89,7 +89,8 @@ int main(int    argc,
 
     /* convert color image to grayscale: */
     pixg = pixConvertRGBToGray (pixd, 0.30, 0.60, 0.10);
-    pixWrite("/home/rkumar/public_html/outgrey.jpg", pixg, IFF_JFIF_JPEG); 
+    pixWrite("/home/rkumar/public_html/out.jpg", pixd, IFF_JFIF_JPEG); 
+    //pixWrite("/home/rkumar/public_html/outgrey.jpg", pixg, IFF_JFIF_JPEG); 
     debugstr("Converted to gray\n");
 
     int w = pixGetWidth( pixd );
@@ -212,7 +213,11 @@ int main(int    argc,
                     L_ROTATE_AREA_MAP,
                     L_BRING_IN_BLACK,0,0);
     pixRenderBoxArb(pixCrop, box, 1, 255, 0, 0);
+    pixWrite("/home/rkumar/public_html/outbox.jpg", pixCrop, IFF_JFIF_JPEG); 
+    pixCrop = pixClipRectangle(pixd, box, NULL);
     pixWrite("/home/rkumar/public_html/outcrop.jpg", pixCrop, IFF_JFIF_JPEG); 
+    
+    
 
     /*
     aveSkew = (topSkew+bottomSkew)/2;
