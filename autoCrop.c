@@ -108,8 +108,8 @@ int main(int    argc,
     //check +/- delta
  
     l_int32   cropTop=-1, cropBottom=-1, cropLeft=-1, cropRight=-1;
-    l_uint32  topDiff = 0, bottomDiff = 0, leftDiff=0;
-    l_float32 topSkew, bottomSkew, leftSkew;
+    l_uint32  topDiff = 0, bottomDiff = 0, leftDiff=0, rightDiff=0;
+    l_float32 topSkew, bottomSkew, leftSkew, rightSkew;
 
     for (delta=-1.0; delta<=1.0; delta+=0.05) {
         /*
@@ -157,11 +157,36 @@ int main(int    argc,
             leftSkew = delta;
         }
 
+        calculateSADcol(pixt, w, h, (int)(w*0.75), w-limitLeft-1, &maxi, &maxDiff);
+        if (maxDiff>rightDiff) {
+            rightDiff = maxDiff;
+            cropRight = maxi;
+            rightSkew = delta;
+        }
+
         //pixDestroy(&pixt);
     }
     printf("cropTop    = %d (diff=%d, angle=%f)\n", cropTop, topDiff, topSkew);
     printf("cropBottom = %d (diff=%d, angle=%f)\n", cropBottom, bottomDiff, bottomSkew);
     printf("cropLeft = %d (diff=%d, angle=%f)\n", cropLeft, leftDiff, leftSkew);
+    printf("cropRight = %d (diff=%d, angle=%f)\n", cropRight, rightDiff, rightSkew);
+
+    l_float32 aveSkew = (topSkew+bottomSkew+rightSkew+leftSkew)/4;
+    BOX *box = boxCreate(cropLeft, cropTop, cropRight-cropLeft, cropBottom-cropTop);
+    PIX *pixCrop = pixRotate(pixd,
+                    deg2rad*aveSkew,
+                    L_ROTATE_AREA_MAP,
+                    L_BRING_IN_BLACK,0,0);
+    pixRenderBoxArb(pixCrop, box, 1, 255, 0, 0);
+    pixWrite("/home/rkumar/public_html/outcrop.jpg", pixCrop, IFF_JFIF_JPEG); 
+
+    aveSkew = (topSkew+bottomSkew)/2;
+    pixCrop = pixRotate(pixd,
+                    deg2rad*aveSkew,
+                    L_ROTATE_AREA_MAP,
+                    L_BRING_IN_BLACK,0,0);
+    pixRenderBoxArb(pixCrop, box, 1, 255, 0, 0);
+    pixWrite("/home/rkumar/public_html/outcrop2.jpg", pixCrop, IFF_JFIF_JPEG); 
 
     /*don't free this stuff.. it will be dealloced with the program terminates    
     pixDestroy(&pixs);
