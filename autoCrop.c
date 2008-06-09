@@ -29,6 +29,7 @@ typedef unsigned int    UINT;
 typedef unsigned int    UINT32;
 
 static const l_float32  kInitialSweepAngle = 1.0;
+static const l_float32  deg2rad            = 3.1415926535 / 180.;
 l_uint32 calculateSADrow(PIX *pixg, l_uint32 w, l_uint32 h, l_uint32 top, l_uint32 bottom, l_int32 *retj, l_uint32 *retDiff);
 l_uint32 calculateSADcol(PIX *pixg, l_uint32 w, l_uint32 h, l_uint32 left, l_uint32 right, l_int32 *reti, l_uint32 *retDiff);
 
@@ -99,7 +100,7 @@ int main(int    argc,
     l_float32 currentBestAngle = 0.0;
     
 
-    l_float32   deg2rad = 3.1415926535 / 180.;
+
     l_float32 delta = -0.1;
     //check +/- delta
  
