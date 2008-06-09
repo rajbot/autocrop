@@ -29,7 +29,8 @@ typedef unsigned int    UINT;
 typedef unsigned int    UINT32;
 
 static const l_float32  kInitialSweepAngle = 1.0;
-l_uint32 calculateSADv(PIX *pixg, l_uint32 w, l_uint32 h, l_uint32 top, l_uint32 bottom, l_int32 *retj, l_uint32 *retDiff);
+l_uint32 calculateSADrow(PIX *pixg, l_uint32 w, l_uint32 h, l_uint32 top, l_uint32 bottom, l_int32 *retj, l_uint32 *retDiff);
+l_uint32 calculateSADcol(PIX *pixg, l_uint32 w, l_uint32 h, l_uint32 left, l_uint32 right, l_int32 *reti, l_uint32 *retDiff);
 
 int main(int    argc,
      char **argv)
@@ -70,6 +71,9 @@ int main(int    argc,
         pixd = pixs;
     }
 
+    printf("W=%d\n", pixGetWidth( pixd ));
+    printf("H=%d\n",  pixGetHeight( pixd ));
+
 
     /* convert color image to grayscale: */
     pixg = pixConvertRGBToGray (pixd, 0.30, 0.60, 0.10);
@@ -91,7 +95,7 @@ int main(int    argc,
     data = pixGetData(pixg);
 
     l_uint32 maxDiff=0;
-    l_int32 maxj=-1;
+    l_int32 maxj=-1, maxi=-1;
     l_float32 currentBestAngle = 0.0;
     
 
@@ -100,8 +104,8 @@ int main(int    argc,
     //check +/- delta
  
     l_int32   cropTop=-1, cropBottom=-1, cropLeft=-1, cropRight=-1;
-    l_uint32  topDiff = 0, bottomDiff = 0;
-    l_float32 topSkew, bottomSkew;
+    l_uint32  topDiff = 0, bottomDiff = 0, leftDiff=0;
+    l_float32 topSkew, bottomSkew, leftSkew;
 
     for (delta=-1.0; delta<=1.0; delta+=0.05) {
         /*
@@ -115,9 +119,13 @@ int main(int    argc,
                         deg2rad*delta,
                         L_ROTATE_AREA_MAP,
                         L_BRING_IN_BLACK,0,0);
-        //pixWrite("/home/rkumar/public_html/outgrey.jpg", pixt, IFF_JFIF_JPEG); 
-    
-        calculateSADv(pixt, w, h, 0, h>>2, &maxj, &maxDiff);
+        //printf("delta = %f\n", delta);
+        //if ((0.24 < delta) && (delta < 0.26)) {
+        //    pixWrite("/home/rkumar/public_html/outgrey.jpg", pixt, IFF_JFIF_JPEG); 
+        //    printf("wrote outgrey for delta=%f\n", delta);
+        //}
+        
+        calculateSADrow(pixt, w, h, 0, h>>2, &maxj, &maxDiff);
         //printf("top delta=%f, new maxj = %d with diff %d\n", delta, maxj, maxDiff);
         if (maxDiff>topDiff) {
             topDiff = maxDiff;
@@ -125,7 +133,7 @@ int main(int    argc,
             topSkew = delta;
         }
 
-        calculateSADv(pixt, w, h, (int)(h*0.75), h-1, &maxj, &maxDiff);
+        calculateSADrow(pixt, w, h, (int)(h*0.75), h-1, &maxj, &maxDiff);
         //printf("bottom delta=%f, new maxj = %d with diff %d\n", delta, maxj, maxDiff);
         if (maxDiff>bottomDiff) {
             bottomDiff = maxDiff;
@@ -133,10 +141,18 @@ int main(int    argc,
             bottomSkew = delta;
         }
 
+        calculateSADcol(pixt, w, h, 0, w>>2, &maxi, &maxDiff);
+        if (maxDiff>leftDiff) {
+            leftDiff = maxDiff;
+            cropLeft = maxi;
+            leftSkew = delta;
+        }
+
         //pixDestroy(&pixt);
     }
     printf("cropTop    = %d (diff=%d, angle=%f)\n", cropTop, topDiff, topSkew);
     printf("cropBottom = %d (diff=%d, angle=%f)\n", cropBottom, bottomDiff, bottomSkew);
+    printf("cropLeft = %d (diff=%d, angle=%f)\n", cropLeft, leftDiff, leftSkew);
 
     /*don't free this stuff.. it will be dealloced with the program terminates    
     pixDestroy(&pixs);
@@ -152,7 +168,8 @@ int main(int    argc,
 
 
 //calculate sum of absolute differences of two rows of adjacent pixels
-l_uint32 calculateSADv(PIX *pixg, l_uint32 w, l_uint32 h, l_uint32 top, l_uint32 bottom, l_int32 *retj, l_uint32 *retDiff) {
+//last SAD calculation is for row j=bottom-1 and j=bottom.
+l_uint32 calculateSADrow(PIX *pixg, l_uint32 w, l_uint32 h, l_uint32 top, l_uint32 bottom, l_int32 *retj, l_uint32 *retDiff) {
 
     UINT i, j;
     l_uint32 acc=0;
@@ -188,4 +205,44 @@ l_uint32 calculateSADv(PIX *pixg, l_uint32 w, l_uint32 h, l_uint32 top, l_uint32
     *retj = maxj;
     *retDiff = maxDiff;
     return (-1 != maxj);
+}
+
+//calculate sum of absolute differences of two rows of adjacent column
+//last SAD calculation is for row j=right-1 and j=right.
+l_uint32 calculateSADcol(PIX *pixg, l_uint32 w, l_uint32 h, l_uint32 left, l_uint32 right, l_int32 *reti, l_uint32 *retDiff) {
+
+    UINT i, j;
+    l_uint32 acc=0;
+    l_uint32 a,b;
+    l_uint32 maxDiff=0;
+    l_int32 maxi=-1;
+    
+    //printf("W=%d\n", pixGetWidth( pixg ));
+    //printf("H=%d\n",  pixGetHeight( pixg ));
+    assert(left>=0);
+    assert(left<right);
+    assert(right<w);
+
+    for (i=left; i<right; i++) {
+        //printf("%d: ", i);
+        acc=0;
+        for (j=0; j<h; j++) {
+            l_int32 retval = pixGetPixel(pixg, i, j, &a);
+            assert(0 == retval);
+            retval = pixGetPixel(pixg, i+1, j, &b);
+            assert(0 == retval);
+            //printf("%d ", val);
+            acc += (abs(a-b));
+        }
+        //printf("%d \n", acc);
+        if (acc > maxDiff) {
+            maxi=i;   
+            maxDiff = acc;
+        }
+        
+    }
+
+    *reti = maxi;
+    *retDiff = maxDiff;
+    return (-1 != maxi);
 }
