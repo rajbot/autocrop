@@ -21,6 +21,7 @@ autoCrop filein.jpg rotateDirection
 #include <stdlib.h>
 #include "allheaders.h"
 #include <assert.h>
+#include <math.h>
 
 #define debugstr printf
 //#define debugstr
@@ -32,6 +33,8 @@ static const l_float32  kInitialSweepAngle = 1.0;
 static const l_float32  deg2rad            = 3.1415926535 / 180.;
 l_uint32 calculateSADrow(PIX *pixg, l_uint32 w, l_uint32 h, l_uint32 top, l_uint32 bottom, l_int32 *retj, l_uint32 *retDiff);
 l_uint32 calculateSADcol(PIX *pixg, l_uint32 w, l_uint32 h, l_uint32 left, l_uint32 right, l_int32 *reti, l_uint32 *retDiff);
+l_uint32 calcLimitLeft(l_uint32 w, l_uint32 h, l_float32 angle);
+l_uint32 calcLimitTop(l_uint32 w, l_uint32 h, l_float32 angle);
 
 int main(int    argc,
      char **argv)
@@ -78,7 +81,7 @@ int main(int    argc,
 
     /* convert color image to grayscale: */
     pixg = pixConvertRGBToGray (pixd, 0.30, 0.60, 0.10);
-    //pixWrite("/home/rkumar/public_html/outgrey.jpg", pixg, IFF_JFIF_JPEG); 
+    pixWrite("/home/rkumar/public_html/outgrey.jpg", pixg, IFF_JFIF_JPEG); 
     debugstr("Converted to gray\n");
 
     int w = pixGetWidth( pixd );
@@ -120,13 +123,17 @@ int main(int    argc,
                         deg2rad*delta,
                         L_ROTATE_AREA_MAP,
                         L_BRING_IN_BLACK,0,0);
-        //printf("delta = %f\n", delta);
+
+        l_uint32 limitLeft = calcLimitLeft(w,h,delta);
+        l_uint32 limitTop  = calcLimitTop(w,h,delta);
+
+        printf("delta = %f, leftLim=%d, topLim=%d\n", delta, limitLeft, limitTop);
         //if ((0.24 < delta) && (delta < 0.26)) {
         //    pixWrite("/home/rkumar/public_html/outgrey.jpg", pixt, IFF_JFIF_JPEG); 
         //    printf("wrote outgrey for delta=%f\n", delta);
         //}
         
-        calculateSADrow(pixt, w, h, 0, h>>2, &maxj, &maxDiff);
+        calculateSADrow(pixt, w, h, limitTop, h>>2, &maxj, &maxDiff);
         //printf("top delta=%f, new maxj = %d with diff %d\n", delta, maxj, maxDiff);
         if (maxDiff>topDiff) {
             topDiff = maxDiff;
@@ -134,7 +141,8 @@ int main(int    argc,
             topSkew = delta;
         }
 
-        calculateSADrow(pixt, w, h, (int)(h*0.75), h-1, &maxj, &maxDiff);
+        //calculateSADrow(pixt, w, h, (int)(h*0.75), h-1, &maxj, &maxDiff);
+        calculateSADrow(pixt, w, h, (int)(h*0.75), h-limitTop-1, &maxj, &maxDiff);
         //printf("bottom delta=%f, new maxj = %d with diff %d\n", delta, maxj, maxDiff);
         if (maxDiff>bottomDiff) {
             bottomDiff = maxDiff;
@@ -142,7 +150,7 @@ int main(int    argc,
             bottomSkew = delta;
         }
 
-        calculateSADcol(pixt, w, h, 0, w>>2, &maxi, &maxDiff);
+        calculateSADcol(pixt, w, h, limitLeft, w>>2, &maxi, &maxDiff);
         if (maxDiff>leftDiff) {
             leftDiff = maxDiff;
             cropLeft = maxi;
@@ -246,4 +254,26 @@ l_uint32 calculateSADcol(PIX *pixg, l_uint32 w, l_uint32 h, l_uint32 left, l_uin
     *reti = maxi;
     *retDiff = maxDiff;
     return (-1 != maxi);
+}
+
+l_uint32 calcLimitLeft(l_uint32 w, l_uint32 h, l_float32 angle) {
+    l_uint32  w2 = w>>1;
+    l_uint32  h2 = h>>1;
+    l_float32 r  = sqrt(w2*w2 + h2*h2);
+    
+    l_float32 theta  = atan2(h2, w2);
+    l_float32 radang = fabs(angle)*deg2rad;
+    
+    return w2 - (int)(r*cos(theta + radang));
+}
+
+l_uint32 calcLimitTop(l_uint32 w, l_uint32 h, l_float32 angle) {
+    l_uint32  w2 = w>>1;
+    l_uint32  h2 = h>>1;
+    l_float32 r  = sqrt(w2*w2 + h2*h2);
+    
+    l_float32 theta  = atan2(h2, w2);
+    l_float32 radang = fabs(angle)*deg2rad;
+    
+    return h2 - (int)(r*sin(theta - radang));
 }
