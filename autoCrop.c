@@ -22,6 +22,7 @@ autoCrop filein.jpg rotateDirection
 #include "allheaders.h"
 #include <assert.h>
 #include <math.h>
+#include <float.h> //for FLT_MAX
 
 #define debugstr printf
 //#define debugstr
@@ -35,6 +36,13 @@ l_uint32 calculateSADrow(PIX *pixg, l_uint32 w, l_uint32 h, l_uint32 top, l_uint
 l_uint32 calculateSADcol(PIX *pixg, l_uint32 w, l_uint32 h, l_uint32 left, l_uint32 right, l_int32 *reti, l_uint32 *retDiff);
 l_uint32 calcLimitLeft(l_uint32 w, l_uint32 h, l_float32 angle);
 l_uint32 calcLimitTop(l_uint32 w, l_uint32 h, l_float32 angle);
+
+
+l_uint32 removeBlackPelsColLeft(PIX *pixg, l_uint32 w, l_uint32 h, l_uint32 starti, l_uint32 endi, l_uint32 top, l_uint32 bottom);
+l_uint32 removeBlackPelsColRight(PIX *pixg, l_uint32 w, l_uint32 h, l_uint32 starti, l_uint32 endi, l_uint32 top, l_uint32 bottom);
+
+l_uint32 removeBlackPelsRowTop(PIX *pixg, l_uint32 w, l_uint32 h, l_uint32 startj, l_uint32 endj, l_uint32 left, l_uint32 right);
+l_uint32 removeBlackPelsRowBottom(PIX *pixg, l_uint32 w, l_uint32 h, l_uint32 top, l_uint32 oldBottom, l_uint32 left, l_uint32 right);
 
 int main(int    argc,
      char **argv)
@@ -127,7 +135,7 @@ int main(int    argc,
         l_uint32 limitLeft = calcLimitLeft(w,h,delta);
         l_uint32 limitTop  = calcLimitTop(w,h,delta);
 
-        printf("delta = %f, leftLim=%d, topLim=%d\n", delta, limitLeft, limitTop);
+        //printf("delta = %f, leftLim=%d, topLim=%d\n", delta, limitLeft, limitTop);
         //if ((0.24 < delta) && (delta < 0.26)) {
         //    pixWrite("/home/rkumar/public_html/outgrey.jpg", pixt, IFF_JFIF_JPEG); 
         //    printf("wrote outgrey for delta=%f\n", delta);
@@ -172,6 +180,32 @@ int main(int    argc,
     printf("cropRight = %d (diff=%d, angle=%f)\n", cropRight, rightDiff, rightSkew);
 
     l_float32 aveSkew = (topSkew+bottomSkew+rightSkew+leftSkew)/4;
+    
+    PIX *pixt = pixRotate(pixg,
+                    deg2rad*aveSkew,
+                    L_ROTATE_AREA_MAP,
+                    L_BRING_IN_BLACK,0,0);    
+
+    l_float32 minVar;
+    //sumCol(pixt, w, h, cropLeft+1, w>>2, cropTop, cropBottom, &maxi, &minVar);
+    //printf("second left crop = %d, var = %f\n", maxi, minVar);
+    //cropLeft = maxi;
+    printf("adjusting cropLeft\n");
+    cropLeft = removeBlackPelsColLeft(pixt, w, h, cropLeft, w>>2, cropTop, cropBottom);
+
+    //adjustCropCol(0.20, 0.20, pixt, w, h, (int)(w*0.75), cropRight, cropTop, cropBottom, &maxi, &minVar);
+
+    printf("adjusting cropRight\n");
+    cropRight = removeBlackPelsColRight(pixt, w, h, cropRight, (int)(w*0.75), cropTop, cropBottom);
+    //printf("second right crop = %d, var = %f\n", maxi, minVar);
+    //cropRight = maxi;
+
+    printf("adjusting cropTop\n");
+    cropTop = removeBlackPelsRowTop(pixt, w, h, cropTop, h>>2, cropLeft, cropRight);
+
+    printf("adjusting cropBottom\n");
+    cropBottom = removeBlackPelsRowBottom(pixt, w, h, (int)(h*0.75), cropBottom, cropLeft, cropRight);
+    
     BOX *box = boxCreate(cropLeft, cropTop, cropRight-cropLeft, cropBottom-cropTop);
     PIX *pixCrop = pixRotate(pixd,
                     deg2rad*aveSkew,
@@ -180,6 +214,7 @@ int main(int    argc,
     pixRenderBoxArb(pixCrop, box, 1, 255, 0, 0);
     pixWrite("/home/rkumar/public_html/outcrop.jpg", pixCrop, IFF_JFIF_JPEG); 
 
+    /*
     aveSkew = (topSkew+bottomSkew)/2;
     pixCrop = pixRotate(pixd,
                     deg2rad*aveSkew,
@@ -187,7 +222,8 @@ int main(int    argc,
                     L_BRING_IN_BLACK,0,0);
     pixRenderBoxArb(pixCrop, box, 1, 255, 0, 0);
     pixWrite("/home/rkumar/public_html/outcrop2.jpg", pixCrop, IFF_JFIF_JPEG); 
-
+    */
+    
     /*don't free this stuff.. it will be dealloced with the program terminates    
     pixDestroy(&pixs);
     pixDestroy(&pixd);
@@ -281,6 +317,168 @@ l_uint32 calculateSADcol(PIX *pixg, l_uint32 w, l_uint32 h, l_uint32 left, l_uin
     return (-1 != maxi);
 }
 
+l_uint32 removeBlackPelsColRight(PIX *pixg, l_uint32 w, l_uint32 h, l_uint32 starti, l_uint32 endi, l_uint32 top, l_uint32 bottom) {
+    UINT i, j;
+    l_uint32 a;
+
+    l_uint32 numBlackPels=0;
+    l_uint32 blackThresh=140;
+
+    numBlackPels = 0;
+    for (j=top; j<bottom; j++) {
+        l_int32 retval = pixGetPixel(pixg, starti-1, j, &a);
+        assert(0 == retval);
+        if (a<blackThresh) {
+            numBlackPels++;
+        }
+    }
+    //printf("init: numBlack=%d\n", numBlackPels);
+    
+    if (numBlackPels > 10) {
+        //printf(" needs adjustment!\n");
+        for (i=starti-2; i>=endi; i--) {
+            numBlackPels = 0;
+            for (j=top; j<bottom; j++) {
+                l_int32 retval = pixGetPixel(pixg, i, j, &a);
+                assert(0 == retval);
+                if (a<blackThresh) {
+                    numBlackPels++;
+                }
+            }
+            //printf("%d: numBlack=%d\n", i, numBlackPels);
+            if (numBlackPels<5) {
+                //printf("break!\n");
+                return i;
+            }
+        }
+    }
+    
+    return starti;
+    
+}
+
+l_uint32 removeBlackPelsColLeft(PIX *pixg, l_uint32 w, l_uint32 h, l_uint32 starti, l_uint32 endi, l_uint32 top, l_uint32 bottom) {
+    UINT i, j;
+    l_uint32 a;
+
+    l_uint32 numBlackPels=0;
+    l_uint32 blackThresh=140;
+
+    numBlackPels = 0;
+    for (j=top; j<bottom; j++) {
+        l_int32 retval = pixGetPixel(pixg, starti+1, j, &a);
+        assert(0 == retval);
+        if (a<blackThresh) {
+            numBlackPels++;
+        }
+    }
+    //printf("init: i=%d, numBlack=%d\n", starti, numBlackPels);
+    
+    if (numBlackPels > 10) {
+        //printf(" needs adjustment!\n");
+        for (i=starti+2; i<=endi; i++) {
+            numBlackPels = 0;
+            for (j=top; j<bottom; j++) {
+                l_int32 retval = pixGetPixel(pixg, i, j, &a);
+                assert(0 == retval);
+                if (a<blackThresh) {
+                    numBlackPels++;
+                }
+            }
+            //printf("%d: numBlack=%d\n", i, numBlackPels);
+            if (numBlackPels<5) {
+                //printf("break!\n");
+                return i;
+            }
+        }
+    }
+    
+    return starti;
+    
+}
+
+l_uint32 removeBlackPelsRowTop(PIX *pixg, l_uint32 w, l_uint32 h, l_uint32 startj, l_uint32 endj, l_uint32 left, l_uint32 right) {
+    UINT i, j;
+    l_uint32 a;
+
+    l_uint32 numBlackPels=0;
+    l_uint32 blackThresh=140;
+
+    numBlackPels = 0;
+    for (i=left; i<right; i++) {
+        l_int32 retval = pixGetPixel(pixg, i, startj+1, &a);
+        assert(0 == retval);
+        if (a<blackThresh) {
+            numBlackPels++;
+        }
+    }
+    //printf("init: j=%d, numBlack=%d\n", startj, numBlackPels);
+    
+    if (numBlackPels > 10) {
+        //printf(" needs adjustment!\n");
+        for (j=startj+2; j<=endj; j++) {
+            numBlackPels = 0;
+            for (i=left; i<right; i++) {
+                l_int32 retval = pixGetPixel(pixg, i, j, &a);
+                assert(0 == retval);
+                if (a<blackThresh) {
+                    numBlackPels++;
+                }
+            }
+            //printf("%d: numBlack=%d\n", j, numBlackPels);
+            if (numBlackPels<5) {
+                //printf("break!\n");
+                return j;
+            }
+        }
+    }
+    
+    return startj;
+    
+}
+
+l_uint32 removeBlackPelsRowBottom(PIX *pixg, l_uint32 w, l_uint32 h, l_uint32 top, l_uint32 oldBottom, l_uint32 left, l_uint32 right) {
+    UINT i, j;
+    l_uint32 a;
+
+    l_uint32 numBlackPels=0;
+    l_uint32 blackThresh=140;
+
+    numBlackPels = 0;
+    for (i=left; i<right; i++) {
+        l_int32 retval = pixGetPixel(pixg, i, oldBottom-1, &a);
+        assert(0 == retval);
+        if (a<blackThresh) {
+            numBlackPels++;
+        }
+    }
+    //printf("init: j=%d, numBlack=%d\n", oldBottom, numBlackPels);
+    
+    if (numBlackPels > 10) {
+        //printf(" needs adjustment!\n");
+        for (j=oldBottom-2; j<=top; j++) {
+            numBlackPels = 0;
+            for (i=left; i<right; i++) {
+                l_int32 retval = pixGetPixel(pixg, i, j, &a);
+                assert(0 == retval);
+                if (a<blackThresh) {
+                    numBlackPels++;
+                }
+            }
+            //printf("%d: numBlack=%d\n", j, numBlackPels);
+            if (numBlackPels<5) {
+                //printf("break!\n");
+                return j;
+            }
+        }
+    }
+    
+    return oldBottom;
+    
+}
+
+
+
 l_uint32 calcLimitLeft(l_uint32 w, l_uint32 h, l_float32 angle) {
     l_uint32  w2 = w>>1;
     l_uint32  h2 = h>>1;
@@ -302,3 +500,159 @@ l_uint32 calcLimitTop(l_uint32 w, l_uint32 h, l_float32 angle) {
     
     return h2 - (int)(r*sin(theta - radang));
 }
+
+// old debugging functions to be removed later.
+//______________________________________________________________________________
+/*
+l_uint32 calculateSADcolDebug(PIX *pixg, l_uint32 w, l_uint32 h, l_uint32 left, l_uint32 right, l_int32 *reti, l_uint32 *retDiff) {
+
+    UINT i, j;
+    l_uint32 acc=0;
+    l_uint32 a,b;
+    l_uint32 maxDiff=0;
+    l_int32 maxi=-1;
+    
+    //printf("W=%d\n", pixGetWidth( pixg ));
+    //printf("H=%d\n",  pixGetHeight( pixg ));
+    assert(left>=0);
+    assert(left<right);
+    assert(right<w);
+
+    for (i=left; i<right; i++) {
+        printf("%d: ", i);
+        acc=0;
+        for (j=0; j<h; j++) {
+            l_int32 retval = pixGetPixel(pixg, i, j, &a);
+            assert(0 == retval);
+            retval = pixGetPixel(pixg, i+1, j, &b);
+            assert(0 == retval);
+            //printf("%d ", val);
+            acc += (abs(a-b));
+        }
+        printf("%d \n", acc);
+        if (acc > maxDiff) {
+            maxi=i;   
+            maxDiff = acc;
+        }
+        
+    }
+
+    *reti = maxi;
+    *retDiff = maxDiff;
+    return (-1 != maxi);
+}
+*/
+/*
+l_uint32 sumCol(PIX *pixg, l_uint32 w, l_uint32 h, l_uint32 left, l_uint32 right, l_uint32 top, l_uint32 bottom, l_int32 *reti, l_float32 *retVar) {
+
+    UINT i, j;
+    l_uint32 acc=0;
+    l_uint32 a;
+    l_uint32 maxDiff=0;
+    l_int32 minI=-1;
+    
+    //printf("W=%d\n", pixGetWidth( pixg ));
+    //printf("H=%d\n",  pixGetHeight( pixg ));
+    assert(left>=0);
+    assert(left<right);
+    assert(right<w);
+    l_float32 minVar = FLT_MAX;
+    
+    for (i=left; i<right; i++) {
+        printf("%d: ", i);
+        acc=0;
+        for (j=top; j<bottom; j++) {
+            l_int32 retval = pixGetPixel(pixg, i, j, &a);
+            assert(0 == retval);
+            acc += a;
+        }
+        printf("%d ", acc);
+        l_float32 ave = (float)acc/(bottom-top);
+        printf("%f, ", ave);
+
+        l_float32 var=0;
+        for (j=top; j<bottom; j++) {
+            l_int32 retval = pixGetPixel(pixg, i, j, &a);
+            assert(0 == retval);
+            l_float32 tmp = (a-ave);
+            var += (tmp*tmp);
+        }
+        
+        var = var/(bottom-top);
+        printf("var=%f\n", var);
+
+        if (var < minVar) {
+            minVar = var;
+            minI   = i;
+        }
+    }
+
+    *reti = minI;
+    *retVar = minVar;
+    return (-1 != minI);
+}
+*/
+/*
+l_uint32 adjustCropCol(l_float32 thresh, l_float32 avgThresh, PIX *pixg, l_uint32 w, l_uint32 h, l_uint32 left, l_uint32 right, l_uint32 top, l_uint32 bottom, l_int32 *reti, l_float32 *retVar) {
+
+    UINT i, j;
+    l_uint32 acc=0;
+    l_uint32 a;
+    l_uint32 maxDiff=0;
+    l_int32 minI=-1;
+
+    l_uint32 numBlackPels;
+    l_uint32 blackThresh=140;
+    
+    //printf("W=%d\n", pixGetWidth( pixg ));
+    //printf("H=%d\n",  pixGetHeight( pixg ));
+    assert(left>=0);
+    assert(left<right);
+    assert(right<w);
+    l_float32 minVar = FLT_MAX;
+    l_float32 minIavg = FLT_MAX;
+    
+    for (i=right; i>=left; i--) {
+        printf("%d: ", i);
+        acc=0;
+        numBlackPels = 0;
+        for (j=top; j<bottom; j++) {
+            l_int32 retval = pixGetPixel(pixg, i, j, &a);
+            assert(0 == retval);
+            acc += a;
+            if (a<blackThresh) {
+                numBlackPels++;
+            }
+        }
+        printf("numBlack=%d, ", numBlackPels);
+        printf("%d ", acc);
+        l_float32 ave = (float)acc/(bottom-top);
+        printf("%f, ", ave);
+
+        l_float32 var=0;
+        for (j=top; j<bottom; j++) {
+            l_int32 retval = pixGetPixel(pixg, i, j, &a);
+            assert(0 == retval);
+            l_float32 tmp = (a-ave);
+            var += (tmp*tmp);
+        }
+        
+        var = var/(bottom-top);
+        printf("var=%f", var);
+
+        if (var < (minVar*(1-thresh))) {
+            if ( (ave<(minIavg*(1-avgThresh))) || (ave>(minIavg*(1>avgThresh))) ){
+                minVar = var;
+                minIavg = ave;
+                minI   = i;
+                printf(" *");
+            }
+        }
+        printf("\n");
+    }
+
+    *reti = minI;
+    *retVar = minVar;
+    return (-1 != minI);
+}
+*/
