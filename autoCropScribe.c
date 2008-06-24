@@ -26,9 +26,17 @@ autoCropScribe filein.jpg rotateDirection
 //#define debugstr
 
 
+static inline l_int32 min (l_int32 a, l_int32 b) {
+    return b + ((a-b) & (a-b)>>31);
+}
+
+static inline l_int32 max (l_int32 a, l_int32 b) {
+    return a - ((a-b) & (a-b)>>31);
+}
+
 /// CalculateSADcol()
 /// calculate sum of absolute differences of two rows of adjacent column
-/// last SAD calculation is for row j=right-1 and j=right.
+/// last SAD calculation is for row i=right and i=right+1.
 ///____________________________________________________________________________
 l_uint32 CalculateSADcol(PIX        *pixg,
                          l_uint32   left,
@@ -54,10 +62,10 @@ l_uint32 CalculateSADcol(PIX        *pixg,
     //kernel has height of (h/2 +/- h*hPercent/2)
     l_uint32 jTop = (l_uint32)((1-hPercent)*0.5*h);
     l_uint32 jBot = (l_uint32)((1+hPercent)*0.5*h);
-    printf("jTop/Bot is %d/%d\n", jTop, jBot);
+    //printf("jTop/Bot is %d/%d\n", jTop, jBot);
 
     for (i=left; i<right; i++) {
-        printf("%d: ", i);
+        //printf("%d: ", i);
         acc=0;
         for (j=jTop; j<jBot; j++) {
             l_int32 retval = pixGetPixel(pixg, i, j, &a);
@@ -67,7 +75,7 @@ l_uint32 CalculateSADcol(PIX        *pixg,
             //printf("%d ", val);
             acc += (abs(a-b));
         }
-        printf("%d \n", acc);
+        //printf("%d \n", acc);
         if (acc > maxDiff) {
             maxi=i;   
             maxDiff = acc;
@@ -90,15 +98,69 @@ l_uint32 FindGutterCrop(PIX *pixg, l_int32 rotDir) {
     //Currently, we can only do right-hand leafs
     assert(1 == rotDir);
 
+    #define kKernelHeight 0.30
 
     //Assume we can find the binding within the first 10% of the image width
-    l_uint32 width10 = (l_uint32)(pixGetWidth(pixg) * 0.10);
+    l_uint32 width   = pixGetWidth(pixg);
+    l_uint32 width10 = (l_uint32)(width * 0.10);
 
-    l_int32    reti;
-    l_uint32   retDiff;
-    CalculateSADcol(pixg, 0, width10, 0.10, &reti, &retDiff);
+    l_int32    strongEdge;
+    l_uint32   strongEdgeDiff;
+    //TODO: calculate left bound based on amount of BRING_IN_BLACK due to rotation
+    CalculateSADcol(pixg, 5, width10, kKernelHeight, &strongEdge, &strongEdgeDiff);
+    printf("strongest edge of gutter is at i=%d with diff=%d\n", strongEdge, strongEdgeDiff);
 
-    return 1;
+    //TODO: what if strongEdge = 0 or something obviously bad?
+
+    //Look for a second strong edge for the other side of the binding.
+    //This edge should exist within +/- 3% of the image width.
+
+    l_int32     secondEdgeL, secondEdgeR;
+    l_uint32    secondEdgeDiffL, secondEdgeDiffR;
+    l_uint32 width3p = (l_uint32)(width * 0.03);
+
+    if (0 != strongEdge) {
+        l_int32 searchLimit = max(0, strongEdge-width3p);
+
+        CalculateSADcol(pixg, searchLimit, strongEdge-1, kKernelHeight, &secondEdgeL, &secondEdgeDiffL);
+        printf("secondEdgeL = %d, diff = %d\n", secondEdgeL, secondEdgeDiffL);
+    } else {
+        //FIXME what to do here?
+        return 0;
+    }
+
+    if (strongEdge < (width-2)) {
+        l_int32 searchLimit = strongEdge + width3p;
+        assert(searchLimit>strongEdge+1);
+        CalculateSADcol(pixg, strongEdge+1, searchLimit, kKernelHeight, &secondEdgeR, &secondEdgeDiffR);
+        printf("secondEdgeR = %d, diff = %d\n", secondEdgeR, secondEdgeDiffR);
+
+    } else {
+        //FIXME what to do here?
+        return 0;
+    }
+
+    l_int32  secondEdge;
+    l_uint32 secondEdgeDiff;
+    
+    if (secondEdgeDiffR > secondEdgeDiffL) {
+        secondEdge = secondEdgeR;
+        secondEdgeDiff = secondEdgeDiffR;
+    } else if (secondEdgeDiffR < secondEdgeDiffL) {
+        secondEdge = secondEdgeL;
+        secondEdgeDiff = secondEdgeDiffL;
+    } else {
+        //FIXME
+        return 0;
+    }
+
+    if ((secondEdgeDiff > (strongEdgeDiff*0.80)) && (secondEdgeDiff < (strongEdgeDiff*1.20))) {
+        printf("Found gutter at %d!\n", strongEdge);
+        return 1;
+    }
+
+    debugstr("Could not find gutter!\n");
+    return 0;
 }
 
 
@@ -138,9 +200,22 @@ int main(int argc, char **argv) {
 
     pixg = pixConvertRGBToGray (pixd, 0.30, 0.60, 0.10);
     debugstr("Converted to gray\n");
-    //pixWrite("/home/rkumar/public_html/outgray.jpg", pixg, IFF_JFIF_JPEG); 
+    pixWrite("/home/rkumar/public_html/outgray.jpg", pixg, IFF_JFIF_JPEG); 
 
-    FindGutterCrop(pixg, rotDir);
+    float delta;
+    static const l_float32  deg2rad            = 3.1415926535 / 180.;
+
+    for (delta=-1.0; delta<=1.0; delta+=0.05) {
+        printf("delta = %f\n", delta);
+        PIX *pixt = pixRotate(pixg,
+                        deg2rad*delta,
+                        L_ROTATE_AREA_MAP,
+                        L_BRING_IN_BLACK,0,0);
+
+        FindGutterCrop(pixt, rotDir);
+        pixDestroy(&pixt);
+    }
+    //FindGutterCrop(pixg, rotDir);
 
     /// cleanup
     pixDestroy(&pixs);
