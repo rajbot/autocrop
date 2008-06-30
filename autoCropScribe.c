@@ -114,6 +114,59 @@ l_uint32 CalculateSADcol(PIX        *pixg,
     return (-1 != maxi);
 }
 
+/// CalculateSADcol()
+/// calculate sum of absolute differences of two rows of adjacent columns
+/// last SAD calculation is for row i=right and i=right+1.
+///____________________________________________________________________________
+l_uint32 CalculateSADrow(PIX        *pixg,
+                         l_uint32   left,
+                         l_uint32   right,
+                         l_uint32   top,
+                         l_uint32   bottom,
+                         l_int32    *reti,
+                         l_uint32   *retDiff
+                        )
+{
+
+    l_uint32 i, j;
+    l_uint32 acc=0;
+    l_uint32 a,b;
+    l_uint32 maxDiff=0;
+    l_int32 maxj=-1;
+    
+    l_uint32 w = pixGetWidth( pixg );
+    l_uint32 h = pixGetHeight( pixg );
+    assert(left>=0);
+    assert(left<right);
+    assert(right<w);
+    assert(top>=0);
+    assert(top<bottom);
+    assert(bottom<h);
+
+
+    for (j=top; j<bottom; j++) {
+        //printf("%d: ", i);
+        acc=0;
+        for (i=left; i<right; i++) {
+            l_int32 retval = pixGetPixel(pixg, i, j, &a);
+            assert(0 == retval);
+            retval = pixGetPixel(pixg, i, j+1, &b);
+            assert(0 == retval);
+            //printf("%d ", val);
+            acc += (abs(a-b));
+        }
+        //printf("%d \n", acc);
+        if (acc > maxDiff) {
+            maxj=j;   
+            maxDiff = acc;
+        }
+        
+    }
+
+    *reti = maxj;
+    *retDiff = maxDiff;
+    return (-1 != maxj);
+}
 
 /// CalculateAvgCol()
 /// calculate avg luma of a column
@@ -340,6 +393,56 @@ l_uint32 FindBindingEdge(PIX     *pixg,
     return 1; //TODO: return error code on failure
 }
 
+/// FindTopEdge()
+///____________________________________________________________________________
+l_uint32 FindTopEdge(PIX      *pixg,
+                     l_int32  rotDir,
+                     l_uint32 bindingEdge)
+{
+    //Although we assume the page is centered vertically, we can't assume that
+    //the page is centered horizontally. 
+
+    //Currently, we can only do right-hand leafs
+    assert(1 == rotDir);
+
+    //start at bindingEdge, and go 25% into the image.
+    //TODO: generalize this to support both left and right hand leafs
+    
+    l_uint32 w = pixGetWidth( pixg );
+    l_uint32 h = pixGetHeight( pixg );
+
+    l_uint32 width25  = (l_uint32)(w * 0.25);
+    l_uint32 height25 = (l_uint32)(w * 0.25);
+
+    l_int32    strongEdge;
+    l_uint32   strongEdgeDiff;
+        
+    l_int32    topEdge = -1;
+    l_uint32   topEdgeDiff = 0;
+    float      topDelta;
+    float delta;
+    for (delta=-1.0; delta<=1.0; delta+=0.05) {    
+        PIX *pixt = pixRotate(pixg,
+                        deg2rad*delta,
+                        L_ROTATE_AREA_MAP,
+                        L_BRING_IN_BLACK,0,0);
+        l_int32    strongEdge;
+        l_uint32   strongEdgeDiff;
+        l_uint32   topLimit = calcLimitTop(w,h,delta);
+        
+        CalculateSADrow(pixt, bindingEdge, bindingEdge+width25, topLimit, height25, &strongEdge, &strongEdgeDiff);
+        //printf("delta=%f, strongest top edge is at i=%d with diff=%d\n", delta, strongEdge, strongEdgeDiff);
+        if (strongEdgeDiff > topEdgeDiff) {
+            topEdge = strongEdge;
+            topEdgeDiff = strongEdgeDiff;
+            topDelta = delta;
+        }
+        pixDestroy(&pixt);    
+    }
+
+    assert(-1 != topEdge); //TODO: handle error
+    printf("BEST TOP: delta=%f at j=%d with diff=%d\n", topDelta, topEdge, topEdgeDiff);
+}
 
 /// main()
 ///____________________________________________________________________________
@@ -396,6 +499,8 @@ int main(int argc, char **argv) {
     //FindGutterCrop(pixg, rotDir);
     
     l_int32 cropT=-1, cropB=-1, cropR=-1, cropL=-1;
+
+    /// find binding side edge
     l_int32 bindingEdge = FindBindingEdge(pixg, rotDir);
     
     if (-1 == bindingEdge) {
@@ -403,6 +508,9 @@ int main(int argc, char **argv) {
     } else {
         printf("FOUND binding edge= %d\n", bindingEdge);
     }
+
+    /// find top edge
+    l_int32 topEdge = FindTopEdge(pixg, rotDir, bindingEdge);
 
     /// cleanup
     pixDestroy(&pixs);
