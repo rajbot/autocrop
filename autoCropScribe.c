@@ -393,11 +393,55 @@ l_uint32 FindBindingEdge(PIX     *pixg,
     return 1; //TODO: return error code on failure
 }
 
-/// FindTopEdge()
+/// FindOuterEdge()
 ///____________________________________________________________________________
-l_uint32 FindTopEdge(PIX      *pixg,
+l_uint32 FindOuterEdge(PIX     *pixg,
+                       l_int32 rotDir)
+{
+
+    //Currently, we can only do right-hand leafs
+    assert(1 == rotDir);
+
+    l_uint32 w = pixGetWidth( pixg );
+    l_uint32 h = pixGetHeight( pixg );
+
+    l_uint32 width75 = (l_uint32)(w * 0.75);
+    
+
+    l_int32    outerEdge = -1;
+    l_uint32   outerEdgeDiff = 0;
+    float      outerDelta;
+    float      delta;
+    for (delta=-1.0; delta<=1.0; delta+=0.05) {    
+        PIX *pixt = pixRotate(pixg,
+                        deg2rad*delta,
+                        L_ROTATE_AREA_MAP,
+                        L_BRING_IN_BLACK,0,0);
+        l_int32    strongEdge;
+        l_uint32   strongEdgeDiff;
+        l_uint32   limitLeft = calcLimitLeft(w,h,delta);
+        //printf("limitLeft = %d\n", limitLeft);
+        
+        CalculateSADcol(pixt, width75, w-limitLeft-1, kKernelHeight, &strongEdge, &strongEdgeDiff); //TODO: is w-leftLimit-1 right?
+        //printf("delta=%f, strongest outer edge at i=%d with diff=%d\n", delta, strongEdge, strongEdgeDiff);
+        if (strongEdgeDiff > outerEdgeDiff) {
+            outerEdge     = strongEdge;
+            outerEdgeDiff = strongEdgeDiff;
+            outerDelta    = delta;
+        }
+        pixDestroy(&pixt);    
+    }
+    
+    assert(-1 != outerEdge); //TODO: handle error
+    printf("BEST: delta=%f, strongest edge of gutter is at i=%d with diff=%d\n", outerDelta, outerEdge, outerEdgeDiff);
+}
+
+/// FindHorizontalEdge()
+///____________________________________________________________________________
+l_uint32 FindHorizontalEdge(PIX      *pixg,
                      l_int32  rotDir,
-                     l_uint32 bindingEdge)
+                     l_uint32 bindingEdge,
+                     bool     whichEdge)
 {
     //Although we assume the page is centered vertically, we can't assume that
     //the page is centered horizontally. 
@@ -416,8 +460,8 @@ l_uint32 FindTopEdge(PIX      *pixg,
 
     l_int32    strongEdge;
     l_uint32   strongEdgeDiff;
-        
-    l_int32    topEdge = -1;
+
+    l_int32    topEdge = -1;        //TODO: generalize - this should be horizEdge
     l_uint32   topEdgeDiff = 0;
     float      topDelta;
     float delta;
@@ -430,7 +474,17 @@ l_uint32 FindTopEdge(PIX      *pixg,
         l_uint32   strongEdgeDiff;
         l_uint32   topLimit = calcLimitTop(w,h,delta);
         
-        CalculateSADrow(pixt, bindingEdge, bindingEdge+width25, topLimit, height25, &strongEdge, &strongEdgeDiff);
+
+        l_uint32   top, bottom;
+        if (0 == whichEdge) { //top Edge
+            top = topLimit;
+            bottom = height25;
+        } else {
+            bottom = h-topLimit-1; //TODO: is the -1 right?
+            top    = h-height25;
+        }
+
+        CalculateSADrow(pixt, bindingEdge, bindingEdge+width25, top, bottom, &strongEdge, &strongEdgeDiff);
         //printf("delta=%f, strongest top edge is at i=%d with diff=%d\n", delta, strongEdge, strongEdgeDiff);
         if (strongEdgeDiff > topEdgeDiff) {
             topEdge = strongEdge;
@@ -441,7 +495,9 @@ l_uint32 FindTopEdge(PIX      *pixg,
     }
 
     assert(-1 != topEdge); //TODO: handle error
-    printf("BEST TOP: delta=%f at j=%d with diff=%d\n", topDelta, topEdge, topEdgeDiff);
+    printf("BEST Horiz: delta=%f at j=%d with diff=%d\n", topDelta, topEdge, topEdgeDiff);
+    
+    return topEdge;
 }
 
 /// main()
@@ -510,7 +566,13 @@ int main(int argc, char **argv) {
     }
 
     /// find top edge
-    l_int32 topEdge = FindTopEdge(pixg, rotDir, bindingEdge);
+    l_int32 topEdge = FindHorizontalEdge(pixg, rotDir, bindingEdge, 0);
+
+    /// find bottom edge
+    l_int32 bottomEdge = FindHorizontalEdge(pixg, rotDir, bindingEdge, 1);
+
+    /// find the outer vertical edge
+    l_int32 outerEdge = FindOuterEdge(pixg, rotDir);
 
     /// cleanup
     pixDestroy(&pixs);
