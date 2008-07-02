@@ -281,7 +281,8 @@ l_uint32 FindGutterCrop(PIX *pixg, l_int32 rotDir) {
 /// FindBindingEdge()
 ///____________________________________________________________________________
 l_uint32 FindBindingEdge(PIX     *pixg,
-                            l_int32 rotDir)
+                         l_int32 rotDir,
+                         float   *skew)
 {
 
     //Currently, we can only do right-hand leafs
@@ -322,7 +323,7 @@ l_uint32 FindBindingEdge(PIX     *pixg,
     
     assert(-1 != bindingEdge); //TODO: handle error
     printf("BEST: delta=%f, strongest edge of gutter is at i=%d with diff=%d\n", bindingDelta, bindingEdge, bindingEdgeDiff);
-    
+    *skew = bindingDelta;
 
     // Now compute threshold for psudo-bitonalization
     // Use midpoint between avg luma of dark and light lines of binding edge
@@ -396,7 +397,8 @@ l_uint32 FindBindingEdge(PIX     *pixg,
 /// FindOuterEdge()
 ///____________________________________________________________________________
 l_uint32 FindOuterEdge(PIX     *pixg,
-                       l_int32 rotDir)
+                       l_int32 rotDir,
+                       float   *skew)
 {
 
     //Currently, we can only do right-hand leafs
@@ -433,7 +435,8 @@ l_uint32 FindOuterEdge(PIX     *pixg,
     }
     
     assert(-1 != outerEdge); //TODO: handle error
-    printf("BEST: delta=%f, strongest edge of gutter is at i=%d with diff=%d\n", outerDelta, outerEdge, outerEdgeDiff);
+    printf("BEST: delta=%f, outer edge is at i=%d with diff=%d\n", outerDelta, outerEdge, outerEdgeDiff);
+    *skew = outerDelta;
 }
 
 /// FindHorizontalEdge()
@@ -441,7 +444,8 @@ l_uint32 FindOuterEdge(PIX     *pixg,
 l_uint32 FindHorizontalEdge(PIX      *pixg,
                      l_int32  rotDir,
                      l_uint32 bindingEdge,
-                     bool     whichEdge)
+                     bool     whichEdge,
+                     float    *skew)
 {
     //Although we assume the page is centered vertically, we can't assume that
     //the page is centered horizontally. 
@@ -455,8 +459,8 @@ l_uint32 FindHorizontalEdge(PIX      *pixg,
     l_uint32 w = pixGetWidth( pixg );
     l_uint32 h = pixGetHeight( pixg );
 
-    l_uint32 width25  = (l_uint32)(w * 0.25);
-    l_uint32 height25 = (l_uint32)(w * 0.25);
+    l_uint32 width50  = (l_uint32)(w * 0.5);
+    l_uint32 height25 = (l_uint32)(h * 0.25);
 
     l_int32    strongEdge;
     l_uint32   strongEdgeDiff;
@@ -484,7 +488,7 @@ l_uint32 FindHorizontalEdge(PIX      *pixg,
             top    = h-height25;
         }
 
-        CalculateSADrow(pixt, bindingEdge, bindingEdge+width25, top, bottom, &strongEdge, &strongEdgeDiff);
+        CalculateSADrow(pixt, bindingEdge, bindingEdge+width50, top, bottom, &strongEdge, &strongEdgeDiff);
         //printf("delta=%f, strongest top edge is at i=%d with diff=%d\n", delta, strongEdge, strongEdgeDiff);
         if (strongEdgeDiff > topEdgeDiff) {
             topEdge = strongEdge;
@@ -496,7 +500,7 @@ l_uint32 FindHorizontalEdge(PIX      *pixg,
 
     assert(-1 != topEdge); //TODO: handle error
     printf("BEST Horiz: delta=%f at j=%d with diff=%d\n", topDelta, topEdge, topEdgeDiff);
-    
+    *skew = topDelta;
     return topEdge;
 }
 
@@ -555,9 +559,10 @@ int main(int argc, char **argv) {
     //FindGutterCrop(pixg, rotDir);
     
     l_int32 cropT=-1, cropB=-1, cropR=-1, cropL=-1;
+    float deltaT, deltaB, deltaV1, deltaV2;
 
     /// find binding side edge
-    l_int32 bindingEdge = FindBindingEdge(pixg, rotDir);
+    l_int32 bindingEdge = FindBindingEdge(pixg, rotDir, &deltaV1);
     
     if (-1 == bindingEdge) {
         printf("COULD NOT FIND BINDING!");
@@ -566,15 +571,16 @@ int main(int argc, char **argv) {
     }
 
     /// find top edge
-    l_int32 topEdge = FindHorizontalEdge(pixg, rotDir, bindingEdge, 0);
+    l_int32 topEdge = FindHorizontalEdge(pixg, rotDir, bindingEdge, 0, &deltaT);
 
     /// find bottom edge
-    l_int32 bottomEdge = FindHorizontalEdge(pixg, rotDir, bindingEdge, 1);
+    l_int32 bottomEdge = FindHorizontalEdge(pixg, rotDir, bindingEdge, 1, &deltaB);
 
     /// find the outer vertical edge
-    l_int32 outerEdge = FindOuterEdge(pixg, rotDir);
+    l_int32 outerEdge = FindOuterEdge(pixg, rotDir, &deltaV2);
 
     /// cleanup
+    pixDestroy(&pixg);
     pixDestroy(&pixs);
     pixDestroy(&pixd);
 }
