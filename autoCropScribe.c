@@ -22,6 +22,7 @@ autoCropScribe filein.jpg rotateDirection
 #include "allheaders.h"
 #include <assert.h>
 #include <math.h>   //for sqrt
+#include <float.h>  //for DBL_MAX
 
 #define debugstr printf
 //#define debugstr
@@ -114,7 +115,7 @@ l_uint32 CalculateSADcol(PIX        *pixg,
     return (-1 != maxi);
 }
 
-/// CalculateSADcol()
+/// CalculateSADrow()
 /// calculate sum of absolute differences of two rows of adjacent columns
 /// last SAD calculation is for row i=right and i=right+1.
 ///____________________________________________________________________________
@@ -166,6 +167,52 @@ l_uint32 CalculateSADrow(PIX        *pixg,
     *reti = maxj;
     *retDiff = maxDiff;
     return (-1 != maxj);
+}
+
+/// CalculateFullPageSADrow()
+/// calculate sum of absolute differences of two rows of adjacent columns
+/// last SAD calculation is for row i=right and i=right+1.
+///____________________________________________________________________________
+double CalculateFullPageSADrow(PIX        *pixg,
+                         l_uint32   left,
+                         l_uint32   right,
+                         l_uint32   top,
+                         l_uint32   bottom
+                        )
+{
+
+    l_uint32 i, j;
+    l_uint32 acc=0;
+    l_uint32 a,b;
+    l_uint32 maxDiff=0;
+    l_int32 maxj=-1;
+    
+    l_uint32 w = pixGetWidth( pixg );
+    l_uint32 h = pixGetHeight( pixg );
+    assert(left>=0);
+    assert(left<right);
+    assert(right<w);
+    assert(top>=0);
+    assert(top<bottom);
+    assert(bottom<h);
+
+    
+    for (j=top; j<bottom; j++) {
+        //printf("%d: ", i);
+        for (i=left; i<right; i++) {
+            l_int32 retval = pixGetPixel(pixg, i, j, &a);
+            assert(0 == retval);
+            retval = pixGetPixel(pixg, i, j+1, &b);
+            assert(0 == retval);
+            //printf("%d ", val);
+            acc += (abs(a-b));
+        }
+ 
+    }
+
+    double sum = (double)acc;
+    //printf("acc=%d, sum=%f\n", acc, sum);
+    return sum;
 }
 
 /// CalculateAvgCol()
@@ -332,7 +379,7 @@ l_uint32 FindBindingEdge(PIX     *pixg,
                     deg2rad*bindingDelta,
                     L_ROTATE_AREA_MAP,
                     L_BRING_IN_BLACK,0,0);
-    pixWrite("/home/rkumar/public_html/outgray.jpg", pixt, IFF_JFIF_JPEG);     
+    pixWrite("/home/rkumar/public_html/outgray.jpg", pixg, IFF_JFIF_JPEG);     
     
     double bindingLumaA = CalculateAvgCol(pixt, bindingEdge, kKernelHeight);
     printf("lumaA = %f\n", bindingLumaA);
@@ -396,7 +443,7 @@ l_uint32 FindBindingEdge(PIX     *pixg,
 
 /// FindOuterEdge()
 ///____________________________________________________________________________
-l_uint32 FindOuterEdge(PIX     *pixg,
+l_int32 FindOuterEdge(PIX     *pixg,
                        l_int32 rotDir,
                        float   *skew)
 {
@@ -437,6 +484,7 @@ l_uint32 FindOuterEdge(PIX     *pixg,
     assert(-1 != outerEdge); //TODO: handle error
     printf("BEST: delta=%f, outer edge is at i=%d with diff=%d\n", outerDelta, outerEdge, outerEdgeDiff);
     *skew = outerDelta;
+    return outerEdge;
 }
 
 /// FindHorizontalEdge()
@@ -502,6 +550,116 @@ l_uint32 FindHorizontalEdge(PIX      *pixg,
     printf("BEST Horiz: delta=%f at j=%d with diff=%d\n", topDelta, topEdge, topEdgeDiff);
     *skew = topDelta;
     return topEdge;
+}
+
+/// CalculateDifferentialSquareSum()
+///____________________________________________________________________________
+double CalculateDifferentialSquareSum(PIX *pixg, 
+                                      l_uint32 cL,
+                                      l_uint32 cR, 
+                                      l_uint32 cT, 
+                                      l_uint32 cB) 
+{
+    l_uint32 i, j;
+    l_uint32 a, b;
+    l_uint32 lineSum0, lineSum1;
+    double sum=0;
+
+    //init lineSum0;
+    lineSum0=0;
+    for (i=cL; i<=cR; i++) {
+        l_int32 retval = pixGetPixel(pixg, i, cT, &a);
+        assert(0 == retval);
+        lineSum0 += a;
+    }
+
+    for (j=cT+1; j<cB; j++) {
+        lineSum1 = 0;
+        for (i=cL; i<=cR; i++) {
+            l_int32 retval = pixGetPixel(pixg, i, j, &a);
+            assert(0 == retval);
+            lineSum1 +=a;
+        }
+        double diff = (double)lineSum0 - (double)lineSum1;
+        sum += (diff*diff);
+        //printf("\tl0=%d, l1=%d, diff=%f, sum=%f\n", lineSum0, lineSum1, diff, sum);
+        lineSum0 = lineSum1;
+    }
+
+    return sum;
+}
+
+/// Deskew()
+///____________________________________________________________________________
+int Deskew(PIX      *pixg, 
+           l_int32 cropL, 
+           l_int32 cropR, 
+           l_int32 cropT, 
+           l_int32 cropB, 
+           double *skew, 
+           double *skewConf)
+{
+    assert(cropR>cropL);
+    assert(cropB>cropT);
+
+    l_uint32 w = pixGetWidth( pixg );
+    l_uint32 h = pixGetHeight( pixg );
+
+    l_uint32 width10  = (l_uint32)(w * 0.10);
+    l_uint32 height10 = (l_uint32)(h * 0.10);
+    
+
+
+    //first, reduce cropbox by 10% to get rid of non-page pixels
+    printf("before reduce: cL=%d, cR=%d, cT=%d, cB=%d, w=%d, h=%d\n", cropL, cropR, cropT, cropB, w,h);
+    if ( ((cropR-cropL) > (2*width10)) && ((cropB-cropT) > (2*height10)) ) {
+        cropL += width10;
+        cropR -= width10;
+        cropT += height10;
+        cropB -= height10;
+    }
+    printf("after reduce: cL=%d, cR=%d, cT=%d, cB=%d\n", cropL, cropR, cropT, cropB);
+
+    double sumMax = CalculateDifferentialSquareSum(pixg, cropL, cropR, cropT, cropB);
+    //double sumMax = CalculateFullPageSADrow(pixg, cropL, cropR, cropT, cropB);
+    printf("init sumMax=%f\n", sumMax);
+    double sumMin = sumMax;;
+    float deltaMax = 0.0;
+
+    float delta;
+    for (delta=-1.0; delta<=1.0; delta+=0.05) {
+        if ((-0.01<delta) && (delta<0.01)) continue;
+        PIX *pixt = pixRotate(pixg,
+                        deg2rad*delta,
+                        L_ROTATE_AREA_MAP,
+                        L_BRING_IN_BLACK,0,0);
+
+        l_uint32   limitTop  = calcLimitTop(w,h,delta);
+        l_uint32   limitLeft = calcLimitLeft(w,h,delta);
+
+        l_uint32 cL = (cropL<limitLeft)     ? limitLeft     : cropL;
+        l_uint32 cR = (cropR>(w-limitLeft)) ? (w-limitLeft) : cropR;
+        l_uint32 cT = (cropT<limitTop)      ? limitTop      : cropT;
+        l_uint32 cB = (cropB>(h-limitTop))  ? (h-limitTop)  : cropB;
+        //printf("after trim: cL=%d, cR=%d, cT=%d, cB=%d\n", cL, cR, cT, cB);
+
+        double sum = CalculateDifferentialSquareSum(pixt, cL, cR, cT, cB);
+        //double sum = CalculateFullPageSADrow(pixt, cL, cR, cT, cB);
+        if (sum > sumMax) {
+            sumMax = sum;
+            deltaMax = delta;
+        }
+        if (sum < sumMin) {
+            sumMin = sum;
+        }
+
+        *skew = deltaMax;
+        *skewConf = (sumMax/sumMin);
+        printf("delta = %f, sum=%f\n", delta, sum);
+
+    }
+    printf("skew = %f, conf = %f\n", *skew, *skewConf);
+    return 0;
 }
 
 /// main()
@@ -578,6 +736,48 @@ int main(int argc, char **argv) {
 
     /// find the outer vertical edge
     l_int32 outerEdge = FindOuterEdge(pixg, rotDir, &deltaV2);
+
+    cropT = topEdge;
+    cropB = bottomEdge;
+    if (1 == rotDir) {
+        cropL = bindingEdge;
+        cropR = outerEdge;
+    } else if (-1 == rotDir) {
+        cropR = bindingEdge;
+        cropL = outerEdge;
+    } else {
+        //FIXME deal with rotDir=0
+        assert(0);
+    }
+
+    printf("in main: cL=%d, cR=%d, cT=%d, cB=%d\n", cropL, cropR, cropT, cropB);
+
+    /// Now that we have the crop box, use Postl's meathod for deskew
+    double skewScore, skewConf;
+    //Deskew(pixg, cropL, cropR, cropT, cropB, &skewScore, &skewConf);
+
+    PIX *pixBig;
+    if ((pixBig = pixRead(filein)) == NULL) {
+       exit(ERROR_INT("pixBig not made", mainName, 1));
+    }
+
+    PIX *pixgBig = pixConvertRGBToGray (pixBig, 0.30, 0.60, 0.10);
+    PIX *pixrBig = pixRotate90(pixgBig, rotDir);
+
+    PIX *pixbBig = pixThresholdToBinary (pixrBig, 201);    
+    pixWrite("/home/rkumar/public_html/outbin.png", pixbBig, IFF_PNG); 
+
+    l_float32    angle, conf;
+
+    if (pixFindSkew(pixbBig, &angle, &conf)) {
+      /* an error occured! */
+        printf("angle=%.2f\nconf=%.2f\n", 0.0, -1.0);
+     } else {
+        printf("angle=%.2f\nconf=%.2f\n", angle, conf);
+    }   
+
+    Deskew(pixbBig, cropL*8, cropR*8, cropT*8, cropB*8, &skewScore, &skewConf);
+
 
     /// cleanup
     pixDestroy(&pixg);
