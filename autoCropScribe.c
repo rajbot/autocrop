@@ -61,6 +61,71 @@ l_uint32 calcLimitTop(l_uint32 w, l_uint32 h, l_float32 angle) {
     return h2 - (int)(r*sin(theta - radang));
 }
 
+/// CalculateAvgCol()
+/// calculate avg luma of a column
+/// last SAD calculation is for row i=right and i=right+1.
+///____________________________________________________________________________
+double CalculateAvgCol(PIX      *pixg,
+                       l_uint32 i,
+                       l_uint32 jTop,
+                       l_uint32 jBot)
+{
+
+    l_uint32 acc=0;
+    l_uint32 a, j;
+    l_uint32 w = pixGetWidth( pixg );
+    l_uint32 h = pixGetHeight( pixg );
+    assert(i>=0);
+    assert(i<w);
+
+    //kernel has height of (h/2 +/- h*hPercent/2)
+    //l_uint32 jTop = (l_uint32)((1-hPercent)*0.5*h);
+    //l_uint32 jBot = (l_uint32)((1+hPercent)*0.5*h);
+    //printf("jTop/Bot is %d/%d\n", jTop, jBot);
+
+    acc=0;
+    for (j=jTop; j<jBot; j++) {
+        l_int32 retval = pixGetPixel(pixg, i, j, &a);
+        assert(0 == retval);
+        acc += a;
+    }
+    //printf("%d \n", acc);        
+
+    double avg = acc;
+    avg /= (jBot-jTop);
+    return avg;
+}
+
+/// CalculateAvgRow()
+/// calculate avg luma of a row
+///____________________________________________________________________________
+double CalculateAvgRow(PIX      *pixg,
+                       l_uint32 j,
+                       l_uint32 iLeft,
+                       l_uint32 iRight)
+{
+
+    l_uint32 acc=0;
+    l_uint32 a, i;
+    l_uint32 w = pixGetWidth( pixg );
+    l_uint32 h = pixGetHeight( pixg );
+    assert(j>=0);
+    assert(j<h);
+
+
+    acc=0;
+    for (i=iLeft; i<iRight; i++) {
+        l_int32 retval = pixGetPixel(pixg, i, j, &a);
+        assert(0 == retval);
+        acc += a;
+    }
+    //printf("%d \n", acc);        
+
+    double avg = acc;
+    avg /= (iRight-iLeft);
+    return avg;
+}
+
 /// CalculateSADcol()
 /// calculate sum of absolute differences of two rows of adjacent columns
 /// last SAD calculation is for row i=right and i=right+1.
@@ -68,7 +133,8 @@ l_uint32 calcLimitTop(l_uint32 w, l_uint32 h, l_float32 angle) {
 l_uint32 CalculateSADcol(PIX        *pixg,
                          l_uint32   left,
                          l_uint32   right,
-                         l_float32  hPercent,
+                         l_uint32   jTop,
+                         l_uint32   jBot,
                          l_int32    *reti,
                          l_uint32   *retDiff
                         )
@@ -87,8 +153,8 @@ l_uint32 CalculateSADcol(PIX        *pixg,
     assert(right<w);
 
     //kernel has height of (h/2 +/- h*hPercent/2)
-    l_uint32 jTop = (l_uint32)((1-hPercent)*0.5*h);
-    l_uint32 jBot = (l_uint32)((1+hPercent)*0.5*h);
+    //l_uint32 jTop = (l_uint32)((1-hPercent)*0.5*h);
+    //l_uint32 jBot = (l_uint32)((1+hPercent)*0.5*h);
     //printf("jTop/Bot is %d/%d\n", jTop, jBot);
 
     for (i=left; i<right; i++) {
@@ -114,6 +180,7 @@ l_uint32 CalculateSADcol(PIX        *pixg,
     *retDiff = maxDiff;
     return (-1 != maxi);
 }
+
 
 /// CalculateSADrow()
 /// calculate sum of absolute differences of two rows of adjacent columns
@@ -169,6 +236,63 @@ l_uint32 CalculateSADrow(PIX        *pixg,
     return (-1 != maxj);
 }
 
+/// FindBestVarRow()
+/// find row with least variance
+///____________________________________________________________________________
+l_uint32 FindBestVarRow(PIX        *pixg,
+                         l_uint32   left,
+                         l_uint32   right,
+                         l_uint32   top,
+                         l_uint32   bottom,
+                         double     thresh,
+                         l_int32    *retj,
+                         double     *retVar
+                        )
+{
+
+    l_uint32 i, j;
+    l_uint32 a;
+    double minVar=DBL_MAX;
+    l_int32 minj=-1;
+    
+    l_uint32 w = pixGetWidth( pixg );
+    l_uint32 h = pixGetHeight( pixg );
+    assert(left>=0);
+    assert(left<right);
+    assert(right<w);
+    assert(top>=0);
+    assert(top<bottom);
+    assert(bottom<h);
+    double var;
+    l_uint32 width20 = (l_uint32)(w * 0.20);
+
+    for (j=top; j<=bottom; j++) {
+        printf("%d: ", j);
+        var = 0;
+        double avg = CalculateAvgRow(pixg, j, left+width20, right-width20);
+        if (avg<thresh) {
+            printf("avg too low, continuing! (%f)\n", avg);
+            continue;
+        }
+        for (i=left+width20; i<right-width20; i++) {
+            l_int32 retval = pixGetPixel(pixg, i, j, &a);
+            assert(0 == retval);
+            double diff = avg-a;
+            var += (diff * diff);
+        }
+        printf("var=%f avg=%f\n", var, avg);
+        if (var < minVar) {
+            minVar = var;
+            minj   = j; 
+        }
+        
+    }
+
+    *retj = minj;
+    *retVar = minVar;
+    return (-1 != minj);
+}
+
 /// CalculateFullPageSADrow()
 /// calculate sum of absolute differences of two rows of adjacent columns
 /// last SAD calculation is for row i=right and i=right+1.
@@ -215,40 +339,7 @@ double CalculateFullPageSADrow(PIX        *pixg,
     return sum;
 }
 
-/// CalculateAvgCol()
-/// calculate avg luma of a column
-/// last SAD calculation is for row i=right and i=right+1.
-///____________________________________________________________________________
-double CalculateAvgCol(PIX        *pixg,
-                         l_uint32   i,
-                         l_float32  hPercent
-                        )
-{
 
-    l_uint32 acc=0;
-    l_uint32 a, j;
-    l_uint32 w = pixGetWidth( pixg );
-    l_uint32 h = pixGetHeight( pixg );
-    assert(i>=0);
-    assert(i<w);
-
-    //kernel has height of (h/2 +/- h*hPercent/2)
-    l_uint32 jTop = (l_uint32)((1-hPercent)*0.5*h);
-    l_uint32 jBot = (l_uint32)((1+hPercent)*0.5*h);
-    //printf("jTop/Bot is %d/%d\n", jTop, jBot);
-
-    acc=0;
-    for (j=jTop; j<jBot; j++) {
-        l_int32 retval = pixGetPixel(pixg, i, j, &a);
-        assert(0 == retval);
-        acc += a;
-    }
-    //printf("%d \n", acc);        
-
-    double avg = acc;
-    avg /= (jBot-jTop);
-    return avg;
-}
 
 
 /// FindGutterCrop()
@@ -266,10 +357,15 @@ l_uint32 FindGutterCrop(PIX *pixg, l_int32 rotDir) {
     l_uint32 width   = pixGetWidth(pixg);
     l_uint32 width10 = (l_uint32)(width * 0.10);
 
+    l_uint32 h = pixGetHeight( pixg );
+    //kernel has height of (h/2 +/- h*hPercent/2)
+    l_uint32 jTop = (l_uint32)((1-kKernelHeight)*0.5*h);
+    l_uint32 jBot = (l_uint32)((1+kKernelHeight)*0.5*h);
+
     l_int32    strongEdge;
     l_uint32   strongEdgeDiff;
     //TODO: calculate left bound based on amount of BRING_IN_BLACK due to rotation
-    CalculateSADcol(pixg, 5, width10, kKernelHeight, &strongEdge, &strongEdgeDiff);
+    CalculateSADcol(pixg, 5, width10, jTop, jBot, &strongEdge, &strongEdgeDiff);
     printf("strongest edge of gutter is at i=%d with diff=%d\n", strongEdge, strongEdgeDiff);
 
     //TODO: what if strongEdge = 0 or something obviously bad?
@@ -284,7 +380,7 @@ l_uint32 FindGutterCrop(PIX *pixg, l_int32 rotDir) {
     if (0 != strongEdge) {
         l_int32 searchLimit = max(0, strongEdge-width3p);
 
-        CalculateSADcol(pixg, searchLimit, strongEdge-1, kKernelHeight, &secondEdgeL, &secondEdgeDiffL);
+        CalculateSADcol(pixg, searchLimit, strongEdge-1, jTop, jBot, &secondEdgeL, &secondEdgeDiffL);
         printf("secondEdgeL = %d, diff = %d\n", secondEdgeL, secondEdgeDiffL);
     } else {
         //FIXME what to do here?
@@ -294,7 +390,7 @@ l_uint32 FindGutterCrop(PIX *pixg, l_int32 rotDir) {
     if (strongEdge < (width-2)) {
         l_int32 searchLimit = strongEdge + width3p;
         assert(searchLimit>strongEdge+1);
-        CalculateSADcol(pixg, strongEdge+1, searchLimit, kKernelHeight, &secondEdgeR, &secondEdgeDiffR);
+        CalculateSADcol(pixg, strongEdge+1, searchLimit, jTop, jBot, &secondEdgeR, &secondEdgeDiffR);
         printf("secondEdgeR = %d, diff = %d\n", secondEdgeR, secondEdgeDiffR);
 
     } else {
@@ -327,9 +423,10 @@ l_uint32 FindGutterCrop(PIX *pixg, l_int32 rotDir) {
 
 /// FindBindingEdge()
 ///____________________________________________________________________________
-l_uint32 FindBindingEdge(PIX     *pixg,
-                         l_int32 rotDir,
-                         float   *skew)
+l_uint32 FindBindingEdge(PIX      *pixg,
+                         l_int32  rotDir,
+                         float    *skew,
+                         l_uint32 *thesh)
 {
 
     //Currently, we can only do right-hand leafs
@@ -340,6 +437,9 @@ l_uint32 FindBindingEdge(PIX     *pixg,
 
     l_uint32 width10 = (l_uint32)(w * 0.10);
     
+    //kernel has height of (h/2 +/- h*hPercent/2)
+    l_uint32 jTop = (l_uint32)((1-kKernelHeight)*0.5*h);
+    l_uint32 jBot = (l_uint32)((1+kKernelHeight)*0.5*h);    
 
     // Find the strong edge, which should be one of the two sides of the binding
     // Rotate the image to maximize SAD
@@ -358,7 +458,7 @@ l_uint32 FindBindingEdge(PIX     *pixg,
         l_uint32   limitLeft = calcLimitLeft(w,h,delta);
         //printf("limitLeft = %d\n", limitLeft);
         
-        CalculateSADcol(pixt, limitLeft, width10, kKernelHeight, &strongEdge, &strongEdgeDiff);
+        CalculateSADcol(pixt, limitLeft, width10, jTop, jBot, &strongEdge, &strongEdgeDiff);
         //printf("delta=%f, strongest edge of gutter is at i=%d with diff=%d\n", delta, strongEdge, strongEdgeDiff);
         if (strongEdgeDiff > bindingEdgeDiff) {
             bindingEdge = strongEdge;
@@ -379,12 +479,12 @@ l_uint32 FindBindingEdge(PIX     *pixg,
                     deg2rad*bindingDelta,
                     L_ROTATE_AREA_MAP,
                     L_BRING_IN_BLACK,0,0);
-    pixWrite("/home/rkumar/public_html/outgray.jpg", pixg, IFF_JFIF_JPEG);     
+    pixWrite("/home/rkumar/public_html/outgray.jpg", pixg, IFF_JFIF_JPEG);
     
-    double bindingLumaA = CalculateAvgCol(pixt, bindingEdge, kKernelHeight);
+    double bindingLumaA = CalculateAvgCol(pixt, bindingEdge, jTop, jBot);
     printf("lumaA = %f\n", bindingLumaA);
 
-    double bindingLumaB = CalculateAvgCol(pixt, bindingEdge+1, kKernelHeight);
+    double bindingLumaB = CalculateAvgCol(pixt, bindingEdge+1, jTop, jBot);
     printf("lumaB = %f\n", bindingLumaB);
 
 
@@ -392,6 +492,7 @@ l_uint32 FindBindingEdge(PIX     *pixg,
     //TODO: ensure this threshold is reasonable
     printf("thesh = %f\n", threshold);
     
+    *thesh = (l_uint32)threshold;
 
     l_uint32 width3p = (l_uint32)(w * 0.03);
     l_uint32 rightEdge;
@@ -401,7 +502,7 @@ l_uint32 FindBindingEdge(PIX     *pixg,
         l_uint32 i;
         l_uint32 rightLimit = bindingEdge+width3p;
         for (i=bindingEdge+1; i<rightLimit; i++) {
-            double lumaAvg = CalculateAvgCol(pixt, i, kKernelHeight);
+            double lumaAvg = CalculateAvgCol(pixt, i, jTop, jBot);
             printf("i=%d, avg=%f\n", i, lumaAvg);
             if (lumaAvg<threshold) {
                 numBlackLines++;
@@ -418,7 +519,7 @@ l_uint32 FindBindingEdge(PIX     *pixg,
         rightEdge = bindingEdge;
         if (leftLimit<0) leftLimit = 0;
         for (i=bindingEdge-1; i>leftLimit; i--) {
-            double lumaAvg = CalculateAvgCol(pixt, i, kKernelHeight);
+            double lumaAvg = CalculateAvgCol(pixt, i, jTop, jBot);
             printf("i=%d, avg=%f\n", i, lumaAvg);
             if (lumaAvg<threshold) {
                 numBlackLines++;
@@ -456,6 +557,10 @@ l_int32 FindOuterEdge(PIX     *pixg,
 
     l_uint32 width75 = (l_uint32)(w * 0.75);
     
+    //kernel has height of (h/2 +/- h*hPercent/2)
+    l_uint32 jTop = (l_uint32)((1-kKernelHeight)*0.5*h);
+    l_uint32 jBot = (l_uint32)((1+kKernelHeight)*0.5*h);
+    
 
     l_int32    outerEdge = -1;
     l_uint32   outerEdgeDiff = 0;
@@ -471,7 +576,7 @@ l_int32 FindOuterEdge(PIX     *pixg,
         l_uint32   limitLeft = calcLimitLeft(w,h,delta);
         //printf("limitLeft = %d\n", limitLeft);
         
-        CalculateSADcol(pixt, width75, w-limitLeft-1, kKernelHeight, &strongEdge, &strongEdgeDiff); //TODO: is w-leftLimit-1 right?
+        CalculateSADcol(pixt, width75, w-limitLeft-1, jTop, jBot, &strongEdge, &strongEdgeDiff); //TODO: is w-leftLimit-1 right?
         //printf("delta=%f, strongest outer edge at i=%d with diff=%d\n", delta, strongEdge, strongEdgeDiff);
         if (strongEdgeDiff > outerEdgeDiff) {
             outerEdge     = strongEdge;
@@ -483,6 +588,30 @@ l_int32 FindOuterEdge(PIX     *pixg,
     
     assert(-1 != outerEdge); //TODO: handle error
     printf("BEST: delta=%f, outer edge is at i=%d with diff=%d\n", outerDelta, outerEdge, outerEdgeDiff);
+    
+    /*
+    //calculate threshold
+    l_uint32 jTop = (l_uint32)((1-kKernelHeight)*0.5*h);
+    l_uint32 jBot = (l_uint32)((1+kKernelHeight)*0.5*h);    
+
+    PIX *pixt = pixRotate(pixg,
+                    deg2rad*outerDelta,
+                    L_ROTATE_AREA_MAP,
+                    L_BRING_IN_BLACK,0,0);
+
+    double bindingLumaA = CalculateAvgCol(pixt, outerEdge, jTop, jBot);
+    printf("outer lumaA = %f\n", bindingLumaA);
+
+    double bindingLumaB = CalculateAvgCol(pixt, outerEdge+1, jTop, jBot);
+    printf("outer lumaB = %f\n", bindingLumaB);
+
+
+    double threshold = (l_uint32)((bindingLumaA + bindingLumaB) / 2);
+    //TODO: ensure this threshold is reasonable
+    printf("outer thesh = %f\n", threshold);    
+    pixDestroy(&pixt);    
+    */
+    
     *skew = outerDelta;
     return outerEdge;
 }
@@ -546,8 +675,31 @@ l_uint32 FindHorizontalEdge(PIX      *pixg,
         pixDestroy(&pixt);    
     }
 
+    
+    //calculate threshold
+    PIX *pixt = pixRotate(pixg,
+                    deg2rad*topDelta,
+                    L_ROTATE_AREA_MAP,
+                    L_BRING_IN_BLACK,0,0);
+                    
+    double bindingLumaA = CalculateAvgRow(pixt, topEdge, bindingEdge, bindingEdge+width50);
+    printf("horiz%d lumaA = %f\n", whichEdge, bindingLumaA);
+
+    double bindingLumaB = CalculateAvgRow(pixt, topEdge+1, bindingEdge, bindingEdge+width50);
+    printf("horiz%d lumaB = %f\n", whichEdge, bindingLumaB);
+
+
+    double threshold = (l_uint32)((bindingLumaA + bindingLumaB) / 2);
+    //TODO: ensure this threshold is reasonable
+    printf("horiz%d thesh = %f\n", whichEdge, threshold);    
+                    
+    pixDestroy(&pixt);    
+
     assert(-1 != topEdge); //TODO: handle error
     printf("BEST Horiz: delta=%f at j=%d with diff=%d\n", topDelta, topEdge, topEdgeDiff);
+    
+    
+    
     *skew = topDelta;
     return topEdge;
 }
@@ -590,6 +742,7 @@ double CalculateDifferentialSquareSum(PIX *pixg,
 }
 
 /// Deskew()
+/// This works if you pass in a bitonal image, but doesn't work well with grayscale
 ///____________________________________________________________________________
 int Deskew(PIX      *pixg, 
            l_int32 cropL, 
@@ -662,6 +815,84 @@ int Deskew(PIX      *pixg,
     return 0;
 }
 
+/// AdjustCropBox()
+///____________________________________________________________________________
+int AdjustCropBox(PIX     *pixg,
+                  l_int32 *cropL,
+                  l_int32 *cropR,
+                  l_int32 *cropT,
+                  l_int32 *cropB,
+                  l_int32 delta)
+{
+    l_int32 newL = *cropL;
+    l_int32 newR = *cropR;
+    l_int32 newT = *cropT;
+    l_int32 newB = *cropB;
+    
+    l_uint32 w = pixGetWidth( pixg );
+    l_uint32 h = pixGetHeight( pixg );
+
+    l_int32 limitLeft  = newL-delta;
+    l_int32 limitRight = newL+delta;
+    
+    limitLeft  = max(0, limitLeft);
+    limitRight = min(w-1, limitRight);
+    
+    l_int32  strongEdge;
+    l_uint32 strongEdgeDiff;
+
+    //printf("w,h = (%d,%d)  t,b = (%d,%d)\n", w, h, newT, newB);
+    CalculateSADcol(pixg, limitLeft, limitRight, newT, newB, &strongEdge, &strongEdgeDiff);
+    printf("AdjustCropBox Left i=%d with diff=%d\n", strongEdge, strongEdgeDiff);
+    assert(-1 != strongEdge);
+    newL = strongEdge;
+
+    limitLeft  = newR-delta;
+    limitRight = newR+delta;
+    
+    limitLeft  = max(0, limitLeft);
+    limitRight = min(w-1, limitRight);
+
+    CalculateSADcol(pixg, limitLeft, limitRight, newT, newB, &strongEdge, &strongEdgeDiff);
+    printf("AdjustCropBox Right i=%d with diff=%d\n", strongEdge, strongEdgeDiff);
+    assert(-1 != strongEdge);
+    newR = strongEdge;
+
+    l_int32 limitTop  = newT-delta;
+    l_int32 limitBot  = newT+delta;
+    
+    limitTop  = max(0, limitTop);
+    limitBot  = min(h-1, limitBot);
+
+    CalculateSADrow(pixg, newL, newR, limitTop, limitBot, &strongEdge, &strongEdgeDiff);
+    printf("AdjustCropBox Top j=%d with diff=%d\n", strongEdge, strongEdgeDiff);
+    assert(-1 != strongEdge);
+    newT = strongEdge;
+    l_int32 varj;
+    double var; 
+    FindBestVarRow(pixg, newL, newR, limitTop, limitBot, 140, &varj, &var);
+    printf("min var found at j=%d, var=%f\n", varj, var);
+
+
+    limitTop  = newB-delta;
+    limitBot  = newB+delta;
+    
+    limitTop  = max(0, limitTop);
+    limitBot  = min(h-1, limitBot);
+
+    CalculateSADrow(pixg, newL, newR, limitTop, limitBot, &strongEdge, &strongEdgeDiff);
+    printf("AdjustCropBox Bot j=%d with diff=%d\n", strongEdge, strongEdgeDiff);
+    assert(-1 != strongEdge);
+    newB = strongEdge;
+
+    *cropL = newL;
+    *cropR = newR;
+    *cropT = varj;
+    *cropB = newB;
+
+}
+
+
 /// main()
 ///____________________________________________________________________________
 int main(int argc, char **argv) {
@@ -718,15 +949,16 @@ int main(int argc, char **argv) {
     
     l_int32 cropT=-1, cropB=-1, cropR=-1, cropL=-1;
     float deltaT, deltaB, deltaV1, deltaV2;
-
+    l_uint32 threshold;
     /// find binding side edge
-    l_int32 bindingEdge = FindBindingEdge(pixg, rotDir, &deltaV1);
+    l_int32 bindingEdge = FindBindingEdge(pixg, rotDir, &deltaV1, &threshold);
     
     if (-1 == bindingEdge) {
         printf("COULD NOT FIND BINDING!");
     } else {
         printf("FOUND binding edge= %d\n", bindingEdge);
     }
+    printf("binding edge threshold is %d\n", threshold);
 
     /// find top edge
     l_int32 topEdge = FindHorizontalEdge(pixg, rotDir, bindingEdge, 0, &deltaT);
@@ -737,14 +969,14 @@ int main(int argc, char **argv) {
     /// find the outer vertical edge
     l_int32 outerEdge = FindOuterEdge(pixg, rotDir, &deltaV2);
 
-    cropT = topEdge;
-    cropB = bottomEdge;
+    cropT = topEdge*8;
+    cropB = bottomEdge*8;
     if (1 == rotDir) {
-        cropL = bindingEdge;
-        cropR = outerEdge;
+        cropL = bindingEdge*8;
+        cropR = outerEdge*8;
     } else if (-1 == rotDir) {
-        cropR = bindingEdge;
-        cropL = outerEdge;
+        cropR = bindingEdge*8;
+        cropL = outerEdge*8;
     } else {
         //FIXME deal with rotDir=0
         assert(0);
@@ -761,22 +993,56 @@ int main(int argc, char **argv) {
        exit(ERROR_INT("pixBig not made", mainName, 1));
     }
 
-    PIX *pixgBig = pixConvertRGBToGray (pixBig, 0.30, 0.60, 0.10);
-    PIX *pixrBig = pixRotate90(pixgBig, rotDir);
+    PIX *pixBigG = pixConvertRGBToGray (pixBig, 0.30, 0.60, 0.10);
+    PIX *pixBigR = pixRotate90(pixBigG, rotDir);
+    BOX *box     = boxCreate(cropL, cropT, cropR-cropL, cropB-cropT);
+    PIX *pixBigC = pixClipRectangle(pixBigR, box, NULL);
+    PIX *pixBigB = pixThresholdToBinary (pixBigB, threshold);    
+    pixWrite("/home/rkumar/public_html/outbin.png", pixBigB, IFF_PNG); 
 
-    PIX *pixbBig = pixThresholdToBinary (pixrBig, 201);    
-    pixWrite("/home/rkumar/public_html/outbin.png", pixbBig, IFF_PNG); 
+    l_float32    angle, conf, textAngle;
 
-    l_float32    angle, conf;
-
-    if (pixFindSkew(pixbBig, &angle, &conf)) {
+    printf("calling pixFindSkew\n");
+    if (pixFindSkew(pixBigB, &textAngle, &conf)) {
       /* an error occured! */
         printf("angle=%.2f\nconf=%.2f\n", 0.0, -1.0);
      } else {
-        printf("angle=%.2f\nconf=%.2f\n", angle, conf);
+        printf("angle=%.2f\nconf=%.2f\n", textAngle, conf);
     }   
 
-    Deskew(pixbBig, cropL*8, cropR*8, cropT*8, cropB*8, &skewScore, &skewConf);
+    //Deskew(pixbBig, cropL*8, cropR*8, cropT*8, cropB*8, &skewScore, &skewConf);
+    
+    if (conf >= 1.0) {
+        debugstr("skewMode: text\n");
+        angle = textAngle;
+    } else {
+        debugstr("skewMode: edge\n");
+        //angle = edgeAngle; //FIXME
+        assert(0);
+    }
+    
+    printf("rotating bigR by %f\n", angle);
+
+    PIX *pixBigR2 = pixRotate90(pixBigG, rotDir);
+    //TODO: why does this segfault when passing in pixBigR?
+    PIX *pixBigT = pixRotate(pixBigR2,
+                    deg2rad*angle,
+                    L_ROTATE_AREA_MAP,
+                    L_BRING_IN_BLACK,0,0);
+
+    
+    AdjustCropBox(pixBigT, &cropL, &cropR, &cropT, &cropB, 8*5);
+    printf("adjusted: cL=%d, cR=%d, cT=%d, cB=%d\n", cropL, cropR, cropT, cropB);
+    BOX *boxCrop = boxCreate(cropL, cropT, cropR-cropL, cropB-cropT);
+
+    PIX *pixFinal = pixRotate90(pixBig, rotDir);
+    PIX *pixFinalR = pixRotate(pixFinal,
+                    deg2rad*angle,
+                    L_ROTATE_AREA_MAP,
+                    L_BRING_IN_BLACK,0,0);
+
+    pixRenderBoxArb(pixFinalR, boxCrop, 1, 255, 0, 0);
+    pixWrite("/home/rkumar/public_html/outcrop.jpg", pixFinalR, IFF_JFIF_JPEG); 
 
 
     /// cleanup
