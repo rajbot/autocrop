@@ -521,13 +521,13 @@ l_uint32 FindBindingEdge(PIX      *pixg,
 {
 
     //Currently, we can only do right-hand leafs
-    assert(1 == rotDir);
+    assert((1 == rotDir) || (-1 == rotDir));
 
     l_uint32 w = pixGetWidth( pixg );
     l_uint32 h = pixGetHeight( pixg );
 
     l_uint32 width10 = (l_uint32)(w * 0.10);
-    
+
     //kernel has height of (h/2 +/- h*hPercent/2)
     l_uint32 jTop = (l_uint32)((1-kKernelHeight)*0.5*h);
     l_uint32 jBot = (l_uint32)((1+kKernelHeight)*0.5*h);    
@@ -549,8 +549,17 @@ l_uint32 FindBindingEdge(PIX      *pixg,
         l_uint32   limitLeft = calcLimitLeft(w,h,delta);
         //printf("limitLeft = %d\n", limitLeft);
         
-        CalculateSADcol(pixt, limitLeft, width10, jTop, jBot, &strongEdge, &strongEdgeDiff);
-        //printf("delta=%f, strongest edge of gutter is at i=%d with diff=%d\n", delta, strongEdge, strongEdgeDiff);
+        l_uint32 left, right;
+        if (1 == rotDir) {
+            left  = limitLeft;
+            right = width10;
+        } else {
+            left  = w - width10;
+            right = w - limitLeft-1;
+        }
+
+        CalculateSADcol(pixt, left, right, jTop, jBot, &strongEdge, &strongEdgeDiff);
+        //printf("delta=%f, strongest edge of gutter is at i=%d with diff=%d, w,h=(%d,%d)\n", delta, strongEdge, strongEdgeDiff, w, h);
         if (strongEdgeDiff > bindingEdgeDiff) {
             bindingEdge = strongEdge;
             bindingEdgeDiff = strongEdgeDiff;
@@ -570,13 +579,23 @@ l_uint32 FindBindingEdge(PIX      *pixg,
                     deg2rad*bindingDelta,
                     L_ROTATE_AREA_MAP,
                     L_BRING_IN_BLACK,0,0);
-    pixWrite("/home/rkumar/public_html/outgray.jpg", pixg, IFF_JFIF_JPEG);
+    pixWrite("/home/rkumar/public_html/outgray.jpg", pixt, IFF_JFIF_JPEG);
     
     double bindingLumaA = CalculateAvgCol(pixt, bindingEdge, jTop, jBot);
     printf("lumaA = %f\n", bindingLumaA);
 
     double bindingLumaB = CalculateAvgCol(pixt, bindingEdge+1, jTop, jBot);
     printf("lumaB = %f\n", bindingLumaB);
+
+    /*
+    {
+        int i;
+        for (i=bindingEdge-10; i<bindingEdge+10; i++) {
+            double bindingLuma = CalculateAvgCol(pixt, i, jTop, jBot);
+            printf("i=%d, luma=%f\n", i, bindingLuma);
+        }
+    }
+    */
 
 
     double threshold = (l_uint32)((bindingLumaA + bindingLumaB) / 2);
@@ -609,6 +628,7 @@ l_uint32 FindBindingEdge(PIX      *pixg,
         l_uint32 leftLimit = bindingEdge-width3p;
         rightEdge = bindingEdge;
         if (leftLimit<0) leftLimit = 0;
+        printf("found right edge of gutter, leftLimit=%d, rightLimit=%d\n", leftLimit, bindingEdge-1);
         for (i=bindingEdge-1; i>leftLimit; i--) {
             double lumaAvg = CalculateAvgCol(pixt, i, jTop, jBot);
             printf("i=%d, avg=%f\n", i, lumaAvg);
@@ -652,7 +672,8 @@ l_uint32 FindBindingEdge(PIX      *pixg,
     if ((numBlackLines >=1) && (numBlackLines<width3p)) {
         return rightEdge;
     } else {
-        return -1;
+        debugstr("COULD NOT FIND BINDING, using strongest edge!\n");
+        return bindingEdge;
     }    
     
     return 1; //TODO: return error code on failure
@@ -666,17 +687,19 @@ l_int32 FindOuterEdge(PIX     *pixg,
 {
 
     //Currently, we can only do right-hand leafs
-    assert(1 == rotDir);
+    assert((1 == rotDir) || (-1 == rotDir));
 
     l_uint32 w = pixGetWidth( pixg );
     l_uint32 h = pixGetHeight( pixg );
 
     l_uint32 width75 = (l_uint32)(w * 0.75);
+    l_uint32 width25 = (l_uint32)(w * 0.25);
     
     //kernel has height of (h/2 +/- h*hPercent/2)
     l_uint32 jTop = (l_uint32)((1-kKernelHeight)*0.5*h);
     l_uint32 jBot = (l_uint32)((1+kKernelHeight)*0.5*h);
     
+
 
     l_int32    outerEdge = -1;
     l_uint32   outerEdgeDiff = 0;
@@ -691,8 +714,19 @@ l_int32 FindOuterEdge(PIX     *pixg,
         l_uint32   strongEdgeDiff;
         l_uint32   limitLeft = calcLimitLeft(w,h,delta);
         //printf("limitLeft = %d\n", limitLeft);
-        
-        CalculateSADcol(pixt, width75, w-limitLeft-1, jTop, jBot, &strongEdge, &strongEdgeDiff); //TODO: is w-leftLimit-1 right?
+
+        l_uint32 left, right;
+        if (1 == rotDir) {
+            left  = width75;
+            right = w-limitLeft-1; //TODO: is w-leftLimit-1 right?
+        } else if (-1 == rotDir) {
+            left  = limitLeft;
+            right = width25;
+        } else {
+            assert(0);
+        }
+
+        CalculateSADcol(pixt, left, right, jTop, jBot, &strongEdge, &strongEdgeDiff);
         //printf("delta=%f, strongest outer edge at i=%d with diff=%d\n", delta, strongEdge, strongEdgeDiff);
         if (strongEdgeDiff > outerEdgeDiff) {
             outerEdge     = strongEdge;
@@ -744,7 +778,7 @@ l_uint32 FindHorizontalEdge(PIX      *pixg,
     //the page is centered horizontally. 
 
     //Currently, we can only do right-hand leafs
-    assert(1 == rotDir);
+    assert((1 == rotDir) || (-1 == rotDir));
 
     //start at bindingEdge, and go 25% into the image.
     //TODO: generalize this to support both left and right hand leafs
@@ -754,6 +788,18 @@ l_uint32 FindHorizontalEdge(PIX      *pixg,
 
     l_uint32 width50  = (l_uint32)(w * 0.5);
     l_uint32 height25 = (l_uint32)(h * 0.25);
+
+
+    l_uint32 left, right;
+    if (1 == rotDir) {
+        left  = bindingEdge;
+        right = bindingEdge+width50;
+    } else if (-1 == rotDir) {
+        left  = bindingEdge-width50;
+        right = bindingEdge;
+    } else {
+        assert(0);
+    }
 
     l_int32    strongEdge;
     l_uint32   strongEdgeDiff;
@@ -781,7 +827,9 @@ l_uint32 FindHorizontalEdge(PIX      *pixg,
             top    = h-height25;
         }
 
-        CalculateSADrow(pixt, bindingEdge, bindingEdge+width50, top, bottom, &strongEdge, &strongEdgeDiff);
+
+
+        CalculateSADrow(pixt, left, right, top, bottom, &strongEdge, &strongEdgeDiff);
         //printf("delta=%f, strongest top edge is at i=%d with diff=%d\n", delta, strongEdge, strongEdgeDiff);
         if (strongEdgeDiff > topEdgeDiff) {
             topEdge = strongEdge;
@@ -798,10 +846,10 @@ l_uint32 FindHorizontalEdge(PIX      *pixg,
                     L_ROTATE_AREA_MAP,
                     L_BRING_IN_BLACK,0,0);
                     
-    double bindingLumaA = CalculateAvgRow(pixt, topEdge, bindingEdge, bindingEdge+width50);
+    double bindingLumaA = CalculateAvgRow(pixt, topEdge, left, right);
     printf("horiz%d lumaA = %f\n", whichEdge, bindingLumaA);
 
-    double bindingLumaB = CalculateAvgRow(pixt, topEdge+1, bindingEdge, bindingEdge+width50);
+    double bindingLumaB = CalculateAvgRow(pixt, topEdge+1, left, right);
     printf("horiz%d lumaB = %f\n", whichEdge, bindingLumaB);
 
 
@@ -1379,10 +1427,9 @@ int main(int argc, char **argv) {
     if (-1 == bindingEdge) {
         printf("COULD NOT FIND BINDING!");
     } else {
-        printf("FOUND binding edge= %d\n", bindingEdge);
+        printf("binding edge= %d\n", bindingEdge);
     }
     printf("binding edge threshold is %d\n", threshold);
-
     /// find top edge
     l_int32 topEdge = FindHorizontalEdge(pixg, rotDir, bindingEdge, 0, &deltaT);
 
@@ -1464,7 +1511,18 @@ int main(int argc, char **argv) {
     //cropR = removeBlackPelsColRight(pixBigT, cropR, (int)(w*0.75), cropT, cropB);
     l_int32 limitLeft = calcLimitLeft(w,h,angle);
     l_int32 limitTop  = calcLimitTop(w,h,angle);
-    cropL = RemoveBlackPelsBlockColLeft(pixBigT, cropL, cropL+2*limitLeft, cropT, cropB, 3, threshold);
+
+    l_uint32 left, right;
+    if (1==rotDir) {
+        left  = cropL;
+        right = cropL+2*limitLeft;
+    } else if (-1 == rotDir) {
+        left  = cropL;
+        right = (l_uint32)(w*0.25);
+    } else {
+        assert(0);
+    }
+    cropL = RemoveBlackPelsBlockColLeft(pixBigT, left, right, cropT, cropB, 3, threshold);
 
     cropR = RemoveBlackPelsBlockColRight(pixBigT, cropR, (int)(w*0.75), cropT, cropB, 3);
 
