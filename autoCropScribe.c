@@ -579,7 +579,7 @@ l_uint32 FindBindingEdge(PIX      *pixg,
                     deg2rad*bindingDelta,
                     L_ROTATE_AREA_MAP,
                     L_BRING_IN_BLACK,0,0);
-    pixWrite("/home/rkumar/public_html/outgray.jpg", pixt, IFF_JFIF_JPEG);
+    //pixWrite("/home/rkumar/public_html/outgray.jpg", pixt, IFF_JFIF_JPEG);
     
     double bindingLumaA = CalculateAvgCol(pixt, bindingEdge, jTop, jBot);
     printf("lumaA = %f\n", bindingLumaA);
@@ -683,7 +683,8 @@ l_uint32 FindBindingEdge(PIX      *pixg,
 ///____________________________________________________________________________
 l_int32 FindOuterEdge(PIX     *pixg,
                        l_int32 rotDir,
-                       float   *skew)
+                       float   *skew,
+                       l_uint32 *threshOuter)
 {
 
     //Currently, we can only do right-hand leafs
@@ -759,6 +760,7 @@ l_int32 FindOuterEdge(PIX     *pixg,
     double threshold = (l_uint32)((bindingLumaA + bindingLumaB) / 2);
     //TODO: ensure this threshold is reasonable
     printf("outer thesh = %f\n", threshold);    
+    *threshOuter = (l_uint32)threshold;
     pixDestroy(&pixt);    
     
     
@@ -772,7 +774,8 @@ l_uint32 FindHorizontalEdge(PIX      *pixg,
                      l_int32  rotDir,
                      l_uint32 bindingEdge,
                      bool     whichEdge,
-                     float    *skew)
+                     float    *skew,
+                     l_uint32 *threshOut)
 {
     //Although we assume the page is centered vertically, we can't assume that
     //the page is centered horizontally. 
@@ -853,10 +856,9 @@ l_uint32 FindHorizontalEdge(PIX      *pixg,
     printf("horiz%d lumaB = %f\n", whichEdge, bindingLumaB);
 
 
-    double threshold = (l_uint32)((bindingLumaA + bindingLumaB) / 2);
+    *threshOut = (l_uint32)((bindingLumaA + bindingLumaB) / 2);
     //TODO: ensure this threshold is reasonable
-    printf("horiz%d thesh = %f\n", whichEdge, threshold);    
-                    
+    printf("horiz%d thesh = %d\n", whichEdge, *threshOut);
     pixDestroy(&pixt);    
 
     assert(-1 != topEdge); //TODO: handle error
@@ -1216,12 +1218,11 @@ l_uint32 removeBlackPelsColRight(PIX *pixg, l_uint32 starti, l_uint32 endi, l_ui
 /// RemoveBlackPelsBlockColRight()
 ///____________________________________________________________________________
 
-l_uint32 RemoveBlackPelsBlockColRight(PIX *pixg, l_uint32 starti, l_uint32 endi, l_uint32 top, l_uint32 bottom, l_uint32 kernelWidth) {
+l_uint32 RemoveBlackPelsBlockColRight(PIX *pixg, l_uint32 starti, l_uint32 endi, l_uint32 top, l_uint32 bottom, l_uint32 kernelWidth, l_uint32 blackThresh) {
     l_uint32 i;
     l_uint32 a;
 
     l_uint32 numBlackPels=0;
-    l_uint32 blackThresh=157;
 
     numBlackPels = 0;
     l_uint32 x, y;
@@ -1401,6 +1402,7 @@ int main(int argc, char **argv) {
     pixg = pixConvertRGBToGray (pixd, 0.30, 0.60, 0.10);
     debugstr("Converted to gray\n");
     //pixWrite("/home/rkumar/public_html/outgray.jpg", pixg, IFF_JFIF_JPEG); 
+    pixWrite("/home/rkumar/public_html/out.jpg", pixd, IFF_JFIF_JPEG); 
 
     float delta;
 
@@ -1420,24 +1422,24 @@ int main(int argc, char **argv) {
     
     l_int32 cropT=-1, cropB=-1, cropR=-1, cropL=-1;
     float deltaT, deltaB, deltaV1, deltaV2;
-    l_uint32 threshold;
+    l_uint32 threshBinding, threshOuter, threshT, threshB;
     /// find binding side edge
-    l_int32 bindingEdge = FindBindingEdge(pixg, rotDir, &deltaV1, &threshold);
+    l_int32 bindingEdge = FindBindingEdge(pixg, rotDir, &deltaV1, &threshBinding);
     
     if (-1 == bindingEdge) {
         printf("COULD NOT FIND BINDING!");
     } else {
         printf("binding edge= %d\n", bindingEdge);
     }
-    printf("binding edge threshold is %d\n", threshold);
+    printf("binding edge threshold is %d\n", threshBinding);
     /// find top edge
-    l_int32 topEdge = FindHorizontalEdge(pixg, rotDir, bindingEdge, 0, &deltaT);
+    l_int32 topEdge = FindHorizontalEdge(pixg, rotDir, bindingEdge, 0, &deltaT, &threshT);
 
     /// find bottom edge
-    l_int32 bottomEdge = FindHorizontalEdge(pixg, rotDir, bindingEdge, 1, &deltaB);
+    l_int32 bottomEdge = FindHorizontalEdge(pixg, rotDir, bindingEdge, 1, &deltaB, &threshB);
 
     /// find the outer vertical edge
-    l_int32 outerEdge = FindOuterEdge(pixg, rotDir, &deltaV2);
+    l_int32 outerEdge = FindOuterEdge(pixg, rotDir, &deltaV2, &threshOuter);
 
     cropT = topEdge*8;
     cropB = bottomEdge*8;
@@ -1459,16 +1461,19 @@ int main(int argc, char **argv) {
     //Deskew(pixg, cropL, cropR, cropT, cropB, &skewScore, &skewConf);
 
     PIX *pixBig;
+
+    startTimer();
     if ((pixBig = pixRead(filein)) == NULL) {
        exit(ERROR_INT("pixBig not made", mainName, 1));
     }
+    printf("opened large jpg in %7.3f sec\n", stopTimer());
 
     PIX *pixBigG = pixConvertRGBToGray (pixBig, 0.30, 0.60, 0.10);
     PIX *pixBigR = pixRotate90(pixBigG, rotDir);
     BOX *box     = boxCreate(cropL, cropT, cropR-cropL, cropB-cropT);
     PIX *pixBigC = pixClipRectangle(pixBigR, box, NULL);
-    PIX *pixBigB = pixThresholdToBinary (pixBigB, threshold);    
-    pixWrite("/home/rkumar/public_html/outbin.png", pixBigB, IFF_PNG); 
+    PIX *pixBigB = pixThresholdToBinary (pixBigC, threshBinding);    
+    //pixWrite("/home/rkumar/public_html/outbin.png", pixBigB, IFF_PNG); 
 
     l_float32    angle, conf, textAngle;
 
@@ -1513,35 +1518,56 @@ int main(int argc, char **argv) {
     l_int32 limitTop  = calcLimitTop(w,h,angle);
 
     l_uint32 left, right;
+    l_uint32 threshL, threshR;
     if (1==rotDir) {
         left  = cropL;
         right = cropL+2*limitLeft;
+        threshL = threshBinding;
+        threshR = threshOuter;
     } else if (-1 == rotDir) {
         left  = cropL;
         right = (l_uint32)(w*0.25);
+        threshL = threshOuter;
+        threshR = threshBinding;
     } else {
         assert(0);
     }
-    cropL = RemoveBlackPelsBlockColLeft(pixBigT, left, right, cropT, cropB, 3, threshold);
+    cropL = RemoveBlackPelsBlockColLeft(pixBigT, left, right, cropT, cropB, 3, threshBinding);
 
-    cropR = RemoveBlackPelsBlockColRight(pixBigT, cropR, (int)(w*0.75), cropT, cropB, 3);
+    if (1==rotDir) {
+        left  = (int)(w*0.75);
+        right = cropR;
+    } else if (-1 == rotDir) {
+        left  = cropR-2*limitLeft;
+        right = cropR;
+    } else {
+        assert(0);
+    }
 
-    cropT = RemoveBlackPelsBlockRowTop(pixBigT, cropT, cropT+2*limitTop, cropL, cropR, 3, 135);
-    cropB = RemoveBlackPelsBlockRowBot(pixBigT, cropB, cropB-2*limitTop, cropL, cropR, 3, 135);
+    cropR = RemoveBlackPelsBlockColRight(pixBigT, right, left, cropT, cropB, 3, threshR);
+
+    cropT = RemoveBlackPelsBlockRowTop(pixBigT, cropT, cropT+2*limitTop, cropL, cropR, 3, threshT);
+    cropB = RemoveBlackPelsBlockRowBot(pixBigT, cropB, cropB-2*limitTop, cropL, cropR, 3, threshB);
 
 
     printf("adjusted: cL=%d, cR=%d, cT=%d, cB=%d\n", cropL, cropR, cropT, cropB);
-    BOX *boxCrop = boxCreate(cropL, cropT, cropR-cropL, cropB-cropT);
+    BOX *boxCrop = boxCreate(cropL/8, cropT/8, (cropR-cropL)/8, (cropB-cropT)/8);
 
-    PIX *pixFinal = pixRotate90(pixBig, rotDir);
-    PIX *pixFinalR = pixRotate(pixFinal,
+    PIX *pixFinalR = pixRotate(pixd,
                     deg2rad*angle,
                     L_ROTATE_AREA_MAP,
                     L_BRING_IN_BLACK,0,0);
 
-    pixRenderBoxArb(pixFinalR, boxCrop, 10, 255, 0, 0);
-    pixWrite("/home/rkumar/public_html/outcrop.jpg", pixFinalR, IFF_JFIF_JPEG); 
+    pixRenderBoxArb(pixFinalR, boxCrop, 1, 255, 0, 0);
+    pixWrite("/home/rkumar/public_html/outbox.jpg", pixFinalR, IFF_JFIF_JPEG); 
 
+    PIX *pixFinalR2 = pixRotate(pixd,
+                    deg2rad*angle,
+                    L_ROTATE_AREA_MAP,
+                    L_BRING_IN_BLACK,0,0);
+
+    PIX *pixFinalC = pixClipRectangle(pixFinalR2, boxCrop, NULL);
+    pixWrite("/home/rkumar/public_html/outcrop.jpg", pixFinalC, IFF_JFIF_JPEG); 
 
     /// cleanup
     pixDestroy(&pixg);
