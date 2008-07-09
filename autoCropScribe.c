@@ -126,6 +126,40 @@ double CalculateAvgRow(PIX      *pixg,
     return avg;
 }
 
+/// CalculateAvgBlock()
+/// calculate avg luma of a block
+///____________________________________________________________________________
+double CalculateAvgBlock(PIX      *pixg,
+                       l_uint32 left,
+                       l_uint32 right,
+                       l_uint32 top,
+                       l_uint32 bottom)
+{
+
+    l_uint32 acc=0;
+    l_uint32 a, i, j;
+    l_uint32 w = pixGetWidth( pixg );
+    l_uint32 h = pixGetHeight( pixg );
+    assert(top>=0);
+    assert(left>=0);
+    assert(bottom<h);
+    assert(right<w);
+
+    acc=0;
+    for (i=left; i<=right; i++) {
+        for (j=top; j<=bottom; j++) {
+            l_int32 retval = pixGetPixel(pixg, i, j, &a);
+            assert(0 == retval);
+            acc += a;
+        }
+    }
+    //printf("%d \n", acc);        
+
+    double avg = acc;
+    avg /= ((right-left+1)*(bottom-top+1));
+    return avg;
+}
+
 /// CalculateSADcol()
 /// calculate sum of absolute differences of two rows of adjacent columns
 /// last SAD calculation is for row i=right and i=right+1.
@@ -239,7 +273,7 @@ l_uint32 CalculateSADrow(PIX        *pixg,
 /// FindBestVarRow()
 /// find row with least variance
 ///____________________________________________________________________________
-l_uint32 FindBestVarRow(PIX        *pixg,
+l_uint32 FindMinVarRow(PIX        *pixg,
                          l_uint32   left,
                          l_uint32   right,
                          l_uint32   top,
@@ -267,11 +301,11 @@ l_uint32 FindBestVarRow(PIX        *pixg,
     l_uint32 width20 = (l_uint32)(w * 0.20);
 
     for (j=top; j<=bottom; j++) {
-        printf("%d: ", j);
+        //printf("%d: ", j);
         var = 0;
         double avg = CalculateAvgRow(pixg, j, left+width20, right-width20);
         if (avg<thresh) {
-            printf("avg too low, continuing! (%f)\n", avg);
+            //printf("avg too low, continuing! (%f)\n", avg);
             continue;
         }
         for (i=left+width20; i<right-width20; i++) {
@@ -280,7 +314,7 @@ l_uint32 FindBestVarRow(PIX        *pixg,
             double diff = avg-a;
             var += (diff * diff);
         }
-        printf("var=%f avg=%f\n", var, avg);
+        //printf("var=%f avg=%f\n", var, avg);
         if (var < minVar) {
             minVar = var;
             minj   = j; 
@@ -291,6 +325,63 @@ l_uint32 FindBestVarRow(PIX        *pixg,
     *retj = minj;
     *retVar = minVar;
     return (-1 != minj);
+}
+
+/// FindBestVarCol()
+/// find col with least variance
+///____________________________________________________________________________
+l_uint32 FindMinVarCol(PIX        *pixg,
+                         l_uint32   left,
+                         l_uint32   right,
+                         l_uint32   top,
+                         l_uint32   bottom,
+                         double     thresh,
+                         l_int32    *reti,
+                         double     *retVar
+                        )
+{
+
+    l_uint32 i, j;
+    l_uint32 a;
+    double minVar=DBL_MAX;
+    l_int32 mini=-1;
+    
+    l_uint32 w = pixGetWidth( pixg );
+    l_uint32 h = pixGetHeight( pixg );
+    assert(left>=0);
+    assert(left<right);
+    assert(right<w);
+    assert(top>=0);
+    assert(top<bottom);
+    assert(bottom<h);
+    double var;
+    l_uint32 h20 = (l_uint32)(h * 0.20);
+
+    for (i=left; i<=right; i++) {
+        //printf("%d: ", i);
+        var = 0;
+        double avg = CalculateAvgCol(pixg, i, top+h20, bottom-h20);
+        if (avg<thresh) {
+            //printf("avg too low, continuing! (%f)\n", avg);
+            continue;
+        }
+        for (j=top+h20; j<bottom-h20; j++) {
+            l_int32 retval = pixGetPixel(pixg, i, j, &a);
+            assert(0 == retval);
+            double diff = avg-a;
+            var += (diff * diff);
+        }
+        //printf("var=%f avg=%f\n", var, avg);
+        if (var < minVar) {
+            minVar = var;
+            mini   = i; 
+        }
+        
+    }
+
+    *reti = mini;
+    *retVar = minVar;
+    return (-1 != mini);
 }
 
 /// CalculateFullPageSADrow()
@@ -846,6 +937,11 @@ int AdjustCropBox(PIX     *pixg,
     printf("AdjustCropBox Left i=%d with diff=%d\n", strongEdge, strongEdgeDiff);
     assert(-1 != strongEdge);
     newL = strongEdge;
+    l_int32 vari;
+    double var;
+    FindMinVarCol(pixg, limitLeft, limitRight, newT, newB, 140, &vari, &var);
+    printf("LEFT: min var found at i=%d, var=%f\n", vari, var);
+    newL = vari;
 
     limitLeft  = newR-delta;
     limitRight = newR+delta;
@@ -857,6 +953,10 @@ int AdjustCropBox(PIX     *pixg,
     printf("AdjustCropBox Right i=%d with diff=%d\n", strongEdge, strongEdgeDiff);
     assert(-1 != strongEdge);
     newR = strongEdge;
+    FindMinVarCol(pixg, limitLeft, limitRight, newT, newB, 140, &vari, &var);
+    printf("RIGHT: min var found at i=%d, var=%f\n", vari, var);
+    newR = vari;
+
 
     l_int32 limitTop  = newT-delta;
     l_int32 limitBot  = newT+delta;
@@ -864,15 +964,14 @@ int AdjustCropBox(PIX     *pixg,
     limitTop  = max(0, limitTop);
     limitBot  = min(h-1, limitBot);
 
-    CalculateSADrow(pixg, newL, newR, limitTop, limitBot, &strongEdge, &strongEdgeDiff);
-    printf("AdjustCropBox Top j=%d with diff=%d\n", strongEdge, strongEdgeDiff);
-    assert(-1 != strongEdge);
-    newT = strongEdge;
-    l_int32 varj;
-    double var; 
-    FindBestVarRow(pixg, newL, newR, limitTop, limitBot, 140, &varj, &var);
-    printf("min var found at j=%d, var=%f\n", varj, var);
-
+    //CalculateSADrow(pixg, newL, newR, limitTop, limitBot, &strongEdge, &strongEdgeDiff);
+    //printf("AdjustCropBox Top j=%d with diff=%d\n", strongEdge, strongEdgeDiff);
+    //assert(-1 != strongEdge);
+    //newT = strongEdge;
+    l_int32 varj; 
+    FindMinVarRow(pixg, newL, newR, limitTop, limitBot, 140, &varj, &var);
+    printf("TOP: min var found at j=%d, var=%f\n", varj, var);
+    newT = varj;
 
     limitTop  = newB-delta;
     limitBot  = newB+delta;
@@ -880,18 +979,118 @@ int AdjustCropBox(PIX     *pixg,
     limitTop  = max(0, limitTop);
     limitBot  = min(h-1, limitBot);
 
-    CalculateSADrow(pixg, newL, newR, limitTop, limitBot, &strongEdge, &strongEdgeDiff);
-    printf("AdjustCropBox Bot j=%d with diff=%d\n", strongEdge, strongEdgeDiff);
-    assert(-1 != strongEdge);
-    newB = strongEdge;
+    //CalculateSADrow(pixg, newL, newR, limitTop, limitBot, &strongEdge, &strongEdgeDiff);
+    //printf("AdjustCropBox Bot j=%d with diff=%d\n", strongEdge, strongEdgeDiff);
+    //assert(-1 != strongEdge);
+    //newB = strongEdge;
+    FindMinVarRow(pixg, newL, newR, limitTop, limitBot, 140, &varj, &var);
+    printf("BOT: min var found at j=%d, var=%f\n", varj, var);
+    newB = varj;
 
     *cropL = newL;
     *cropR = newR;
-    *cropT = varj;
+    *cropT = newT;
     *cropB = newB;
 
 }
 
+l_int32 FindMinBlockVarCol(PIX     *pixg,
+                           l_int32 left,
+                           l_int32 right,
+                           l_int32 top,
+                           l_int32 bottom, 
+                           l_int32 kernelWidth,
+                           l_int32 *reti,
+                           double  *retVar)
+{
+    assert( right>=(left+kernelWidth) );
+
+        l_uint32 i, j, iCol;
+    l_uint32 a;
+    double minVar=DBL_MAX;
+    l_int32 mini=-1;
+    
+    l_uint32 w = pixGetWidth( pixg );
+    l_uint32 h = pixGetHeight( pixg );
+    assert(left>=0);
+    assert(left<right);
+    assert(right<w);
+    assert(top>=0);
+    assert(top<bottom);
+    assert(bottom<h);
+    double var;
+    l_uint32 h20 = (l_uint32)(h * 0.20);
+
+    l_int32 limitR = right-kernelWidth;
+    printf("left=%d, right=%d, limitR=%d\n", left, right, limitR);
+
+    double blockSize = kernelWidth*(bottom-top+1);
+
+    for (iCol=left; iCol<=limitR; iCol++) {
+        printf("%d: ", i);
+        var = 0;
+        double avg = CalculateAvgBlock(pixg, iCol, iCol+kernelWidth, top, bottom);
+        for (j=top; j<=bottom; j++) {
+            for(i=iCol; i<=(iCol+kernelWidth-1); i++) {
+                l_int32 retval = pixGetPixel(pixg, i, j, &a);
+                assert(0 == retval);
+                double diff = avg-a;
+                var += (diff * diff);
+            }
+        }
+        var /= blockSize;
+        printf("var=%f avg=%f\n", var, avg);
+        if (var < minVar) {
+            minVar = var;
+            mini   = i; 
+        }
+        
+    }
+
+    *reti = mini;
+    *retVar = minVar;
+    return (-1 != mini);
+}
+
+/// AdjustCropBoxByVariance()
+///____________________________________________________________________________
+int AdjustCropBoxByVariance(PIX     *pixg,
+                  l_int32 *cropL,
+                  l_int32 *cropR,
+                  l_int32 *cropT,
+                  l_int32 *cropB,
+                  l_int32 kernelWidth,
+                  double  angle)
+{
+    l_int32 newL = *cropL;
+    l_int32 newR = *cropR;
+    l_int32 newT = *cropT;
+    l_int32 newB = *cropB;
+
+    l_uint32 w = pixGetWidth(pixg);
+    l_uint32 h = pixGetHeight(pixg);
+    l_int32 w10 = (l_int32)(w*0.10);
+
+    l_int32  limitL = calcLimitLeft(w,h,angle);
+    l_int32  left   = max(limitL, newL - 5);
+    l_int32  right  = max(left+3, newL+w10);
+ 
+   l_int32 varL;
+    double var;
+    FindMinBlockVarCol(pixg, left, right, newT, newB, 10, &varL, &var); 
+    printf("VARBLOCKLEFT: %d\n", varL);
+    newL = varL;
+
+    left  = (l_int32)(0.75*w);
+    right = (l_int32)(w-limitL);
+
+    FindMinBlockVarCol(pixg, left, right, newT, newB, 10, &varL, &var); 
+    printf("VARBLOCKRIGHT: %d\n", varL);
+    newR = varL;
+
+    *cropL = newL;
+    *cropR = newR;
+}
 
 /// main()
 ///____________________________________________________________________________
@@ -1030,8 +1229,10 @@ int main(int argc, char **argv) {
                     L_ROTATE_AREA_MAP,
                     L_BRING_IN_BLACK,0,0);
 
-    
+
+
     AdjustCropBox(pixBigT, &cropL, &cropR, &cropT, &cropB, 8*5);
+    //AdjustCropBoxByVariance(pixBigT, &cropL, &cropR, &cropT, &cropB, 3, angle);
     printf("adjusted: cL=%d, cR=%d, cT=%d, cB=%d\n", cropL, cropR, cropT, cropB);
     BOX *boxCrop = boxCreate(cropL, cropT, cropR-cropL, cropB-cropT);
 
@@ -1041,7 +1242,7 @@ int main(int argc, char **argv) {
                     L_ROTATE_AREA_MAP,
                     L_BRING_IN_BLACK,0,0);
 
-    pixRenderBoxArb(pixFinalR, boxCrop, 1, 255, 0, 0);
+    pixRenderBoxArb(pixFinalR, boxCrop, 10, 255, 0, 0);
     pixWrite("/home/rkumar/public_html/outcrop.jpg", pixFinalR, IFF_JFIF_JPEG); 
 
 
