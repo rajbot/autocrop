@@ -1231,6 +1231,8 @@ l_uint32 RemoveBlackPelsBlockColRight(PIX *pixg, l_uint32 starti, l_uint32 endi,
     top += kernelHeight05;
     bottom -= kernelHeight05;
 
+    printf("RIGHT: starti = %d, endi=%d, thresh=%d\n", starti, endi, blackThresh);
+
     for (i=starti-kernelWidth; i>=endi; i--) {
         numBlackPels = 0;
         for(x=i; x<i+kernelWidth; x++) {
@@ -1242,9 +1244,9 @@ l_uint32 RemoveBlackPelsBlockColRight(PIX *pixg, l_uint32 starti, l_uint32 endi,
                 }
             }
         }
-        //printf("%d: numBlack=%d\n", i, numBlackPels);
+        printf("R %d: numBlack=%d\n", i, numBlackPels);
         if (numBlackPels<5) {
-            //printf("break!\n");
+            printf("break!\n");
             return i;
         }
 
@@ -1270,7 +1272,7 @@ l_uint32 RemoveBlackPelsBlockColLeft(PIX *pixg, l_uint32 starti, l_uint32 endi, 
     top += kernelHeight05;
     bottom -= kernelHeight05;
 
-    printf("starti = %d, endi=%d\n", starti, endi);
+    printf("LEFT: starti = %d, endi=%d, thresh=%d\n", starti, endi, blackThresh);
 
     for (i=starti+1; i<=endi; i++) {
         numBlackPels = 0;
@@ -1283,9 +1285,9 @@ l_uint32 RemoveBlackPelsBlockColLeft(PIX *pixg, l_uint32 starti, l_uint32 endi, 
                 }
             }
         }
-        //printf("%d: numBlack=%d\n", i, numBlackPels);
+        printf("L %d: numBlack=%d\n", i, numBlackPels);
         if (numBlackPels<5) {
-            //printf("break!\n");
+            printf("break!\n");
             return i;
         }
 
@@ -1318,7 +1320,7 @@ l_uint32 RemoveBlackPelsBlockRowTop(PIX *pixg, l_uint32 startj, l_uint32 endj, l
                 }
             }
         }
-        printf("%d: numBlack=%d\n", j, numBlackPels);
+        printf("T %d: numBlack=%d\n", j, numBlackPels);
         if (numBlackPels<5) {
             printf("break!\n");
             return j;
@@ -1353,7 +1355,7 @@ l_uint32 RemoveBlackPelsBlockRowBot(PIX *pixg, l_uint32 startj, l_uint32 endj, l
                 }
             }
         }
-        printf("%d: numBlack=%d\n", j, numBlackPels);
+        printf("B %d: numBlack=%d\n", j, numBlackPels);
         if (numBlackPels<5) {
             printf("break!\n");
             return j;
@@ -1492,8 +1494,7 @@ int main(int argc, char **argv) {
         angle = textAngle;
     } else {
         debugstr("skewMode: edge\n");
-        //angle = edgeAngle; //FIXME
-        assert(0);
+        angle = (deltaT + deltaB + deltaV1 + deltaV2)/4;
     }
     
     printf("rotating bigR by %f\n", angle);
@@ -1523,16 +1524,16 @@ int main(int argc, char **argv) {
         left  = cropL;
         right = cropL+2*limitLeft;
         threshL = threshBinding;
-        threshR = threshOuter;
+        threshR = threshBinding; //threshOuter; //binding thresh works better
     } else if (-1 == rotDir) {
         left  = cropL;
         right = (l_uint32)(w*0.25);
-        threshL = threshOuter;
+        threshL = threshBinding; //threshOuter; //binding thresh works better
         threshR = threshBinding;
     } else {
         assert(0);
     }
-    cropL = RemoveBlackPelsBlockColLeft(pixBigT, left, right, cropT, cropB, 3, threshBinding);
+    cropL = RemoveBlackPelsBlockColLeft(pixBigT, left, right, cropT, cropB, 3, threshL);
 
     if (1==rotDir) {
         left  = (int)(w*0.75);
@@ -1549,6 +1550,9 @@ int main(int argc, char **argv) {
     cropT = RemoveBlackPelsBlockRowTop(pixBigT, cropT, cropT+2*limitTop, cropL, cropR, 3, threshT);
     cropB = RemoveBlackPelsBlockRowBot(pixBigT, cropB, cropB-2*limitTop, cropL, cropR, 3, threshB);
 
+    //pixWrite("/home/rkumar/public_html/outbig.jpg", pixBigT, IFF_JFIF_JPEG); 
+    //PIX *pixTmp = pixThresholdToBinary (pixBigT, threshBinding);    
+    //pixWrite("/home/rkumar/public_html/outbin.png", pixTmp, IFF_PNG); 
 
     printf("adjusted: cL=%d, cR=%d, cT=%d, cB=%d\n", cropL, cropR, cropT, cropB);
     BOX *boxCrop = boxCreate(cropL/8, cropT/8, (cropR-cropL)/8, (cropB-cropT)/8);
