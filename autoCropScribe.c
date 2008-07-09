@@ -624,6 +624,31 @@ l_uint32 FindBindingEdge(PIX      *pixg,
         return -1; //TODO: handle error
     }
     
+    ///temp code to calculate some thesholds..
+    /*
+    l_uint32 a, j, i = rightEdge;
+    l_uint32 numBlackPels = 0;
+    for (j=jTop; j<jBot; j++) {
+        l_int32 retval = pixGetPixel(pixg, i, j, &a);
+        assert(0 == retval);
+        if (a<threshold) {
+            numBlackPels++;
+        }
+    }
+    printf("%d: numBlack=%d\n", i, numBlackPels);
+    i = rightEdge+1;
+    numBlackPels = 0;
+    for (j=jTop; j<jBot; j++) {
+        l_int32 retval = pixGetPixel(pixg, i, j, &a);
+        assert(0 == retval);
+        if (a<threshold) {
+            numBlackPels++;
+        }
+    }
+    printf("%d: numBlack=%d\n", i, numBlackPels);
+    */
+    ///end temp code
+
     if ((numBlackLines >=1) && (numBlackLines<width3p)) {
         return rightEdge;
     } else {
@@ -680,10 +705,10 @@ l_int32 FindOuterEdge(PIX     *pixg,
     assert(-1 != outerEdge); //TODO: handle error
     printf("BEST: delta=%f, outer edge is at i=%d with diff=%d\n", outerDelta, outerEdge, outerEdgeDiff);
     
-    /*
+    
     //calculate threshold
-    l_uint32 jTop = (l_uint32)((1-kKernelHeight)*0.5*h);
-    l_uint32 jBot = (l_uint32)((1+kKernelHeight)*0.5*h);    
+    //l_uint32 jTop = (l_uint32)((1-kKernelHeight)*0.5*h);
+    //l_uint32 jBot = (l_uint32)((1+kKernelHeight)*0.5*h);    
 
     PIX *pixt = pixRotate(pixg,
                     deg2rad*outerDelta,
@@ -701,7 +726,7 @@ l_int32 FindOuterEdge(PIX     *pixg,
     //TODO: ensure this threshold is reasonable
     printf("outer thesh = %f\n", threshold);    
     pixDestroy(&pixt);    
-    */
+    
     
     *skew = outerDelta;
     return outerEdge;
@@ -1092,6 +1117,205 @@ int AdjustCropBoxByVariance(PIX     *pixg,
     *cropR = newR;
 }
 
+/// removeBlackPelsColRight()
+///____________________________________________________________________________
+
+l_uint32 removeBlackPelsColRight(PIX *pixg, l_uint32 starti, l_uint32 endi, l_uint32 top, l_uint32 bottom) {
+    l_uint32 i, j;
+    l_uint32 a;
+
+    l_uint32 numBlackPels=0;
+    l_uint32 blackThresh=157;
+
+    l_uint32 kernelHeight05 = (l_uint32)((bottom-top)*0.05);
+    top += kernelHeight05;
+    bottom -= kernelHeight05;
+
+    numBlackPels = 0;
+    for (j=top; j<bottom; j++) {
+        l_int32 retval = pixGetPixel(pixg, starti-1, j, &a);
+        assert(0 == retval);
+        if (a<blackThresh) {
+            numBlackPels++;
+        }
+    }
+    printf("init: numBlack=%d\n", numBlackPels);
+    l_int32 allowedNumberOfBlackPels = (l_int32)(0.05 * numBlackPels);
+
+    if (numBlackPels > 10) {
+        printf(" needs adjustment!\n");
+        for (i=starti-2; i>=endi; i--) {
+            numBlackPels = 0;
+            for (j=top; j<bottom; j++) {
+                l_int32 retval = pixGetPixel(pixg, i, j, &a);
+                assert(0 == retval);
+                if (a<blackThresh) {
+                    numBlackPels++;
+                }
+            }
+            printf("%d: numBlack=%d\n", i, numBlackPels);
+            if (numBlackPels<5) {
+                printf("break!\n");
+                return i;
+            }
+        }
+    }
+    
+    return starti;
+    
+}
+
+/// RemoveBlackPelsBlockColRight()
+///____________________________________________________________________________
+
+l_uint32 RemoveBlackPelsBlockColRight(PIX *pixg, l_uint32 starti, l_uint32 endi, l_uint32 top, l_uint32 bottom, l_uint32 kernelWidth) {
+    l_uint32 i;
+    l_uint32 a;
+
+    l_uint32 numBlackPels=0;
+    l_uint32 blackThresh=157;
+
+    numBlackPels = 0;
+    l_uint32 x, y;
+
+    l_uint32 kernelHeight05 = (l_uint32)((bottom-top)*0.05);
+    top += kernelHeight05;
+    bottom -= kernelHeight05;
+
+    for (i=starti-kernelWidth; i>=endi; i--) {
+        numBlackPels = 0;
+        for(x=i; x<i+kernelWidth; x++) {
+            for(y=top; y<=bottom; y++) {
+                l_int32 retval = pixGetPixel(pixg, x, y, &a);
+                assert(0 == retval);
+                if (a<blackThresh) {
+                    numBlackPels++;
+                }
+            }
+        }
+        //printf("%d: numBlack=%d\n", i, numBlackPels);
+        if (numBlackPels<5) {
+            //printf("break!\n");
+            return i;
+        }
+
+    }
+
+    return starti;
+    
+}
+
+/// RemoveBlackPelsBlockColLeft()
+///____________________________________________________________________________
+
+l_uint32 RemoveBlackPelsBlockColLeft(PIX *pixg, l_uint32 starti, l_uint32 endi, l_uint32 top, l_uint32 bottom, l_uint32 kernelWidth, l_uint32 blackThresh) {
+    l_uint32 i;
+    l_uint32 a;
+
+    l_uint32 numBlackPels=0;
+
+    numBlackPels = 0;
+    l_uint32 x, y;
+
+    l_uint32 kernelHeight05 = (l_uint32)((bottom-top)*0.05);
+    top += kernelHeight05;
+    bottom -= kernelHeight05;
+
+    printf("starti = %d, endi=%d\n", starti, endi);
+
+    for (i=starti+1; i<=endi; i++) {
+        numBlackPels = 0;
+        for(x=i; x<i+kernelWidth; x++) {
+            for(y=top; y<=bottom; y++) {
+                l_int32 retval = pixGetPixel(pixg, x, y, &a);
+                assert(0 == retval);
+                if (a<blackThresh) {
+                    numBlackPels++;
+                }
+            }
+        }
+        //printf("%d: numBlack=%d\n", i, numBlackPels);
+        if (numBlackPels<5) {
+            //printf("break!\n");
+            return i;
+        }
+
+    }
+
+    return starti;
+    
+}
+
+/// RemoveBlackPelsBlockRowTop()
+///____________________________________________________________________________
+
+l_uint32 RemoveBlackPelsBlockRowTop(PIX *pixg, l_uint32 startj, l_uint32 endj, l_uint32 left, l_uint32 right, l_uint32 kernelWidth, l_uint32 blackThresh) {
+    l_uint32 j;
+    l_uint32 a;
+
+    l_uint32 numBlackPels=0;
+
+    numBlackPels = 0;
+    l_uint32 x, y;
+
+    for (j=startj+1; j<=endj; j++) {
+        numBlackPels = 0;
+        for(x=left; x<=right; x++) {
+            for(y=j; y<=j+kernelWidth; y++) {
+                l_int32 retval = pixGetPixel(pixg, x, y, &a);
+                assert(0 == retval);
+                if (a<blackThresh) {
+                    numBlackPels++;
+                }
+            }
+        }
+        printf("%d: numBlack=%d\n", j, numBlackPels);
+        if (numBlackPels<5) {
+            printf("break!\n");
+            return j;
+        }
+
+    }
+
+    return startj;
+    
+}
+
+/// RemoveBlackPelsBlockRowBot()
+///____________________________________________________________________________
+
+l_uint32 RemoveBlackPelsBlockRowBot(PIX *pixg, l_uint32 startj, l_uint32 endj, l_uint32 left, l_uint32 right, l_uint32 kernelWidth, l_uint32 blackThresh) {
+    l_uint32 j;
+    l_uint32 a;
+
+    l_uint32 numBlackPels=0;
+
+    numBlackPels = 0;
+    l_uint32 x, y;
+
+    for (j=startj+1; j>=endj; j--) {
+        numBlackPels = 0;
+        for(x=left; x<=right; x++) {
+            for(y=j; y<=j+kernelWidth; y++) {
+                l_int32 retval = pixGetPixel(pixg, x, y, &a);
+                assert(0 == retval);
+                if (a<blackThresh) {
+                    numBlackPels++;
+                }
+            }
+        }
+        printf("%d: numBlack=%d\n", j, numBlackPels);
+        if (numBlackPels<5) {
+            printf("break!\n");
+            return j;
+        }
+
+    }
+
+    return startj;
+    
+}
+
 /// main()
 ///____________________________________________________________________________
 int main(int argc, char **argv) {
@@ -1231,8 +1455,23 @@ int main(int argc, char **argv) {
 
 
 
-    AdjustCropBox(pixBigT, &cropL, &cropR, &cropT, &cropB, 8*5);
+    //AdjustCropBox(pixBigT, &cropL, &cropR, &cropT, &cropB, 8*5);
     //AdjustCropBoxByVariance(pixBigT, &cropL, &cropR, &cropT, &cropB, 3, angle);
+
+    printf("finding clean lines...\n");
+    l_int32 w = pixGetWidth(pixBigT);
+    l_int32 h = pixGetHeight(pixBigT);
+    //cropR = removeBlackPelsColRight(pixBigT, cropR, (int)(w*0.75), cropT, cropB);
+    l_int32 limitLeft = calcLimitLeft(w,h,angle);
+    l_int32 limitTop  = calcLimitTop(w,h,angle);
+    cropL = RemoveBlackPelsBlockColLeft(pixBigT, cropL, cropL+2*limitLeft, cropT, cropB, 3, threshold);
+
+    cropR = RemoveBlackPelsBlockColRight(pixBigT, cropR, (int)(w*0.75), cropT, cropB, 3);
+
+    cropT = RemoveBlackPelsBlockRowTop(pixBigT, cropT, cropT+2*limitTop, cropL, cropR, 3, 135);
+    cropB = RemoveBlackPelsBlockRowBot(pixBigT, cropB, cropB-2*limitTop, cropL, cropR, 3, 135);
+
+
     printf("adjusted: cL=%d, cR=%d, cT=%d, cB=%d\n", cropL, cropR, cropT, cropB);
     BOX *boxCrop = boxCreate(cropL, cropT, cropR-cropL, cropB-cropT);
 
