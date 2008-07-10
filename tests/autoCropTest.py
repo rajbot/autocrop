@@ -17,16 +17,16 @@ skewedDir  = 'skewed'
 croppedDir = 'cropped'
 
 assert not os.path.exists(outDir)
-assert not os.path.exists(proxyDir)
-assert not os.path.exists(skewedDir)
-assert not os.path.exists(croppedDir)
+assert not os.path.exists(outDir + '/' + proxyDir)
+assert not os.path.exists(outDir + '/' + skewedDir)
+assert not os.path.exists(outDir + '/' + croppedDir)
 
 os.mkdir(outDir)
-os.mkdir(proxyDir)
-os.mkdir(skewedDir)
-os.mkdir(croppedDir)
+os.mkdir(outDir + '/' + proxyDir)
+os.mkdir(outDir + '/' + skewedDir)
+os.mkdir(outDir + '/' + croppedDir)
 
-outHtml = 'skew.html'
+outHtml = outDir + '/skew.html'
 assert not os.path.exists(outHtml)
 
 f = open(outHtml, 'w')
@@ -36,19 +36,23 @@ leafNum = 0
 rotateDir = -1
 for file in sorted(files):
     print "Processing %s, leafNum=%d, rotateDir=%d"%(file, leafNum, rotateDir)
+    if (0 == leafNum):
+        leafNum+=1;
+        rotateDir = 1;
+        continue;
     
-    cmd = "~/gnubook/autoCrop %s %d" % (file, rotateDir)
+    cmd = "~/gnubook/autoCropScribe %s %d" % (file, rotateDir)
     print cmd
     retval = commands.getstatusoutput(cmd)[0]
     assert (0 == retval)
 
-    retval = commands.getstatusoutput('cp ~/public_html/out.jpg "%s/%d.jpg"'%(proxyDir,leafNum))[0]
+    retval = commands.getstatusoutput('cp ~/public_html/out.jpg "%s/%s/%d.jpg"'%(outDir, proxyDir,leafNum))[0]
     assert (0 == retval)    
 
-    retval = commands.getstatusoutput('cp ~/public_html/outbox.jpg "%s/%d.jpg"'%(skewedDir,leafNum))[0]
+    retval = commands.getstatusoutput('cp ~/public_html/outbox.jpg "%s/%s/%d.jpg"'%(outDir, skewedDir,leafNum))[0]
     assert (0 == retval)    
 
-    retval = commands.getstatusoutput('cp ~/public_html/outcrop.jpg "%s/%d.jpg"'%(croppedDir,leafNum))[0]
+    retval = commands.getstatusoutput('cp ~/public_html/outcrop.jpg "%s/%s/%d.jpg"'%(outDir, croppedDir,leafNum))[0]
     assert (0 == retval)    
     
     f.write('<tr>\n')
@@ -66,6 +70,7 @@ for file in sorted(files):
     f.write('</td>\n')
 
     f.write('</tr>\n')
+    f.flush()
     
     if (1==rotateDir):
         rotateDir = -1
@@ -74,17 +79,17 @@ for file in sorted(files):
         
     leafNum+=1
     
-    #if (3==leafNum):
+    #if (4==leafNum):
     #    break
     
 f.writelines(['</table>\n', '</html>\n'])
 f.close()
 
-retval = commands.getstatusoutput('cp %s "%s"'%(outHtml,outDir))[0]
-assert (0 == retval)    
-retval = commands.getstatusoutput('cp -r %s "%s"'%(proxyDir,outDir))[0]
-assert (0 == retval)    
-retval = commands.getstatusoutput('cp -r %s "%s"'%(skewedDir,outDir))[0]
-assert (0 == retval)    
-retval = commands.getstatusoutput('cp -r %s "%s"'%(croppedDir,outDir))[0]
-assert (0 == retval)    
+#retval = commands.getstatusoutput('cp %s "%s"'%(outHtml,outDir))[0]
+#assert (0 == retval)    
+#retval = commands.getstatusoutput('cp -r %s "%s"'%(proxyDir,outDir))[0]
+#assert (0 == retval)    
+#retval = commands.getstatusoutput('cp -r %s "%s"'%(skewedDir,outDir))[0]
+#assert (0 == retval)    
+#retval = commands.getstatusoutput('cp -r %s "%s"'%(croppedDir,outDir))[0]
+#assert (0 == retval)    
