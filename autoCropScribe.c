@@ -27,6 +27,7 @@ autoCropScribe filein.jpg rotateDirection
 #define debugstr printf
 //#define debugstr
 
+
 static const l_float32  deg2rad            = 3.1415926535 / 180.;
 
 
@@ -37,6 +38,21 @@ static inline l_int32 min (l_int32 a, l_int32 b) {
 static inline l_int32 max (l_int32 a, l_int32 b) {
     return a - ((a-b) & (a-b)>>31);
 }
+
+
+#define DEBUGMOV 0
+
+#if DEBUGMOV
+#include <libgen.h> //for basename()
+struct DebugMov{
+    double angle;
+    char   *outDir;
+    char   *filename;
+    int    framenum;
+    int    edgeBinding;
+    int    edgeOuter;
+} debugmov;
+#endif //DEBUGMOV
 
 //FIXME: left limit for angle=0 should be zero, returns 1
 l_uint32 calcLimitLeft(l_uint32 w, l_uint32 h, l_float32 angle) {
@@ -208,6 +224,18 @@ l_uint32 CalculateSADcol(PIX        *pixg,
             maxDiff = acc;
         }
         
+        #if DEBUGMOV
+        {
+            debugmov.framenum++;
+            char cmd[512];
+            int ret = snprintf(cmd, 512, "convert /home/rkumar/public_html/debugmov/smallgray.jpg -background black -rotate %f -pointsize 18 -fill yellow -annotate 0x0+10+20 '%s' -fill red -annotate 0x0+10+40 'angle = %0.2f' -draw 'line %d,%d %d,%d' -fill green -draw 'line %d,%d %d,%d' -draw 'line %d,%d %d,%d' \"%s/frames/%06d.jpg\"", debugmov.angle, debugmov.filename, debugmov.angle, i, jTop, i, jBot, debugmov.edgeBinding, jTop, debugmov.edgeBinding, jBot, debugmov.edgeOuter, jTop, debugmov.edgeOuter, jBot, debugmov.outDir, debugmov.framenum);
+            assert(ret);
+            printf(cmd);
+            printf("\n");
+            ret = system(cmd);
+            assert(0 == ret);
+        }
+        #endif //DEBUGMOV
     }
 
     *reti = maxi;
@@ -539,7 +567,8 @@ l_uint32 FindBindingEdge(PIX      *pixg,
     l_uint32   bindingEdgeDiff = 0;
     float      bindingDelta;
     float delta;
-    for (delta=-1.0; delta<=1.0; delta+=0.05) {    
+    //0.05 degrees is a good increment for the final search
+    for (delta=-1.0; delta<=1.0; delta+=0.2) {    
         PIX *pixt = pixRotate(pixg,
                         deg2rad*delta,
                         L_ROTATE_AREA_MAP,
@@ -548,7 +577,11 @@ l_uint32 FindBindingEdge(PIX      *pixg,
         l_uint32   strongEdgeDiff;
         l_uint32   limitLeft = calcLimitLeft(w,h,delta);
         //printf("limitLeft = %d\n", limitLeft);
-        
+
+        #if DEBUGMOV
+        debugmov.angle = delta;
+        #endif //DEBUGMOV
+
         l_uint32 left, right;
         if (1 == rotDir) {
             left  = limitLeft;
@@ -564,13 +597,22 @@ l_uint32 FindBindingEdge(PIX      *pixg,
             bindingEdge = strongEdge;
             bindingEdgeDiff = strongEdgeDiff;
             bindingDelta = delta;
+
+            #if DEBUGMOV
+            debugmov.edgeBinding = bindingEdge;
+            #endif //DEBUGMOV
         }
+        
+
         pixDestroy(&pixt);    
     }
     
     assert(-1 != bindingEdge); //TODO: handle error
     printf("BEST: delta=%f, strongest edge of gutter is at i=%d with diff=%d\n", bindingDelta, bindingEdge, bindingEdgeDiff);
     *skew = bindingDelta;
+    #if DEBUGMOV
+    debugmov.angle = bindingDelta;
+    #endif //DEBUGMOV
 
     // Now compute threshold for psudo-bitonalization
     // Use midpoint between avg luma of dark and light lines of binding edge
@@ -706,7 +748,8 @@ l_int32 FindOuterEdge(PIX     *pixg,
     l_uint32   outerEdgeDiff = 0;
     float      outerDelta;
     float      delta;
-    for (delta=-1.0; delta<=1.0; delta+=0.05) {    
+    //0.05 is a good increment, but too fine for testing
+    for (delta=-1.0; delta<=1.0; delta+=0.2) {
         PIX *pixt = pixRotate(pixg,
                         deg2rad*delta,
                         L_ROTATE_AREA_MAP,
@@ -715,6 +758,10 @@ l_int32 FindOuterEdge(PIX     *pixg,
         l_uint32   strongEdgeDiff;
         l_uint32   limitLeft = calcLimitLeft(w,h,delta);
         //printf("limitLeft = %d\n", limitLeft);
+
+        #if DEBUGMOV
+        debugmov.angle = delta;
+        #endif //DEBUGMOV
 
         l_uint32 left, right;
         if (1 == rotDir) {
@@ -733,6 +780,10 @@ l_int32 FindOuterEdge(PIX     *pixg,
             outerEdge     = strongEdge;
             outerEdgeDiff = strongEdgeDiff;
             outerDelta    = delta;
+
+            #if DEBUGMOV
+            debugmov.edgeOuter = outerEdge;
+            #endif //DEBUGMOV
         }
         pixDestroy(&pixt);    
     }
@@ -1405,6 +1456,36 @@ int main(int argc, char **argv) {
     debugstr("Converted to gray\n");
     //pixWrite("/home/rkumar/public_html/outgray.jpg", pixg, IFF_JFIF_JPEG); 
     pixWrite("/home/rkumar/public_html/out.jpg", pixd, IFF_JFIF_JPEG); 
+
+    #if DEBUGMOV
+    {
+        char cmd[512];
+        debugmov.outDir = "/home/rkumar/public_html/debugmov";
+        debugmov.framenum =-1;
+        debugmov.filename = basename(filein);
+        pixWrite("/home/rkumar/public_html/debugmov/smallgray.jpg", pixg, IFF_JFIF_JPEG); 
+        int ret = snprintf(cmd, 512, "rm -rf %s/frames", debugmov.outDir);
+        assert(ret);
+        ret = system(cmd);
+        assert(0 == ret);
+
+        ret = snprintf(cmd, 512, "mkdir %s/frames", debugmov.outDir);
+        assert(ret);
+        ret = system(cmd);
+        assert(0 == ret);
+
+        if (1==rotDir) {
+            debugmov.edgeBinding = 0;
+            debugmov.edgeOuter   = pixGetWidth(pixg) - 1;
+        } else if (-1 == rotDir) {
+            debugmov.edgeOuter     = 0;
+            debugmov.edgeBinding   = pixGetWidth(pixg) - 1;
+        } else {
+            assert(0);
+        }
+        
+    }
+    #endif //DEBUGMOV
 
     float delta;
 
