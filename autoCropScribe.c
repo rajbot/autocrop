@@ -1582,6 +1582,8 @@ l_uint32 RemoveBlackPelsBlockRowBot(PIX *pixg, l_uint32 startj, l_uint32 endj, l
     numBlackPels = 0;
     l_uint32 x, y;
 
+    //printf("BOTTOM: startj= %d, endj=%d, thresh=%d\n", startj, endj, blackThresh);
+
     for (j=startj+1; j>=endj; j--) {
         numBlackPels = 0;
         for(x=left; x<=right; x++) {
@@ -2054,8 +2056,8 @@ printf("binding edge threshold is %d\n", threshBinding);
     printf("bigW=%d, bigH=%d\n", w, h);
     cropR = RemoveBlackPelsBlockColRight(pixBigT, right, left, cropT, cropB, 3, threshR);
 
-    cropT = RemoveBlackPelsBlockRowTop(pixBigT, cropT, cropT+2*limitTop, cropL, cropR, 3, threshT);
-    cropB = RemoveBlackPelsBlockRowBot(pixBigT, cropB, cropB-2*limitTop, cropL, cropR, 3, threshB);
+    cropT = RemoveBlackPelsBlockRowTop(pixBigT, cropT, cropT+2*limitTop, cropL, cropR, 3, threshBinding); //we no longer calculate threshT
+    cropB = RemoveBlackPelsBlockRowBot(pixBigT, cropB, cropB-2*limitTop, cropL, cropR, 3, threshBinding); //we no longer calculate threshB
 
     //pixWrite("/home/rkumar/public_html/outbig.jpg", pixBigT, IFF_JFIF_JPEG); 
     //PIX *pixTmp = pixThresholdToBinary (pixBigT, threshBinding);    
