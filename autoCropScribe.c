@@ -1546,6 +1546,13 @@ l_uint32 RemoveBlackPelsBlockRowTop(PIX *pixg, l_uint32 startj, l_uint32 endj, l
 
     numBlackPels = 0;
     l_uint32 x, y;
+    
+    //printf("TOP: startj= %d, endj=%d, thresh=%d, left=%d, right=%d\n", startj, endj, blackThresh, left, right);
+
+    //reduce kernel width by 20%
+    l_uint32 kernelWidth10 = (l_uint32)(0.10*(right-left));
+    left  += kernelWidth10;
+    right -= kernelWidth10;
 
     for (j=startj+1; j<=endj; j++) {
         numBlackPels = 0;
@@ -1582,7 +1589,12 @@ l_uint32 RemoveBlackPelsBlockRowBot(PIX *pixg, l_uint32 startj, l_uint32 endj, l
     numBlackPels = 0;
     l_uint32 x, y;
 
-    //printf("BOTTOM: startj= %d, endj=%d, thresh=%d\n", startj, endj, blackThresh);
+    //printf("BOTTOM: startj= %d, endj=%d, thresh=%d, left=%d, right=%d\n", startj, endj, blackThresh, left, right);
+
+    //reduce kernel width by 20%
+    l_uint32 kernelWidth10 = (l_uint32)(0.10*(right-left));
+    left  += kernelWidth10;
+    right -= kernelWidth10;
 
     for (j=startj+1; j>=endj; j--) {
         numBlackPels = 0;
@@ -2015,6 +2027,7 @@ printf("binding edge threshold is %d\n", threshBinding);
                     L_ROTATE_AREA_MAP,
                     L_BRING_IN_BLACK,0,0);
 
+    pixWrite("/home/rkumar/public_html/outBigT.jpg", pixBigT, IFF_JFIF_JPEG); 
 
 
     //AdjustCropBox(pixBigT, &cropL, &cropR, &cropT, &cropB, 8*5);
