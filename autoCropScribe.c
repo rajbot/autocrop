@@ -1622,13 +1622,13 @@ l_int32 RemoveBackgroundTop(PIX *pixg, l_int32 rotDir) {
         limitR = w-1;
     } else if (-1 == rotDir) {
         limitL = 1;
-        limitR = (l_uint32)(0.80)*w;
+        limitR = (l_uint32)(0.80*w);
     } else {
         assert(0);
     }
 
     limitB = l_uint32(0.80*h);
-
+    printf("T: limitL=%d, limitR=%d, limitB=%d\n", limitL, limitR, limitB);
     l_int32 initialBlackThresh = 140;
     l_uint32 numBlackRequired   = (l_uint32)(0.90*(limitR-limitL));
 
@@ -1668,16 +1668,17 @@ l_int32 RemoveBackgroundBottom(PIX *pixg, l_int32 rotDir) {
     l_int32 limitL, limitR, limitT;
 
     if (1 == rotDir) {
-        limitL = (l_uint32)(0.20*w);
+        limitL = (l_uint32)(w*0.20);
         limitR = w-1;
     } else if (-1 == rotDir) {
         limitL = 1;
-        limitR = (l_uint32)(0.80)*w;
+        limitR = (l_uint32)(w*0.80);
     } else {
         assert(0);
     }
 
     limitT = l_uint32(0.20*h);
+    printf("B: limitL=%d, limitR=%d, limitT=%d\n", limitL, limitR, limitT);
 
     l_int32 initialBlackThresh = 140;
     l_uint32 numBlackRequired   = (l_uint32)(0.90*(limitR-limitL));
@@ -1705,6 +1706,67 @@ l_int32 RemoveBackgroundBottom(PIX *pixg, l_int32 rotDir) {
 
 }
 
+/// RemoveBackgroundOuter_L()
+///____________________________________________________________________________
+l_int32 RemoveBackgroundOuter_L(PIX *pixg, l_int32 iStart, l_int32 iEnd, l_int32 limitT, l_int32 limitB, l_int32 blackThresh, l_uint32 numBlackRequired) {
+    
+
+    l_uint32 a;
+
+
+    l_int32 i, j;
+
+    for(i=iStart; i<=iEnd; i++) {
+    
+        l_uint32 numBlackPels = 0;
+        for (j=limitT; j<=limitB; j++) {
+            l_int32 retval = pixGetPixel(pixg, i, j, &a);
+            assert(0 == retval);
+            if (a<blackThresh) {
+                numBlackPels++;
+            }
+        }
+        printf("O %d: numBlack=%d\n", i, numBlackPels);
+        if (numBlackPels<numBlackRequired) {
+            printf("break! (thresh=%d)\n", numBlackRequired);
+            return i;
+        }
+    }
+
+    return iStart;
+
+}
+/// RemoveBackgroundOuter_R()
+///____________________________________________________________________________
+l_int32 RemoveBackgroundOuter_R(PIX *pixg, l_int32 iStart, l_int32 iEnd, l_int32 limitT, l_int32 limitB, l_int32 blackThresh, l_uint32 numBlackRequired) {
+    
+
+    l_uint32 a;
+
+
+    l_int32 i, j;
+
+    for(i=iStart; i>=iEnd; i--) {
+    
+        l_uint32 numBlackPels = 0;
+        for (j=limitT; j<=limitB; j++) {
+            l_int32 retval = pixGetPixel(pixg, i, j, &a);
+            assert(0 == retval);
+            if (a<blackThresh) {
+                numBlackPels++;
+            }
+        }
+        printf("O %d: numBlack=%d\n", i, numBlackPels);
+        if (numBlackPels<numBlackRequired) {
+            printf("break! (thresh=%d)\n", numBlackRequired);
+            return i;
+        }
+    }
+
+    return iStart;
+
+}
+
 /// RemoveBackgroundOuter()
 ///____________________________________________________________________________
 l_int32 RemoveBackgroundOuter(PIX *pixg, l_int32 rotDir, l_uint32 topEdge, l_uint32 bottomEdge) {
@@ -1722,22 +1784,33 @@ l_int32 RemoveBackgroundOuter(PIX *pixg, l_int32 rotDir, l_uint32 topEdge, l_uin
     l_int32 step;
 
     l_int32 iStart, iEnd;
-    if (1 == rotDir) {
-        iStart = w-1;
-        iEnd   = (l_int32)(0.20*w);
-        step = -1;
-    } else if (-1 == rotDir) {
-        iStart = 0;
-        iEnd   = (l_uint32)(0.80)*w;
-        step   = 1;
-    } else {
-        assert(0);
-    }
 
 
     l_int32 initialBlackThresh = 140;
     l_uint32 numBlackRequired   = (l_uint32)(0.90*(limitB-limitT));
 
+
+    if (1 == rotDir) {
+        iStart = w-1;
+        iEnd   = (l_int32)(w*0.20);
+
+        printf("O: iStart=%d, iEnd=%d, limitT=%d, limitB=%d\n", iStart, iEnd, limitT, limitB);
+
+        return RemoveBackgroundOuter_R(pixg, iStart, iEnd, limitT, limitB, initialBlackThresh, numBlackRequired);
+
+    } else if (-1 == rotDir) {
+        iStart = 0;
+        iEnd   = (l_uint32)(w*0.80);
+
+        printf("O: iStart=%d, iEnd=%d, limitT=%d, limitB=%d\n", iStart, iEnd, limitT, limitB);
+
+        return RemoveBackgroundOuter_L(pixg, iStart, iEnd, limitT, limitB, initialBlackThresh, numBlackRequired);
+
+    } else {
+        assert(0);
+    }
+
+    /*
     l_int32 i, j;
 
     for(i=iStart; i>=iEnd; i+=step) {
@@ -1758,7 +1831,7 @@ l_int32 RemoveBackgroundOuter(PIX *pixg, l_int32 rotDir, l_uint32 topEdge, l_uin
     }
 
     return iStart;
-
+    */
 }
 
 /// main()
@@ -1834,7 +1907,7 @@ int main(int argc, char **argv) {
 
     
     l_int32 cropT=-1, cropB=-1, cropR=-1, cropL=-1;
-    float deltaT, deltaB, deltaV1, deltaV2;
+    float deltaT, deltaB, deltaV1, deltaV2, deltaBinding, deltaOuter;
     l_uint32 threshBinding, threshOuter, threshT, threshB;
 
     /// Do a quick search to find book boundry
@@ -1861,7 +1934,7 @@ int main(int argc, char **argv) {
 
     assert(bottomEdge>topEdge);
 
-l_int32 bindingEdge = FindBindingEdge2(pixg, rotDir, topEdge, bottomEdge, &deltaV1, &threshBinding);
+l_int32 bindingEdge = FindBindingEdge2(pixg, rotDir, topEdge, bottomEdge, &deltaBinding, &threshBinding);
 if (-1 == bindingEdge) {
     printf("COULD NOT FIND BINDING!");
 } else {
@@ -1920,12 +1993,15 @@ printf("binding edge threshold is %d\n", threshBinding);
 
     //Deskew(pixbBig, cropL*8, cropR*8, cropT*8, cropB*8, &skewScore, &skewConf);
     
-    if (conf >= 1.0) {
+    if (conf >= 2.0) {
         debugstr("skewMode: text\n");
         angle = textAngle;
     } else {
+
         debugstr("skewMode: edge\n");
-        angle = (deltaT + deltaB + deltaV1 + deltaV2)/4;
+        printf("deltaBinding = %f\n", deltaBinding);
+        //angle = (deltaT + deltaB + deltaV1 + deltaV2)/4;
+        angle = deltaBinding; //TODO: calculate average of four edge deltas.
     }
     
     printf("rotating bigR by %f\n", angle);
