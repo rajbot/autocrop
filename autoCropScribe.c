@@ -721,6 +721,193 @@ l_uint32 FindBindingEdge(PIX      *pixg,
     return 1; //TODO: return error code on failure
 }
 
+
+/// FindBindingEdge2()
+///____________________________________________________________________________
+l_uint32 FindBindingEdge2(PIX      *pixg,
+                         l_int32  rotDir,
+                         l_uint32 topEdge,
+                         l_uint32 bottomEdge,
+                         float    *skew,
+                         l_uint32 *thesh)
+{
+
+    //Currently, we can only do right-hand leafs
+    assert((1 == rotDir) || (-1 == rotDir));
+
+    l_uint32 w = pixGetWidth( pixg );
+    l_uint32 h = pixGetHeight( pixg );
+
+    l_uint32 width10 = (l_uint32)(w * 0.10);
+
+    //kernel has height of (h/2 +/- h*hPercent/2)
+    l_uint32 kernelHeight10 = (l_uint32)(0.10*(bottomEdge-topEdge));
+    //l_uint32 jTop = (l_uint32)((1-kKernelHeight)*0.5*h);
+    //l_uint32 jBot = (l_uint32)((1+kKernelHeight)*0.5*h);    
+    l_uint32 jTop = topEdge+kernelHeight10;
+    l_uint32 jBot = bottomEdge-kernelHeight10;
+
+    // Find the strong edge, which should be one of the two sides of the binding
+    // Rotate the image to maximize SAD
+
+    l_int32    bindingEdge = -1;
+    l_uint32   bindingEdgeDiff = 0;
+    float      bindingDelta;
+    float delta;
+    //0.05 degrees is a good increment for the final search
+    for (delta=-1.0; delta<=1.0; delta+=0.2) {    
+        PIX *pixt = pixRotate(pixg,
+                        deg2rad*delta,
+                        L_ROTATE_AREA_MAP,
+                        L_BRING_IN_BLACK,0,0);
+        l_int32    strongEdge;
+        l_uint32   strongEdgeDiff;
+        l_uint32   limitLeft = calcLimitLeft(w,h,delta);
+        //printf("limitLeft = %d\n", limitLeft);
+
+        #if DEBUGMOV
+        debugmov.angle = delta;
+        #endif //DEBUGMOV
+
+        l_uint32 left, right;
+        if (1 == rotDir) {
+            left  = limitLeft;
+            right = width10;
+        } else {
+            left  = w - width10;
+            right = w - limitLeft-1;
+        }
+
+        CalculateSADcol(pixt, left, right, jTop, jBot, &strongEdge, &strongEdgeDiff);
+        //printf("delta=%f, strongest edge of gutter is at i=%d with diff=%d, w,h=(%d,%d)\n", delta, strongEdge, strongEdgeDiff, w, h);
+        if (strongEdgeDiff > bindingEdgeDiff) {
+            bindingEdge = strongEdge;
+            bindingEdgeDiff = strongEdgeDiff;
+            bindingDelta = delta;
+
+            #if DEBUGMOV
+            debugmov.edgeBinding = bindingEdge;
+            #endif //DEBUGMOV
+        }
+        
+
+        pixDestroy(&pixt);    
+    }
+    
+    assert(-1 != bindingEdge); //TODO: handle error
+    printf("BEST: delta=%f, strongest edge of gutter is at i=%d with diff=%d\n", bindingDelta, bindingEdge, bindingEdgeDiff);
+    *skew = bindingDelta;
+    #if DEBUGMOV
+    debugmov.angle = bindingDelta;
+    #endif //DEBUGMOV
+
+    // Now compute threshold for psudo-bitonalization
+    // Use midpoint between avg luma of dark and light lines of binding edge
+
+    PIX *pixt = pixRotate(pixg,
+                    deg2rad*bindingDelta,
+                    L_ROTATE_AREA_MAP,
+                    L_BRING_IN_BLACK,0,0);
+    //pixWrite("/home/rkumar/public_html/outgray.jpg", pixt, IFF_JFIF_JPEG);
+    
+    double bindingLumaA = CalculateAvgCol(pixt, bindingEdge, jTop, jBot);
+    printf("lumaA = %f\n", bindingLumaA);
+
+    double bindingLumaB = CalculateAvgCol(pixt, bindingEdge+1, jTop, jBot);
+    printf("lumaB = %f\n", bindingLumaB);
+
+    /*
+    {
+        int i;
+        for (i=bindingEdge-10; i<bindingEdge+10; i++) {
+            double bindingLuma = CalculateAvgCol(pixt, i, jTop, jBot);
+            printf("i=%d, luma=%f\n", i, bindingLuma);
+        }
+    }
+    */
+
+
+    double threshold = (l_uint32)((bindingLumaA + bindingLumaB) / 2);
+    //TODO: ensure this threshold is reasonable
+    printf("thesh = %f\n", threshold);
+    
+    *thesh = (l_uint32)threshold;
+
+    l_uint32 width3p = (l_uint32)(w * 0.03);
+    l_uint32 rightEdge;
+    l_uint32 numBlackLines = 0;
+    
+    if (bindingLumaA > bindingLumaB) { //found left edge
+        l_uint32 i;
+        l_uint32 rightLimit = bindingEdge+width3p;
+        for (i=bindingEdge+1; i<rightLimit; i++) {
+            double lumaAvg = CalculateAvgCol(pixt, i, jTop, jBot);
+            printf("i=%d, avg=%f\n", i, lumaAvg);
+            if (lumaAvg<threshold) {
+                numBlackLines++;
+            } else {
+                rightEdge = i-1;
+                break;
+            }
+        }
+        printf("numBlackLines = %d\n", numBlackLines);
+    
+    } else if (bindingLumaA < bindingLumaB) { //found right edge
+        l_uint32 i;
+        l_uint32 leftLimit = bindingEdge-width3p;
+        rightEdge = bindingEdge;
+        if (leftLimit<0) leftLimit = 0;
+        printf("found right edge of gutter, leftLimit=%d, rightLimit=%d\n", leftLimit, bindingEdge-1);
+        for (i=bindingEdge-1; i>leftLimit; i--) {
+            double lumaAvg = CalculateAvgCol(pixt, i, jTop, jBot);
+            printf("i=%d, avg=%f\n", i, lumaAvg);
+            if (lumaAvg<threshold) {
+                numBlackLines++;
+            } else {
+                break;
+            }
+        }
+        printf("numBlackLines = %d\n", numBlackLines);
+    
+    } else {
+        return -1; //TODO: handle error
+    }
+    
+    ///temp code to calculate some thesholds..
+    /*
+    l_uint32 a, j, i = rightEdge;
+    l_uint32 numBlackPels = 0;
+    for (j=jTop; j<jBot; j++) {
+        l_int32 retval = pixGetPixel(pixg, i, j, &a);
+        assert(0 == retval);
+        if (a<threshold) {
+            numBlackPels++;
+        }
+    }
+    printf("%d: numBlack=%d\n", i, numBlackPels);
+    i = rightEdge+1;
+    numBlackPels = 0;
+    for (j=jTop; j<jBot; j++) {
+        l_int32 retval = pixGetPixel(pixg, i, j, &a);
+        assert(0 == retval);
+        if (a<threshold) {
+            numBlackPels++;
+        }
+    }
+    printf("%d: numBlack=%d\n", i, numBlackPels);
+    */
+    ///end temp code
+
+    if ((numBlackLines >=1) && (numBlackLines<width3p)) {
+        return rightEdge;
+    } else {
+        debugstr("COULD NOT FIND BINDING, using strongest edge!\n");
+        return bindingEdge;
+    }    
+    
+    return 1; //TODO: return error code on failure
+}
+
 /// FindOuterEdge()
 ///____________________________________________________________________________
 l_int32 FindOuterEdge(PIX     *pixg,
@@ -1295,9 +1482,9 @@ l_uint32 RemoveBlackPelsBlockColRight(PIX *pixg, l_uint32 starti, l_uint32 endi,
                 }
             }
         }
-        printf("R %d: numBlack=%d\n", i, numBlackPels);
+        //printf("R %d: numBlack=%d\n", i, numBlackPels);
         if (numBlackPels<5) {
-            printf("break!\n");
+            //printf("break!\n");
             return i;
         }
 
@@ -1323,7 +1510,7 @@ l_uint32 RemoveBlackPelsBlockColLeft(PIX *pixg, l_uint32 starti, l_uint32 endi, 
     top += kernelHeight05;
     bottom -= kernelHeight05;
 
-    printf("LEFT: starti = %d, endi=%d, thresh=%d\n", starti, endi, blackThresh);
+    //printf("LEFT: starti = %d, endi=%d, thresh=%d\n", starti, endi, blackThresh);
 
     for (i=starti+1; i<=endi; i++) {
         numBlackPels = 0;
@@ -1336,9 +1523,9 @@ l_uint32 RemoveBlackPelsBlockColLeft(PIX *pixg, l_uint32 starti, l_uint32 endi, 
                 }
             }
         }
-        printf("L %d: numBlack=%d\n", i, numBlackPels);
+        //printf("L %d: numBlack=%d\n", i, numBlackPels);
         if (numBlackPels<5) {
-            printf("break!\n");
+            //printf("break!\n");
             return i;
         }
 
@@ -1371,9 +1558,9 @@ l_uint32 RemoveBlackPelsBlockRowTop(PIX *pixg, l_uint32 startj, l_uint32 endj, l
                 }
             }
         }
-        printf("T %d: numBlack=%d\n", j, numBlackPels);
+        //printf("T %d: numBlack=%d\n", j, numBlackPels);
         if (numBlackPels<5) {
-            printf("break!\n");
+            //printf("break!\n");
             return j;
         }
 
@@ -1406,9 +1593,9 @@ l_uint32 RemoveBlackPelsBlockRowBot(PIX *pixg, l_uint32 startj, l_uint32 endj, l
                 }
             }
         }
-        printf("B %d: numBlack=%d\n", j, numBlackPels);
+        //printf("B %d: numBlack=%d\n", j, numBlackPels);
         if (numBlackPels<5) {
-            printf("break!\n");
+            //printf("break!\n");
             return j;
         }
 
@@ -1416,6 +1603,162 @@ l_uint32 RemoveBlackPelsBlockRowBot(PIX *pixg, l_uint32 startj, l_uint32 endj, l
 
     return startj;
     
+}
+
+/// RemoveBackgroundTop()
+///____________________________________________________________________________
+l_int32 RemoveBackgroundTop(PIX *pixg, l_int32 rotDir) {
+    
+
+    l_uint32 w = pixGetWidth(pixg);
+    l_uint32 h = pixGetHeight(pixg);
+    l_uint32 a;
+
+
+    l_uint32 limitL, limitR, limitB;
+
+    if (1 == rotDir) {
+        limitL = (l_uint32)(0.20*w);
+        limitR = w-1;
+    } else if (-1 == rotDir) {
+        limitL = 1;
+        limitR = (l_uint32)(0.80)*w;
+    } else {
+        assert(0);
+    }
+
+    limitB = l_uint32(0.80*h);
+
+    l_int32 initialBlackThresh = 140;
+    l_uint32 numBlackRequired   = (l_uint32)(0.90*(limitR-limitL));
+
+    l_uint32 i, j;
+
+    for(j=0; j<=limitB; j++) {
+    
+        l_uint32 numBlackPels = 0;
+        for (i=limitL; i<=limitR; i++) {
+            l_int32 retval = pixGetPixel(pixg, i, j, &a);
+            assert(0 == retval);
+            if (a<initialBlackThresh) {
+                numBlackPels++;
+            }
+        }
+        printf("T %d: numBlack=%d\n", j, numBlackPels);
+        if (numBlackPels<numBlackRequired) {
+            printf("break!\n");
+            return j;
+        }
+    }
+
+    return 0;
+
+}
+
+/// RemoveBackgroundBottom()
+///____________________________________________________________________________
+l_int32 RemoveBackgroundBottom(PIX *pixg, l_int32 rotDir) {
+    
+
+    l_uint32 w = pixGetWidth(pixg);
+    l_uint32 h = pixGetHeight(pixg);
+    l_uint32 a;
+
+
+    l_int32 limitL, limitR, limitT;
+
+    if (1 == rotDir) {
+        limitL = (l_uint32)(0.20*w);
+        limitR = w-1;
+    } else if (-1 == rotDir) {
+        limitL = 1;
+        limitR = (l_uint32)(0.80)*w;
+    } else {
+        assert(0);
+    }
+
+    limitT = l_uint32(0.20*h);
+
+    l_int32 initialBlackThresh = 140;
+    l_uint32 numBlackRequired   = (l_uint32)(0.90*(limitR-limitL));
+
+    l_int32 i, j;
+
+    for(j=h-1; j>=limitT; j--) {
+    
+        l_uint32 numBlackPels = 0;
+        for (i=limitL; i<=limitR; i++) {
+            l_int32 retval = pixGetPixel(pixg, i, j, &a);
+            assert(0 == retval);
+            if (a<initialBlackThresh) {
+                numBlackPels++;
+            }
+        }
+        printf("B %d: numBlack=%d\n", j, numBlackPels);
+        if (numBlackPels<numBlackRequired) {
+            printf("break!\n");
+            return j;
+        }
+    }
+
+    return h-1;
+
+}
+
+/// RemoveBackgroundOuter()
+///____________________________________________________________________________
+l_int32 RemoveBackgroundOuter(PIX *pixg, l_int32 rotDir, l_uint32 topEdge, l_uint32 bottomEdge) {
+    
+
+    l_uint32 w = pixGetWidth(pixg);
+    l_uint32 h = pixGetHeight(pixg);
+    l_uint32 a;
+
+    l_uint32 kernelHeight10 = (l_uint32)(0.10*(bottomEdge-topEdge));
+
+    l_int32 limitT, limitB;
+    limitT = topEdge+kernelHeight10;
+    limitB = bottomEdge-kernelHeight10;
+    l_int32 step;
+
+    l_int32 iStart, iEnd;
+    if (1 == rotDir) {
+        iStart = w-1;
+        iEnd   = (l_int32)(0.20*w);
+        step = -1;
+    } else if (-1 == rotDir) {
+        iStart = 0;
+        iEnd   = (l_uint32)(0.80)*w;
+        step   = 1;
+    } else {
+        assert(0);
+    }
+
+
+    l_int32 initialBlackThresh = 140;
+    l_uint32 numBlackRequired   = (l_uint32)(0.90*(limitB-limitT));
+
+    l_int32 i, j;
+
+    for(i=iStart; i>=iEnd; i+=step) {
+    
+        l_uint32 numBlackPels = 0;
+        for (j=limitT; j<=limitB; j++) {
+            l_int32 retval = pixGetPixel(pixg, i, j, &a);
+            assert(0 == retval);
+            if (a<initialBlackThresh) {
+                numBlackPels++;
+            }
+        }
+        printf("O %d: numBlack=%d\n", j, numBlackPels);
+        if (numBlackPels<numBlackRequired) {
+            printf("break! (thresh=%d)\n", numBlackRequired);
+            return j;
+        }
+    }
+
+    return iStart;
+
 }
 
 /// main()
@@ -1454,7 +1797,7 @@ int main(int argc, char **argv) {
 
     pixg = pixConvertRGBToGray (pixd, 0.30, 0.60, 0.10);
     debugstr("Converted to gray\n");
-    //pixWrite("/home/rkumar/public_html/outgray.jpg", pixg, IFF_JFIF_JPEG); 
+    pixWrite("/home/rkumar/public_html/outgray.jpg", pixg, IFF_JFIF_JPEG); 
     pixWrite("/home/rkumar/public_html/out.jpg", pixd, IFF_JFIF_JPEG); 
 
     #if DEBUGMOV
@@ -1489,24 +1832,16 @@ int main(int argc, char **argv) {
 
     float delta;
 
-    #if 0
-    for (delta=-1.0; delta<=1.0; delta+=0.05) {
-        printf("delta = %f\n", delta);
-        PIX *pixt = pixRotate(pixg,
-                        deg2rad*delta,
-                        L_ROTATE_AREA_MAP,
-                        L_BRING_IN_BLACK,0,0);
-
-        FindGutterCrop(pixt, rotDir);
-        pixDestroy(&pixt);
-    }
-    #endif
-    //FindGutterCrop(pixg, rotDir);
     
     l_int32 cropT=-1, cropB=-1, cropR=-1, cropL=-1;
     float deltaT, deltaB, deltaV1, deltaV2;
     l_uint32 threshBinding, threshOuter, threshT, threshB;
+
+    /// Do a quick search to find book boundry
+    
+
     /// find binding side edge
+/*
     l_int32 bindingEdge = FindBindingEdge(pixg, rotDir, &deltaV1, &threshBinding);
     
     if (-1 == bindingEdge) {
@@ -1515,14 +1850,29 @@ int main(int argc, char **argv) {
         printf("binding edge= %d\n", bindingEdge);
     }
     printf("binding edge threshold is %d\n", threshBinding);
+*/
     /// find top edge
-    l_int32 topEdge = FindHorizontalEdge(pixg, rotDir, bindingEdge, 0, &deltaT, &threshT);
+    //l_int32 topEdge = FindHorizontalEdge(pixg, rotDir, bindingEdge, 0, &deltaT, &threshT);
+    l_int32 topEdge = RemoveBackgroundTop(pixg, rotDir);
 
     /// find bottom edge
-    l_int32 bottomEdge = FindHorizontalEdge(pixg, rotDir, bindingEdge, 1, &deltaB, &threshB);
+    //l_int32 bottomEdge = FindHorizontalEdge(pixg, rotDir, bindingEdge, 1, &deltaB, &threshB);
+    l_int32 bottomEdge = RemoveBackgroundBottom(pixg, rotDir);
+
+    assert(bottomEdge>topEdge);
+
+l_int32 bindingEdge = FindBindingEdge2(pixg, rotDir, topEdge, bottomEdge, &deltaV1, &threshBinding);
+if (-1 == bindingEdge) {
+    printf("COULD NOT FIND BINDING!");
+} else {
+    printf("binding edge= %d\n", bindingEdge);
+}
+printf("binding edge threshold is %d\n", threshBinding);
 
     /// find the outer vertical edge
-    l_int32 outerEdge = FindOuterEdge(pixg, rotDir, &deltaV2, &threshOuter);
+    //l_int32 outerEdge = FindOuterEdge(pixg, rotDir, &deltaV2, &threshOuter);
+    l_int32 outerEdge = RemoveBackgroundOuter(pixg, rotDir, topEdge, bottomEdge);
+    
 
     cropT = topEdge*8;
     cropB = bottomEdge*8;
