@@ -1750,10 +1750,10 @@ l_int32 RemoveBackgroundOuter(PIX *pixg, l_int32 rotDir, l_uint32 topEdge, l_uin
                 numBlackPels++;
             }
         }
-        printf("O %d: numBlack=%d\n", j, numBlackPels);
+        printf("O %d: numBlack=%d\n", i, numBlackPels);
         if (numBlackPels<numBlackRequired) {
             printf("break! (thresh=%d)\n", numBlackRequired);
-            return j;
+            return i;
         }
     }
 
@@ -1872,7 +1872,7 @@ printf("binding edge threshold is %d\n", threshBinding);
     /// find the outer vertical edge
     //l_int32 outerEdge = FindOuterEdge(pixg, rotDir, &deltaV2, &threshOuter);
     l_int32 outerEdge = RemoveBackgroundOuter(pixg, rotDir, topEdge, bottomEdge);
-    
+   
 
     cropT = topEdge*8;
     cropB = bottomEdge*8;
@@ -1906,7 +1906,7 @@ printf("binding edge threshold is %d\n", threshBinding);
     BOX *box     = boxCreate(cropL, cropT, cropR-cropL, cropB-cropT);
     PIX *pixBigC = pixClipRectangle(pixBigR, box, NULL);
     PIX *pixBigB = pixThresholdToBinary (pixBigC, threshBinding);    
-    //pixWrite("/home/rkumar/public_html/outbin.png", pixBigB, IFF_PNG); 
+    pixWrite("/home/rkumar/public_html/outbin.png", pixBigB, IFF_PNG); 
 
     l_float32    angle, conf, textAngle;
 
@@ -1975,7 +1975,7 @@ printf("binding edge threshold is %d\n", threshBinding);
     } else {
         assert(0);
     }
-
+    printf("bigW=%d, bigH=%d\n", w, h);
     cropR = RemoveBlackPelsBlockColRight(pixBigT, right, left, cropT, cropB, 3, threshR);
 
     cropT = RemoveBlackPelsBlockRowTop(pixBigT, cropT, cropT+2*limitTop, cropL, cropR, 3, threshT);
