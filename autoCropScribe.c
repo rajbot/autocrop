@@ -2181,11 +2181,16 @@ printf("binding edge threshold is %d\n", threshBinding);
     if (1 == rotDir) {
         //cropL = bindingEdge*8;
         //cropR = outerEdge*8;
-        box     = boxCreate(bindingEdge*8, topEdge*8, (outerEdge-bindingEdge)*8, (bottomEdge-topEdge)*8);
+        l_int32 boxW10 = (l_int32)((outerEdge-bindingEdge)*8*0.1);
+        l_int32 boxH10 = (l_int32)((bottomEdge-topEdge)*8*0.1);
+        box     = boxCreate(bindingEdge*8+boxW10, topEdge*8+boxH10, (outerEdge-bindingEdge)*8-2*boxW10, (bottomEdge-topEdge)*8-2*boxH10);
     } else if (-1 == rotDir) {
         //cropR = bindingEdge*8;
         //cropL = outerEdge*8;
-        box     = boxCreate(outerEdge*8, topEdge*8, (bindingEdge-outerEdge)*8, (bottomEdge-topEdge)*8);
+        l_int32 boxW10 = (l_int32)(0.10*(outerEdge-bindingEdge)*8);
+        l_int32 boxH10 = (l_int32)(0.10*(bottomEdge-topEdge)*8);
+
+        box     = boxCreate(outerEdge*8+boxW10, topEdge*8+boxH10, (bindingEdge-outerEdge)*8-2*boxW10, (bottomEdge-topEdge)*8-2*boxH10);
     } else {
         //FIXME deal with rotDir=0
         assert(0);
@@ -2209,6 +2214,7 @@ printf("binding edge threshold is %d\n", threshBinding);
     PIX *pixBigR = pixRotate90(pixBigG, rotDir);
     //BOX *box     = boxCreate(cropL, cropT, cropR-cropL, cropB-cropT);
     PIX *pixBigC = pixClipRectangle(pixBigR, box, NULL);
+printf("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeight(pixBigC));
     PIX *pixBigB = pixThresholdToBinary (pixBigC, threshBinding);    
     pixWrite("/home/rkumar/public_html/outbin.png", pixBigB, IFF_PNG); 
 
