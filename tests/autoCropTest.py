@@ -7,11 +7,12 @@ This script autocrops jpg images in the current directory.
 import commands
 import glob
 import os
+import re
 
 files = glob.glob("*.jpg")
 assert len(files) > 0
 
-outDir     = '/home/rkumar/public_html/autocrop/nouveautraitde00bout'
+outDir     = '/home/rkumar/public_html/autocrop/picturesquenewen00swee'
 proxyDir   = 'proxy'
 skewedDir  = 'skewed'
 croppedDir = 'cropped'
@@ -43,9 +44,21 @@ for file in sorted(files):
     
     cmd = "~/gnubook/autoCropScribe %s %d" % (file, rotateDir)
     print cmd
-    retval = commands.getstatusoutput(cmd)[0]
+    retval,output = commands.getstatusoutput(cmd)
     assert (0 == retval)
 
+    m=re.search('skewMode: (\w+)', output)
+    skewMode = m.group(1)
+    print "skewMode is " + skewMode
+    
+    m=re.search('angle=([-.\d]+)', output)
+    assert(None != m)
+    textSkew = float(m.group(1))
+
+    m=re.search('conf=([-.\d]+)', output)
+    assert(None != m)
+    textScore = float(m.group(1))
+    
     retval = commands.getstatusoutput('cp ~/public_html/out.jpg "%s/%s/%d.jpg"'%(outDir, proxyDir,leafNum))[0]
     assert (0 == retval)    
 
@@ -67,6 +80,9 @@ for file in sorted(files):
 
     f.write('<td valign=top>'),
     f.write('<img src="%s/%d.jpg"/>'%(croppedDir,leafNum))
+    f.write("<br>skewMode: %s"%(skewMode))
+    f.write("<br>textSkew: %0.2f, textScore: %0.2f"%(textSkew, textScore))
+
     f.write('</td>\n')
 
     f.write('</tr>\n')
