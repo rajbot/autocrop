@@ -1848,6 +1848,71 @@ l_int32 RemoveBackgroundOuter(PIX *pixg, l_int32 rotDir, l_uint32 topEdge, l_uin
     */
 }
 
+/// CleanupOuter()
+///____________________________________________________________________________
+l_int32 CleanupOuter(PIX       *pixg,
+                     l_int32   rotDir,
+                     l_float32 angle,
+                     l_int32   *cropL,
+                     l_int32   *cropR,
+                     l_int32   cropT,
+                     l_int32   cropB)
+{
+    
+    //Currently, we can only do right-hand leafs
+    assert((1 == rotDir) || (-1 == rotDir));
+
+    l_uint32 w = pixGetWidth( pixg );
+    l_uint32 h = pixGetHeight( pixg );
+
+    l_uint32 width10 = (l_uint32)(w * 0.10);
+    
+    l_uint32 kernelHeight10 = (l_uint32)((cropB-cropT)*0.10);
+    cropT += kernelHeight10;
+    cropB -= kernelHeight10;
+
+    l_int32 limitLeft = calcLimitLeft(w,h,angle);
+
+    l_uint32 left, right;
+    if (1 == rotDir) {
+        left  = *cropR-width10;
+        right = min(*cropR-1, w-limitLeft);
+    } else if (-1 == rotDir) {
+        left  = max(*cropL, limitLeft);
+        right = *cropL+width10;
+    } else {
+        assert(0);
+    }
+
+    l_int32    outerEdge = -1;
+    l_uint32   outerEdgeDiff = 0;
+    l_int32    strongEdge;
+    l_uint32   strongEdgeDiff;
+    CalculateSADcol(pixg, left, right, cropT, cropB, &strongEdge, &strongEdgeDiff);
+    if (strongEdgeDiff > outerEdgeDiff) {
+        outerEdge     = strongEdge;
+        outerEdgeDiff = strongEdgeDiff;
+    }
+    
+    
+    assert(-1 != outerEdge); //TODO: handle error
+    printf("CLEANUP OUTER: outer edge is at i=%d with diff=%d\n", outerEdge, outerEdgeDiff);
+    
+
+    if (outerEdgeDiff > ((cropB-cropT)*3)) {
+        printf("CLEANUP OUTER: diff greater than threshold (%d), adjusting!\n", (cropB-cropT)*3);
+        if (1 == rotDir) {
+            *cropR = outerEdge;
+        } else if (-1 == rotDir) {
+            *cropL = outerEdge;
+        } else {
+            assert(0);
+        }
+    }
+
+    return outerEdge;
+}
+
 /// main()
 ///____________________________________________________________________________
 int main(int argc, char **argv) {
@@ -2006,16 +2071,20 @@ printf("binding edge threshold is %d\n", threshBinding);
     }   
 
     //Deskew(pixbBig, cropL*8, cropR*8, cropT*8, cropB*8, &skewScore, &skewConf);
-    
+    #define kSkewModeText 0
+    #define kSkewModeEdge 1
+    l_int32 skewMode;
     if (conf >= 2.0) {
         debugstr("skewMode: text\n");
         angle = textAngle;
+        skewMode = kSkewModeText;
     } else {
 
         debugstr("skewMode: edge\n");
         printf("deltaBinding = %f\n", deltaBinding);
         //angle = (deltaT + deltaB + deltaV1 + deltaV2)/4;
         angle = deltaBinding; //TODO: calculate average of four edge deltas.
+        skewMode = kSkewModeEdge;
     }
     
     printf("rotating bigR by %f\n", angle);
@@ -2029,11 +2098,16 @@ printf("binding edge threshold is %d\n", threshBinding);
 
     pixWrite("/home/rkumar/public_html/outBigT.jpg", pixBigT, IFF_JFIF_JPEG); 
 
+    if (kSkewModeText == skewMode) {
+        debugstr("skewMode is text. Adjusting outer edge using SAD!\n");
+        l_int32 newOuter = CleanupOuter(pixBigT, rotDir, angle, &cropL, &cropR, cropT, cropB);
+    }
 
+
+    printf("finding clean lines...\n");
     //AdjustCropBox(pixBigT, &cropL, &cropR, &cropT, &cropB, 8*5);
     //AdjustCropBoxByVariance(pixBigT, &cropL, &cropR, &cropT, &cropB, 3, angle);
 
-    printf("finding clean lines...\n");
     l_int32 w = pixGetWidth(pixBigT);
     l_int32 h = pixGetHeight(pixBigT);
     //cropR = removeBlackPelsColRight(pixBigT, cropR, (int)(w*0.75), cropT, cropB);
