@@ -23,6 +23,7 @@ autoCropScribe filein.jpg rotateDirection
 #include <assert.h>
 #include <math.h>   //for sqrt
 #include <float.h>  //for DBL_MAX
+#include <limits.h> //for INT_MAX
 
 #define debugstr printf
 //#define debugstr
@@ -1848,9 +1849,9 @@ l_int32 RemoveBackgroundOuter(PIX *pixg, l_int32 rotDir, l_uint32 topEdge, l_uin
     */
 }
 
-/// CleanupOuter()
+/// EdgeDetectOuter()
 ///____________________________________________________________________________
-l_int32 CleanupOuter(PIX       *pixg,
+l_int32 EdgeDetectOuter(PIX       *pixg,
                      l_int32   rotDir,
                      l_float32 angle,
                      l_int32   *cropL,
@@ -1911,6 +1912,111 @@ l_int32 CleanupOuter(PIX       *pixg,
     }
 
     return outerEdge;
+}
+
+/// FindCleanestLinesHoriz()
+///____________________________________________________________________________
+
+l_int32 FindCleanestLineHoriz(PIX     *pixg,
+                              l_int32 left, 
+                              l_int32 right, 
+                              l_int32 top, 
+                              l_int32 bottom, 
+                              l_int32 thresh)
+{
+    l_int32 i, j;
+    l_uint32 a;
+    
+    l_int32 *storage = (l_int32 *)malloc((bottom-top+1) * sizeof (l_int32));
+
+    l_int32 lowestBlackPels = INT_MAX;
+    for (j=top; j<=bottom; j++) {
+        l_int32 numBlackPels = 0;
+        for (i=left; i<=right; i++) {
+            l_int32 retval = pixGetPixel(pixg, i, j, &a);
+            assert(0 == retval);
+            if (a<thresh) {
+                numBlackPels++;
+            }
+        }
+        if (numBlackPels<lowestBlackPels) {
+            lowestBlackPels = numBlackPels;
+        }
+        storage[j-top] = numBlackPels;
+        //printf("j=%d, numBlackPels = %d\n", j, numBlackPels);
+    }
+    
+    //printf("lowestBlackPels = %d\n", lowestBlackPels);
+    free(storage);
+    return lowestBlackPels;
+}
+
+/// FindCleanLinesBottom()
+///____________________________________________________________________________
+
+l_int32 FindCleanLinesBottom(PIX     *pixg, 
+                             l_int32 cropL, 
+                             l_int32 cropR, 
+                             l_int32 cropT, 
+                             l_int32 cropB, 
+                             l_int32 thresh)
+{
+    
+    l_int32 width10 = (l_int32)((cropR-cropL)*0.10);
+    l_int32 left    = cropL + width10;
+    l_int32 right   = cropR - width10;
+    l_int32 top     = (cropB-cropT)/2;
+    l_int32 bottom  = cropB;
+    
+    //l_int32 blackLimit = FindCleanestLineHoriz(pixg, left, right, top, bottom, thresh);
+    l_int32 *storage = (l_int32 *)malloc((bottom-top+1) * sizeof (l_int32));
+
+    l_int32 lowestBlackPels = INT_MAX;
+
+    l_int32 i, j, y;
+    l_uint32 a;
+
+    for (j=top; j<=bottom; j++) {
+        l_int32 numBlackPels = 0;
+        for (i=left; i<=right; i++) {
+            l_int32 retval = pixGetPixel(pixg, i, j, &a);
+            assert(0 == retval);
+            if (a<thresh) {
+                numBlackPels++;
+            }
+        }
+        if (numBlackPels<lowestBlackPels) {
+            lowestBlackPels = numBlackPels;
+        }
+        storage[j-top] = numBlackPels;
+        //printf("j=%d, numBlackPels = %d\n", j, numBlackPels);
+    }
+    
+    //printf("lowestBlackPels = %d\n", lowestBlackPels);
+    
+    l_int32 largestBlockJ;
+    l_int32 largestBlock = 0;
+    for(j=bottom; j>=top; j--) {
+        //if (storage[j-top] > lowestBlackPels) continue;
+        l_int32 numCleanLines = 0;
+        for (y=j; y>=top; y--) {
+            if (storage[y-top] <= lowestBlackPels) {
+                numCleanLines++;
+            } else {
+                break;
+            }
+        }
+        //printf("j=%d, numCleanLines = %d\n", j, numCleanLines);
+
+        if (numCleanLines > largestBlock) {
+            largestBlock  = numCleanLines;
+            largestBlockJ = j;
+        }
+    }
+    //printf("largestBlock at j=%d with %d lines\n", largestBlockJ, largestBlock);
+    free(storage);
+    
+    return largestBlockJ;
 }
 
 /// main()
@@ -2026,14 +2132,17 @@ printf("binding edge threshold is %d\n", threshBinding);
     l_int32 outerEdge = RemoveBackgroundOuter(pixg, rotDir, topEdge, bottomEdge);
    
 
-    cropT = topEdge*8;
-    cropB = bottomEdge*8;
+    BOX *box;
+    //cropT = topEdge*8;
+    //cropB = bottomEdge*8;
     if (1 == rotDir) {
-        cropL = bindingEdge*8;
-        cropR = outerEdge*8;
+        //cropL = bindingEdge*8;
+        //cropR = outerEdge*8;
+        box     = boxCreate(bindingEdge*8, topEdge*8, (outerEdge-bindingEdge)*8, (bottomEdge-topEdge)*8);
     } else if (-1 == rotDir) {
-        cropR = bindingEdge*8;
-        cropL = outerEdge*8;
+        //cropR = bindingEdge*8;
+        //cropL = outerEdge*8;
+        box     = boxCreate(outerEdge*8, topEdge*8, (bindingEdge-outerEdge)*8, (bottomEdge-topEdge)*8);
     } else {
         //FIXME deal with rotDir=0
         assert(0);
@@ -2055,7 +2164,7 @@ printf("binding edge threshold is %d\n", threshBinding);
 
     PIX *pixBigG = pixConvertRGBToGray (pixBig, 0.30, 0.60, 0.10);
     PIX *pixBigR = pixRotate90(pixBigG, rotDir);
-    BOX *box     = boxCreate(cropL, cropT, cropR-cropL, cropB-cropT);
+    //BOX *box     = boxCreate(cropL, cropT, cropR-cropL, cropB-cropT);
     PIX *pixBigC = pixClipRectangle(pixBigR, box, NULL);
     PIX *pixBigB = pixThresholdToBinary (pixBigC, threshBinding);    
     pixWrite("/home/rkumar/public_html/outbin.png", pixBigB, IFF_PNG); 
@@ -2098,11 +2207,40 @@ printf("binding edge threshold is %d\n", threshBinding);
 
     pixWrite("/home/rkumar/public_html/outBigT.jpg", pixBigT, IFF_JFIF_JPEG); 
 
+    /// If skewMode is 'text', we have not run the edge detector. Do it now.
     if (kSkewModeText == skewMode) {
         debugstr("skewMode is text. Adjusting outer edge using SAD!\n");
-        l_int32 newOuter = CleanupOuter(pixBigT, rotDir, angle, &cropL, &cropR, cropT, cropB);
+        PIX *pixt = pixRotate(pixg,
+                        deg2rad*angle,
+                        L_ROTATE_AREA_MAP,
+                        L_BRING_IN_BLACK,0,0);
+        //l_int32 newOuter = CleanupOuter(pixBigT, rotDir, angle, &cropL, &cropR, cropT, cropB);
+        //cropB = FindCleanLinesBottom(pixBigT, cropL, cropR, cropT, cropB, threshBinding);
+
+        if (1 == rotDir) {
+            l_int32 newOuter = EdgeDetectOuter(pixg, rotDir, angle, &bindingEdge, &outerEdge, topEdge, bottomEdge);
+        
+        } else if (-1 == rotDir) {
+            l_int32 newOuter = EdgeDetectOuter(pixg, rotDir, angle, &outerEdge, &bindingEdge, topEdge, bottomEdge);
+        } else {
+            //FIXME deal with rotDir=0
+            assert(0);
+        }
+        
+        pixDestroy(&pixt);
     }
 
+    cropT = topEdge*8;
+    cropB = bottomEdge*8;
+    if (1 == rotDir) {
+        cropL = bindingEdge*8;
+        cropR = outerEdge*8;
+    } else if (-1 == rotDir) {
+        cropR = bindingEdge*8;
+        cropL = outerEdge*8;
+    } else {
+        assert(0);
+    }
 
     printf("finding clean lines...\n");
     //AdjustCropBox(pixBigT, &cropL, &cropR, &cropT, &cropB, 8*5);
