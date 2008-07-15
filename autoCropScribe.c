@@ -276,14 +276,13 @@ l_uint32 CalculateSADrow(PIX        *pixg,
 
 
     for (j=top; j<bottom; j++) {
-        //printf("%d: ", i);
+        //printf("%d: ", j);
         acc=0;
         for (i=left; i<right; i++) {
             l_int32 retval = pixGetPixel(pixg, i, j, &a);
             assert(0 == retval);
             retval = pixGetPixel(pixg, i, j+1, &b);
             assert(0 == retval);
-            //printf("%d ", val);
             acc += (abs(a-b));
         }
         //printf("%d \n", acc);
@@ -1914,6 +1913,50 @@ l_int32 EdgeDetectOuter(PIX       *pixg,
     return outerEdge;
 }
 
+
+/// EdgeDetectBottom()
+///____________________________________________________________________________
+l_int32 EdgeDetectBottom(PIX       *pixg,
+                     l_int32   rotDir,
+                     l_float32 angle,
+                     l_int32   left,
+                     l_int32   right,
+                     l_int32   *bottom)
+{
+    
+    //Currently, we can only do right-hand leafs
+    assert((1 == rotDir) || (-1 == rotDir));
+
+    l_uint32 w = pixGetWidth( pixg );
+    l_uint32 h = pixGetHeight( pixg );
+
+    l_uint32 height05 = (l_uint32)(w * 0.05);
+    
+    l_uint32 cropWidth10  = (l_uint32)((right-left)*0.10);
+
+    left  += cropWidth10;
+    right -= cropWidth10;
+
+    l_int32 limitBottom = min(*bottom+2, h - calcLimitTop(w,h,angle));
+    l_int32 top         = limitBottom-height05;
+
+
+    l_int32    strongEdge;
+    l_uint32   strongEdgeDiff;
+    CalculateSADrow(pixg, left, right, top, limitBottom, &strongEdge, &strongEdgeDiff);
+ 
+    printf("CLEANUP BOTTOM:  edge is at j=%d with diff=%d\n", strongEdge, strongEdgeDiff);
+    
+
+    if (strongEdgeDiff > ((right-left)*3)) {
+        printf("CLEANUP BOTTOM: diff greater than threshold (%d), adjusting!\n", (right-left)*3);
+        *bottom = strongEdge;
+    }
+
+    return 0;
+}
+
+
 /// FindCleanestLinesHoriz()
 ///____________________________________________________________________________
 
@@ -2148,7 +2191,7 @@ printf("binding edge threshold is %d\n", threshBinding);
         assert(0);
     }
 
-    printf("in main: cL=%d, cR=%d, cT=%d, cB=%d\n", cropL, cropR, cropT, cropB);
+    //printf("in main: cL=%d, cR=%d, cT=%d, cB=%d\n", cropL, cropR, cropT, cropB);
 
     /// Now that we have the crop box, use Postl's meathod for deskew
     double skewScore, skewConf;
@@ -2218,15 +2261,18 @@ printf("binding edge threshold is %d\n", threshBinding);
         //cropB = FindCleanLinesBottom(pixBigT, cropL, cropR, cropT, cropB, threshBinding);
 
         if (1 == rotDir) {
-            l_int32 newOuter = EdgeDetectOuter(pixg, rotDir, angle, &bindingEdge, &outerEdge, topEdge, bottomEdge);
-        
+            EdgeDetectOuter(pixg, rotDir, angle, &bindingEdge, &outerEdge, topEdge, bottomEdge);
+            //EdgeDetectBottom(pixg, rotDir, angle, bindingEdge, outerEdge, &bottomEdge);
+
         } else if (-1 == rotDir) {
-            l_int32 newOuter = EdgeDetectOuter(pixg, rotDir, angle, &outerEdge, &bindingEdge, topEdge, bottomEdge);
+            EdgeDetectOuter(pixg, rotDir, angle, &outerEdge, &bindingEdge, topEdge, bottomEdge);
+            //EdgeDetectBottom(pixg, rotDir, angle, outerEdge, bindingEdge, &bottomEdge);
+
         } else {
             //FIXME deal with rotDir=0
             assert(0);
         }
-        
+
         pixDestroy(&pixt);
     }
 
@@ -2281,8 +2327,10 @@ printf("binding edge threshold is %d\n", threshBinding);
     printf("bigW=%d, bigH=%d\n", w, h);
     cropR = RemoveBlackPelsBlockColRight(pixBigT, right, left, cropT, cropB, 3, threshR);
 
-    cropT = RemoveBlackPelsBlockRowTop(pixBigT, cropT, cropT+2*limitTop, cropL, cropR, 3, threshBinding); //we no longer calculate threshT
-    cropB = RemoveBlackPelsBlockRowBot(pixBigT, cropB, cropB-2*limitTop, cropL, cropR, 3, threshBinding); //we no longer calculate threshB
+    //cropT = RemoveBlackPelsBlockRowTop(pixBigT, cropT, cropT+2*limitTop, cropL, cropR, 3, threshBinding); //we no longer calculate threshT
+    //cropB = RemoveBlackPelsBlockRowBot(pixBigT, cropB, cropB-2*limitTop, cropL, cropR, 3, threshBinding); //we no longer calculate threshB
+    cropT = RemoveBlackPelsBlockRowTop(pixBigT, cropT, cropT+(l_uint32)(h*0.05), cropL, cropR, 3, threshBinding); //we no longer calculate threshT
+    cropB = RemoveBlackPelsBlockRowBot(pixBigT, cropB, cropB-(l_uint32)(h*0.05), cropL, cropR, 3, threshBinding); //we no longer calculate threshB
 
     //pixWrite("/home/rkumar/public_html/outbig.jpg", pixBigT, IFF_JFIF_JPEG); 
     //PIX *pixTmp = pixThresholdToBinary (pixBigT, threshBinding);    
