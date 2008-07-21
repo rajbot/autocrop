@@ -96,7 +96,7 @@ int main(int    argc,
     BOX *box = boxCreate(cropx, cropy, cropw, croph);
 
  
-    PIX *pixCrop = pixClipRectangle(pixd, box, NULL);
+    PIX *pixCrop = pixClipRectangle(pixt, box, NULL);
     pixWrite(fileout, pixCrop, IFF_JFIF_JPEG); 
     
 
