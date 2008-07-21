@@ -2228,6 +2228,8 @@ printf("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeig
         printf("angle=%.2f\nconf=%.2f\n", textAngle, conf);
     }   
 
+    printf("bindingAngle=%.2f\n", deltaBinding);
+
     //Deskew(pixbBig, cropL*8, cropR*8, cropT*8, cropB*8, &skewScore, &skewConf);
     #define kSkewModeText 0
     #define kSkewModeEdge 1
@@ -2239,7 +2241,6 @@ printf("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeig
     } else {
 
         debugstr("skewMode: edge\n");
-        printf("deltaBinding = %f\n", deltaBinding);
         //angle = (deltaT + deltaB + deltaV1 + deltaV2)/4;
         angle = deltaBinding; //TODO: calculate average of four edge deltas.
         skewMode = kSkewModeEdge;
