@@ -13,7 +13,10 @@ import xml.etree.ElementTree as ET
 files = glob.glob("*.jpg")
 assert len(files) > 0
 
-outDir     = '/home/rkumar/public_html/autocrop/picturesquenewen00swee'
+#outDir     = '/home/rkumar/public_html/autocrop/picturesquenewen00swee'
+outDir     = '/home/rkumar/public_html/autocrop/nouveautraitde00bout'
+#outDir     = '/home/rkumar/public_html/autocrop/morritosentrem00alva'
+#outDir     = '/home/rkumar/public_html/autocrop/appendixtotheolo00painrich'
 proxyDir   = 'proxy'
 skewedDir  = 'skewed'
 croppedDir = 'cropped'
@@ -67,6 +70,11 @@ for file in sorted(files):
     assert(None != m)
     textScore = float(m.group(1))
     
+    m=re.search('bindingAngle=([-.\d]+)', output)
+    assert(None != m)
+    bindingSkew = float(m.group(1))
+
+    
     retval = commands.getstatusoutput('cp ~/public_html/out.jpg "%s/%s/%d.jpg"'%(outDir, proxyDir,leafNum))[0]
     assert (0 == retval)    
 
@@ -104,8 +112,10 @@ for file in sorted(files):
 
     f.write('<td valign=top>'),
     f.write('<img src="%s/%d.jpg"/>'%(croppedDir,leafNum))
+    f.write("<br>leaf %d"%(leafNum))
     f.write("<br>skewMode: %s"%(skewMode))
     f.write("<br>textSkew: %0.2f, textScore: %0.2f"%(textSkew, textScore))
+    f.write("<br>bindingSkew: %0.2f"%(bindingSkew))
     f.write('</td>\n')
 
     f.write('<td valign=top>'),
