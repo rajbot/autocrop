@@ -2062,6 +2062,96 @@ l_int32 FindCleanLinesBottom(PIX     *pixg,
     return largestBlockJ;
 }
 
+/// FindOuterEdgeUsingCleanLines_R()
+///____________________________________________________________________________
+
+l_int32 FindOuterEdgeUsingCleanLines_R(PIX     *pixg,
+                                       l_int32 edgeBinding,
+                                       l_int32 edgeOuter,
+                                       l_int32 edgeTop,
+                                       l_int32 edgeBottom,
+                                       l_uint32 thresh)
+{
+    ///This is a right-hand leaf. The binding is on the left side.
+
+    l_uint32 w = pixGetWidth( pixg );
+    l_uint32 h = pixGetHeight( pixg );
+    l_int32  box10 = (l_int32)((edgeOuter-edgeBinding) * 0.20);
+
+    l_int32 limitL = edgeBinding + box10;
+    l_int32 limitR = min(edgeOuter+10, w-1);
+
+    l_int32 *storage = (l_int32 *)calloc((limitR-limitL+1), sizeof (l_int32));
+
+    l_int32 i, j;
+    l_uint32 a;
+
+    for (j=edgeTop; j<=edgeBottom; j++) {
+        l_int32 numWhitePels = 0;
+        for (i=limitL; i<=limitR; i++) {
+            l_int32 retval = pixGetPixel(pixg, i, j, &a);
+            assert(0 == retval);
+            if (i == limitL) printf("j=%d, i=%d, a=%d\n", j, i, a);    
+            if (a>thresh) {
+                numWhitePels++;
+            } else {
+                break;
+            }
+        }
+
+        storage[i-limitL]++;
+        printf("j=%d, numBlackPels = %d\n", j, numWhitePels);
+    }
+
+   for (i=limitL; i<=limitR; i++) {
+        printf("storage %d: %d\n", i, storage[i-limitL]);
+    }
+ 
+
+    l_int32 longestLine = 0;
+    for (i=limitL; i<=limitR; i++) {
+        if (storage[i-limitL]>0) {
+            longestLine = i;
+        }
+    }
+    printf("longest clean line is %d with count=%d\n", longestLine, storage[longestLine]);
+    
+    l_int32 peak = storage[longestLine-limitL];
+    l_int32 peaki = longestLine;
+    for (i=(l_int32)(longestLine*0.95); i<longestLine; i++) {
+        if (storage[i-limitL]>peak) {
+            peaki = i;
+            peak = storage[i-limitL];
+        }
+    }
+    
+    printf("peak i within 5%% of longest line at %d with peak=%d\n", peaki, peak);
+
+    free(storage);
+
+}
+
+/// FindOuterEdgeUsingCleanLines()
+///____________________________________________________________________________
+
+l_int32 FindOuterEdgeUsingCleanLines(PIX     *pixg,
+                                     l_int32 rotDir,
+                                     l_int32 edgeBinding,
+                                     l_int32 edgeOuter,
+                                     l_int32 edgeTop,
+                                     l_int32 edgeBottom,
+                                     l_uint32 thresh)
+{
+    l_int32 newEdgeOuter;
+    if (1 == rotDir) {
+        newEdgeOuter = FindOuterEdgeUsingCleanLines_R(pixg, edgeBinding, edgeOuter, edgeTop, edgeBottom, thresh);
+    } else {
+        assert(0);
+    }
+
+    return newEdgeOuter;
+}
+
 /// main()
 ///____________________________________________________________________________
 int main(int argc, char **argv) {
@@ -2171,9 +2261,13 @@ if (-1 == bindingEdge) {
 printf("binding edge threshold is %d\n", threshBinding);
 
     /// find the outer vertical edge
-    //l_int32 outerEdge = FindOuterEdge(pixg, rotDir, &deltaV2, &threshOuter);
-    l_int32 outerEdge = RemoveBackgroundOuter(pixg, rotDir, topEdge, bottomEdge);
+    l_int32 outerEdge = FindOuterEdge(pixg, rotDir, &deltaV2, &threshOuter);
+printf("outer thresh is %d\n", threshOuter);
+    //l_int32 outerEdge = RemoveBackgroundOuter(pixg, rotDir, topEdge, bottomEdge);
    
+    //l_int32 outerEdge2 = FindOuterEdgeUsingCleanLines(pixg, rotDir, bindingEdge, outerEdge, topEdge, bottomEdge, threshBinding);
+
+
 
     BOX *box;
     //cropT = topEdge*8;
@@ -2257,6 +2351,8 @@ printf("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeig
 
     pixWrite("/home/rkumar/public_html/outBigT.jpg", pixBigT, IFF_JFIF_JPEG); 
 
+
+#if 0
     /// If skewMode is 'text', we have not run the edge detector. Do it now.
     if (kSkewModeText == skewMode) {
         debugstr("skewMode is text. Adjusting outer edge using SAD!\n");
@@ -2282,6 +2378,61 @@ printf("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeig
 
         pixDestroy(&pixt);
     }
+#endif 
+
+    {
+        PIX *pixt = pixRotate(pixg,
+                        deg2rad*angle,
+                        L_ROTATE_AREA_MAP,
+                        L_BRING_IN_BLACK,0,0);
+        pixWrite("/home/rkumar/public_html/outtmp.jpg", pixt, IFF_JFIF_JPEG); 
+
+        NUMA *hist = pixGetGrayHistogram(pixt, 1);
+        assert(NULL != hist);
+        assert(256 == numaGetCount(hist));
+        int numPels = pixGetWidth(pixt)*pixGetHeight(pixt);
+        printf("numPels = %d\n", numPels);
+        
+        
+        float acc=0;
+        int i;
+    
+        for (i=0; i<255; i++) {
+            int dummy;
+            numaGetIValue(hist, i, &dummy);
+            printf("hist: %d: %d\n", i, dummy);
+        }
+
+        float peak = 0;
+        int peaki;
+        for (i=255; i>=140; i--) {
+            float dummy;
+            numaGetFValue(hist, i, &dummy);
+            if (dummy > peak) {
+                printf("found new peak at %d with val %f\n", i, dummy);
+                peak = dummy;
+                peaki = i;
+            }
+        }
+        printf("hist peak at i=%d with val=%f\n", peaki, peak);
+        
+        l_int32 darkThresh = -1;
+        float threshLimit = peak * 0.10;
+        for (i=peaki-1; i>140; i--) {
+            float dummy;
+            numaGetFValue(hist, i, &dummy);
+            if (dummy<threshLimit) {
+                darkThresh = i;
+                break;
+            }
+        }
+        assert(-1 != darkThresh);
+        printf("darkThresh at i=%d\n", darkThresh);
+
+        l_int32 outerEdge2 = FindOuterEdgeUsingCleanLines(pixt, rotDir, bindingEdge, outerEdge, topEdge, bottomEdge, darkThresh);
+
+    }
+
 
     cropT = topEdge*8;
     cropB = bottomEdge*8;
@@ -2308,8 +2459,10 @@ printf("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeig
     l_uint32 left, right;
     l_uint32 threshL, threshR;
     if (1==rotDir) {
+        //left-side leaf
         left  = cropL;
-        right = cropL+2*limitLeft;
+        //right = cropL+2*limitLeft;
+        right = (l_uint32)((cropR-cropL)*0.10);
         threshL = threshBinding;
         threshR = threshBinding; //threshOuter; //binding thresh works better
     } else if (-1 == rotDir) {
@@ -2326,7 +2479,8 @@ printf("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeig
         left  = (int)(w*0.75);
         right = cropR;
     } else if (-1 == rotDir) {
-        left  = cropR-2*limitLeft;
+        //left  = cropR-2*limitLeft;
+        left  = (l_uint32)(cropR - (cropR-cropL)*0.10);
         right = cropR;
     } else {
         assert(0);
