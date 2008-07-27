@@ -2098,6 +2098,12 @@ l_int32 FindOuterEdgeUsingCleanLines_R(PIX     *pixg,
                 break;
             }
         }
+        
+        if (i>limitR) {
+            //we never hit the break above.
+            i = limitR;
+        }
+        
 
         storage[i-limitL]++;
         printf("j=%d, numWhitePels = %d\n", j, numWhitePels);
@@ -2171,8 +2177,13 @@ l_int32 FindOuterEdgeUsingCleanLines_L(PIX     *pixg,
             }
         }
 
+        if (i<limitL) {
+            //we never hit the break above.
+            i = limitL;
+        }
+
         storage[i-limitL]++;
-        printf("j=%d, numWhitePels = %d\n", j, numWhitePels);
+        printf("j=%d, numWhitePels = %d, i=%d, limitL=%d\n", j, numWhitePels, i, limitL);
     }
 
     for (i=limitL; i<=limitR; i++) {
@@ -2264,8 +2275,8 @@ int main(int argc, char **argv) {
 
     pixg = pixConvertRGBToGray (pixd, 0.30, 0.60, 0.10);
     debugstr("Converted to gray\n");
-    pixWrite("/home/rkumar/public_html/outgray.jpg", pixg, IFF_JFIF_JPEG); 
-    pixWrite("/home/rkumar/public_html/out.jpg", pixd, IFF_JFIF_JPEG); 
+    //pixWrite("/home/rkumar/public_html/outgray.jpg", pixg, IFF_JFIF_JPEG); 
+    pixWrite("/tmp/home/rkumar/out.jpg", pixd, IFF_JFIF_JPEG); 
 
     #if DEBUGMOV
     {
@@ -2386,7 +2397,7 @@ printf("outer thresh is %d\n", threshOuter);
     PIX *pixBigC = pixClipRectangle(pixBigR, box, NULL);
 printf("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeight(pixBigC));
     PIX *pixBigB = pixThresholdToBinary (pixBigC, threshBinding);    
-    pixWrite("/home/rkumar/public_html/outbin.png", pixBigB, IFF_PNG); 
+    //pixWrite("/home/rkumar/public_html/outbin.png", pixBigB, IFF_PNG); 
 
     l_float32    angle, conf, textAngle;
 
@@ -2425,7 +2436,7 @@ printf("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeig
                     L_ROTATE_AREA_MAP,
                     L_BRING_IN_BLACK,0,0);
 
-    pixWrite("/home/rkumar/public_html/outBigT.jpg", pixBigT, IFF_JFIF_JPEG); 
+    //pixWrite("/home/rkumar/public_html/outBigT.jpg", pixBigT, IFF_JFIF_JPEG); 
 
 
 #if 0
@@ -2461,7 +2472,7 @@ printf("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeig
                         deg2rad*angle,
                         L_ROTATE_AREA_MAP,
                         L_BRING_IN_BLACK,0,0);
-        pixWrite("/home/rkumar/public_html/outtmp.jpg", pixt, IFF_JFIF_JPEG); 
+        //pixWrite("/home/rkumar/public_html/outtmp.jpg", pixt, IFF_JFIF_JPEG); 
 
         //NUMA *hist = pixGetGrayHistogram(pixt, 1);
         NUMA *hist = pixGetGrayHistogram(pixBigC, 1);
@@ -2495,7 +2506,8 @@ printf("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeig
         printf("hist peak at i=%d with val=%f\n", peaki, peak);
         
         l_int32 darkThresh = -1;
-        float threshLimit = peak * 0.05;
+        float threshLimit = peak * 0.1;
+        printf("thresh limit = %f\n", threshLimit);
         for (i=peaki-1; i>0; i--) {
             float dummy;
             numaGetFValue(hist, i, &dummy);
@@ -2586,7 +2598,7 @@ printf("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeig
                     L_BRING_IN_BLACK,0,0);
 
     pixRenderBoxArb(pixFinalR, boxCrop, 1, 255, 0, 0);
-    pixWrite("/home/rkumar/public_html/outbox.jpg", pixFinalR, IFF_JFIF_JPEG); 
+    pixWrite("/tmp/home/rkumar/outbox.jpg", pixFinalR, IFF_JFIF_JPEG); 
 
     PIX *pixFinalR2 = pixRotate(pixd,
                     deg2rad*angle,
@@ -2594,7 +2606,7 @@ printf("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeig
                     L_BRING_IN_BLACK,0,0);
 
     PIX *pixFinalC = pixClipRectangle(pixFinalR2, boxCrop, NULL);
-    pixWrite("/home/rkumar/public_html/outcrop.jpg", pixFinalC, IFF_JFIF_JPEG); 
+    pixWrite("/tmp/home/rkumar/outcrop.jpg", pixFinalC, IFF_JFIF_JPEG); 
 
     /// cleanup
     pixDestroy(&pixg);
