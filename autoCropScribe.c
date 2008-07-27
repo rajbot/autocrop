@@ -2091,7 +2091,7 @@ l_int32 FindOuterEdgeUsingCleanLines_R(PIX     *pixg,
         for (i=limitL; i<=limitR; i++) {
             l_int32 retval = pixGetPixel(pixg, i, j, &a);
             assert(0 == retval);
-            if (i == limitL) printf("j=%d, i=%d, a=%d\n", j, i, a);    
+            //if (i == limitL) printf("j=%d, i=%d, a=%d\n", j, i, a);    
             if (a>thresh) {
                 numWhitePels++;
             } else {
@@ -2100,13 +2100,13 @@ l_int32 FindOuterEdgeUsingCleanLines_R(PIX     *pixg,
         }
 
         storage[i-limitL]++;
-        printf("j=%d, numBlackPels = %d\n", j, numWhitePels);
+        printf("j=%d, numWhitePels = %d\n", j, numWhitePels);
     }
 
-   for (i=limitL; i<=limitR; i++) {
+    for (i=limitL; i<=limitR; i++) {
         printf("storage %d: %d\n", i, storage[i-limitL]);
     }
- 
+
 
     l_int32 longestLine = 0;
     for (i=limitL; i<=limitR; i++) {
@@ -2114,7 +2114,7 @@ l_int32 FindOuterEdgeUsingCleanLines_R(PIX     *pixg,
             longestLine = i;
         }
     }
-    printf("longest clean line is %d with count=%d\n", longestLine, storage[longestLine]);
+    printf("longest clean line is %d with count=%d\n", longestLine, storage[longestLine-limitL]);
     
     l_int32 peak = storage[longestLine-limitL];
     l_int32 peaki = longestLine;
@@ -2128,6 +2128,80 @@ l_int32 FindOuterEdgeUsingCleanLines_R(PIX     *pixg,
     printf("peak i within 5%% of longest line at %d with peak=%d\n", peaki, peak);
 
     free(storage);
+
+    return peaki;
+
+}
+
+
+/// FindOuterEdgeUsingCleanLines_L()
+///____________________________________________________________________________
+
+l_int32 FindOuterEdgeUsingCleanLines_L(PIX     *pixg,
+                                       l_int32 edgeBinding,
+                                       l_int32 edgeOuter,
+                                       l_int32 edgeTop,
+                                       l_int32 edgeBottom,
+                                       l_uint32 thresh)
+{
+    ///This is a left-hand leaf. The binding is on the right side.
+
+    l_uint32 w = pixGetWidth( pixg );
+    l_uint32 h = pixGetHeight( pixg );
+    l_int32  box20 = (l_int32)((edgeBinding-edgeOuter) * 0.20);
+
+    l_int32 limitL = max(0, edgeOuter-10);
+    l_int32 limitR = edgeBinding - box20;
+
+    l_int32 *storage = (l_int32 *)calloc((limitR-limitL+1), sizeof (l_int32));
+
+    l_int32 i, j;
+    l_uint32 a;
+
+    for (j=edgeTop; j<=edgeBottom; j++) {
+        l_int32 numWhitePels = 0;
+        for (i=limitR; i>=limitL; i--) {
+            l_int32 retval = pixGetPixel(pixg, i, j, &a);
+            assert(0 == retval);
+            //if (i == limitR) printf("j=%d, i=%d, a=%d\n", j, i, a);    
+            if (a>thresh) {
+                numWhitePels++;
+            } else {
+                break;
+            }
+        }
+
+        storage[i-limitL]++;
+        printf("j=%d, numWhitePels = %d\n", j, numWhitePels);
+    }
+
+    for (i=limitL; i<=limitR; i++) {
+        printf("storage %d: %d\n", i, storage[i-limitL]);
+    }
+
+
+    l_int32 longestLine = 0;
+    for (i=limitR; i>=limitL; i--) {
+        if (storage[i-limitL]>0) {
+            longestLine = i;
+        }
+    }
+    printf("longest clean line is %d with count=%d\n", longestLine, storage[longestLine-limitL]);
+    
+    l_int32 peak = storage[longestLine-limitL];
+    l_int32 peaki = longestLine;
+    for (i=longestLine+1; i<longestLine+(l_int32)((edgeBinding-longestLine)*0.05); i++) {
+        if (storage[i-limitL]>peak) {
+            peaki = i;
+            peak = storage[i-limitL];
+        }
+    }
+    
+    printf("peak i within 5%% of longest line at %d with peak=%d\n", peaki, peak);
+
+    free(storage);
+
+    return peaki;
 
 }
 
@@ -2145,6 +2219,8 @@ l_int32 FindOuterEdgeUsingCleanLines(PIX     *pixg,
     l_int32 newEdgeOuter;
     if (1 == rotDir) {
         newEdgeOuter = FindOuterEdgeUsingCleanLines_R(pixg, edgeBinding, edgeOuter, edgeTop, edgeBottom, thresh);
+    } else if (-1 == rotDir) {
+        newEdgeOuter = FindOuterEdgeUsingCleanLines_L(pixg, edgeBinding, edgeOuter, edgeTop, edgeBottom, thresh);
     } else {
         assert(0);
     }
@@ -2387,7 +2463,8 @@ printf("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeig
                         L_BRING_IN_BLACK,0,0);
         pixWrite("/home/rkumar/public_html/outtmp.jpg", pixt, IFF_JFIF_JPEG); 
 
-        NUMA *hist = pixGetGrayHistogram(pixt, 1);
+        //NUMA *hist = pixGetGrayHistogram(pixt, 1);
+        NUMA *hist = pixGetGrayHistogram(pixBigC, 1);
         assert(NULL != hist);
         assert(256 == numaGetCount(hist));
         int numPels = pixGetWidth(pixt)*pixGetHeight(pixt);
@@ -2405,7 +2482,8 @@ printf("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeig
 
         float peak = 0;
         int peaki;
-        for (i=255; i>=140; i--) {
+        //for (i=255; i>=140; i--) {
+        for (i=255; i>=0; i--) {
             float dummy;
             numaGetFValue(hist, i, &dummy);
             if (dummy > peak) {
@@ -2418,7 +2496,7 @@ printf("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeig
         
         l_int32 darkThresh = -1;
         float threshLimit = peak * 0.10;
-        for (i=peaki-1; i>140; i--) {
+        for (i=peaki-1; i>0; i--) {
             float dummy;
             numaGetFValue(hist, i, &dummy);
             if (dummy<threshLimit) {
@@ -2430,7 +2508,9 @@ printf("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeig
         printf("darkThresh at i=%d\n", darkThresh);
 
         l_int32 outerEdge2 = FindOuterEdgeUsingCleanLines(pixt, rotDir, bindingEdge, outerEdge, topEdge, bottomEdge, darkThresh);
-
+        //l_int32 outerEdge2 = FindOuterEdgeUsingCleanLines(pixBigT, rotDir, bindingEdge*8, outerEdge*8, topEdge*8, bottomEdge*8, darkThresh);
+        //printf("outerEdge = %d, outerEdge2 = %d\n", outerEdge, outerEdge2);
+        outerEdge = outerEdge2;
     }
 
 
