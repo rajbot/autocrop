@@ -2495,7 +2495,7 @@ printf("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeig
         printf("hist peak at i=%d with val=%f\n", peaki, peak);
         
         l_int32 darkThresh = -1;
-        float threshLimit = peak * 0.10;
+        float threshLimit = peak * 0.05;
         for (i=peaki-1; i>0; i--) {
             float dummy;
             numaGetFValue(hist, i, &dummy);
