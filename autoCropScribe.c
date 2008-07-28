@@ -1621,7 +1621,7 @@ l_uint32 RemoveBlackPelsBlockRowBot(PIX *pixg, l_uint32 startj, l_uint32 endj, l
 
 /// RemoveBackgroundTop()
 ///____________________________________________________________________________
-l_int32 RemoveBackgroundTop(PIX *pixg, l_int32 rotDir) {
+l_int32 RemoveBackgroundTop(PIX *pixg, l_int32 rotDir, l_int32 initialBlackThresh) {
     
 
     l_uint32 w = pixGetWidth(pixg);
@@ -1643,7 +1643,7 @@ l_int32 RemoveBackgroundTop(PIX *pixg, l_int32 rotDir) {
 
     limitB = l_uint32(0.80*h);
     printf("T: limitL=%d, limitR=%d, limitB=%d\n", limitL, limitR, limitB);
-    l_int32 initialBlackThresh = 140;
+    //l_int32 initialBlackThresh = 140;
     l_uint32 numBlackRequired   = (l_uint32)(0.90*(limitR-limitL));
 
     l_uint32 i, j;
@@ -1671,7 +1671,7 @@ l_int32 RemoveBackgroundTop(PIX *pixg, l_int32 rotDir) {
 
 /// RemoveBackgroundBottom()
 ///____________________________________________________________________________
-l_int32 RemoveBackgroundBottom(PIX *pixg, l_int32 rotDir) {
+l_int32 RemoveBackgroundBottom(PIX *pixg, l_int32 rotDir, l_int32 initialBlackThresh) {
     
 
     l_uint32 w = pixGetWidth(pixg);
@@ -1694,7 +1694,7 @@ l_int32 RemoveBackgroundBottom(PIX *pixg, l_int32 rotDir) {
     limitT = l_uint32(0.20*h);
     printf("B: limitL=%d, limitR=%d, limitT=%d\n", limitL, limitR, limitT);
 
-    l_int32 initialBlackThresh = 140;
+    //l_int32 initialBlackThresh = 140;
     l_uint32 numBlackRequired   = (l_uint32)(0.90*(limitR-limitL));
 
     l_int32 i, j;
@@ -1783,7 +1783,7 @@ l_int32 RemoveBackgroundOuter_R(PIX *pixg, l_int32 iStart, l_int32 iEnd, l_int32
 
 /// RemoveBackgroundOuter()
 ///____________________________________________________________________________
-l_int32 RemoveBackgroundOuter(PIX *pixg, l_int32 rotDir, l_uint32 topEdge, l_uint32 bottomEdge) {
+l_int32 RemoveBackgroundOuter(PIX *pixg, l_int32 rotDir, l_uint32 topEdge, l_uint32 bottomEdge, l_int32 initialBlackThresh) {
     
 
     l_uint32 w = pixGetWidth(pixg);
@@ -1800,7 +1800,7 @@ l_int32 RemoveBackgroundOuter(PIX *pixg, l_int32 rotDir, l_uint32 topEdge, l_uin
     l_int32 iStart, iEnd;
 
 
-    l_int32 initialBlackThresh = 140;
+    //l_int32 initialBlackThresh = 140;
     l_uint32 numBlackRequired   = (l_uint32)(0.90*(limitB-limitT));
 
 
@@ -2135,8 +2135,12 @@ l_int32 FindOuterEdgeUsingCleanLines_R(PIX     *pixg,
 
     free(storage);
 
-    return peaki;
-
+    if (0 == (limitL-peaki)) {
+        printf("couldn't find a clean line with length > 0. fail!\n");
+        return edgeOuter;           
+    } else {
+        return peaki;
+    }
 }
 
 
@@ -2183,7 +2187,7 @@ l_int32 FindOuterEdgeUsingCleanLines_L(PIX     *pixg,
         }
 
         storage[i-limitL]++;
-        printf("j=%d, numWhitePels = %d, i=%d, limitL=%d\n", j, numWhitePels, i, limitL);
+        printf("j=%d, numWhitePels = %d, i=%d, limitL=%d, limitR=%d\n", j, numWhitePels, i, limitL, limitR);
     }
 
     for (i=limitL; i<=limitR; i++) {
@@ -2201,7 +2205,9 @@ l_int32 FindOuterEdgeUsingCleanLines_L(PIX     *pixg,
     
     l_int32 peak = storage[longestLine-limitL];
     l_int32 peaki = longestLine;
-    for (i=longestLine+1; i<longestLine+(l_int32)((edgeBinding-longestLine)*0.05); i++) {
+
+    l_int32 endi = min(longestLine+(l_int32)((edgeBinding-longestLine)*0.05), limitR);
+    for (i=longestLine+1; i<endi; i++) {
         if (storage[i-limitL]>peak) {
             peaki = i;
             peak = storage[i-limitL];
@@ -2212,7 +2218,12 @@ l_int32 FindOuterEdgeUsingCleanLines_L(PIX     *pixg,
 
     free(storage);
 
-    return peaki;
+    if (0 == (limitR-peaki)) {
+        printf("couldn't find a clean line with length > 0. fail!\n");
+        return edgeOuter;           
+    } else {
+        return peaki;
+    }
 
 }
 
@@ -2239,6 +2250,58 @@ l_int32 FindOuterEdgeUsingCleanLines(PIX     *pixg,
     return newEdgeOuter;
 }
 
+/// CalculateTreshInitial ()
+///____________________________________________________________________________
+
+l_int32 CalculateTreshInitial(PIX *pixg) {
+        NUMA *hist = pixGetGrayHistogram(pixg, 1);
+        assert(NULL != hist);
+        assert(256 == numaGetCount(hist));
+        int i;
+    
+        for (i=0; i<255; i++) {
+            int dummy;
+            numaGetIValue(hist, i, &dummy);
+            printf("init hist: %d: %d\n", i, dummy);
+        }
+        
+        float peak = 0;
+        int peaki;
+        for (i=255; i>=0; i--) {
+            float dummy;
+            numaGetFValue(hist, i, &dummy);
+            if (dummy > peak) {
+                peak = dummy;
+                peaki = i;
+            }
+        }
+        printf("hist peak at i=%d with val=%f\n", peaki, peak);
+        
+        l_int32 thresh = -1;
+        float threshLimit = peak * 0.1;
+        printf("thresh limit = %f\n", threshLimit);
+        for (i=peaki-1; i>0; i--) {
+            float dummy;
+            numaGetFValue(hist, i, &dummy);
+            if (dummy<threshLimit) {
+                thresh = i;
+                break;
+            }
+        }
+        
+        if (-1 == thresh) {
+            thresh = peaki >>1;
+        }
+        
+        if (0 == thresh) {
+            //this could be a plain black img.
+            thresh = 140;
+        }
+
+        printf("init thresh at i=%d\n", thresh);
+        return thresh;
+}
+    
 /// main()
 ///____________________________________________________________________________
 int main(int argc, char **argv) {
@@ -2321,9 +2384,12 @@ l_int32 useSingleChannelForGray = 0;
         pixg = pixConvertRGBToGray (pixd, 0.30, 0.60, 0.10);
     }
 
+    pixWrite("/tmp/home/rkumar/out.jpg", pixd, IFF_JFIF_JPEG); 
+
+    l_int32 threshInitial = CalculateTreshInitial(pixg);
+
     debugstr("Converted to gray\n");
     pixWrite("/home/rkumar/public_html/outgray.jpg", pixg, IFF_JFIF_JPEG); 
-    pixWrite("/tmp/home/rkumar/out.jpg", pixd, IFF_JFIF_JPEG); 
 
     #if DEBUGMOV
     {
@@ -2378,11 +2444,11 @@ l_int32 useSingleChannelForGray = 0;
 */
     /// find top edge
     //l_int32 topEdge = FindHorizontalEdge(pixg, rotDir, bindingEdge, 0, &deltaT, &threshT);
-    l_int32 topEdge = RemoveBackgroundTop(pixg, rotDir);
+    l_int32 topEdge = RemoveBackgroundTop(pixg, rotDir, threshInitial);
 
     /// find bottom edge
     //l_int32 bottomEdge = FindHorizontalEdge(pixg, rotDir, bindingEdge, 1, &deltaB, &threshB);
-    l_int32 bottomEdge = RemoveBackgroundBottom(pixg, rotDir);
+    l_int32 bottomEdge = RemoveBackgroundBottom(pixg, rotDir, threshInitial);
 
     assert(bottomEdge>topEdge);
 
@@ -2395,9 +2461,9 @@ if (-1 == bindingEdge) {
 printf("binding edge threshold is %d\n", threshBinding);
 
     /// find the outer vertical edge
-    l_int32 outerEdge = FindOuterEdge(pixg, rotDir, &deltaV2, &threshOuter);
-printf("outer thresh is %d\n", threshOuter);
-    //l_int32 outerEdge = RemoveBackgroundOuter(pixg, rotDir, topEdge, bottomEdge);
+//    l_int32 outerEdge = FindOuterEdge(pixg, rotDir, &deltaV2, &threshOuter);
+//printf("outer thresh is %d\n", threshOuter);
+    l_int32 outerEdge = RemoveBackgroundOuter(pixg, rotDir, topEdge, bottomEdge, threshInitial);
    
     //l_int32 outerEdge2 = FindOuterEdgeUsingCleanLines(pixg, rotDir, bindingEdge, outerEdge, topEdge, bottomEdge, threshBinding);
 
@@ -2594,7 +2660,7 @@ printf("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeig
     }
 
     printf("after stage one: cL=%d, cR=%d, cT=%d, cB=%d\n", cropL, cropR, cropT, cropB);
-/*
+
     printf("finding clean lines...\n");
     //AdjustCropBox(pixBigT, &cropL, &cropR, &cropT, &cropB, 8*5);
     //AdjustCropBoxByVariance(pixBigT, &cropL, &cropR, &cropT, &cropB, 3, angle);
@@ -2645,7 +2711,7 @@ printf("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeig
     //pixWrite("/home/rkumar/public_html/outbig.jpg", pixBigT, IFF_JFIF_JPEG); 
     //PIX *pixTmp = pixThresholdToBinary (pixBigT, threshBinding);    
     //pixWrite("/home/rkumar/public_html/outbin.png", pixTmp, IFF_PNG); 
-*/
+
     printf("adjusted: cL=%d, cR=%d, cT=%d, cB=%d\n", cropL, cropR, cropT, cropB);
     BOX *boxCrop = boxCreate(cropL/8, cropT/8, (cropR-cropL)/8, (cropB-cropT)/8);
 
