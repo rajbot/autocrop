@@ -13,8 +13,9 @@ import xml.etree.ElementTree as ET
 files = glob.glob("*.jpg")
 assert len(files) > 0
 
+outDir      = '/var/www/autocrop/' + os.path.basename(os.getcwd()).split('_')[0]
 #outDir     = '/home/rkumar/public_html/autocrop/picturesquenewen00swee'
-outDir     = '/home/rkumar/public_html/autocrop/nouveautraitde00bout'
+#outDir     = '/home/rkumar/public_html/autocrop/nouveautraitde00bout'
 #outDir     = '/home/rkumar/public_html/autocrop/morritosentrem00alva'
 #outDir     = '/home/rkumar/public_html/autocrop/appendixtotheolo00painrich'
 proxyDir   = 'proxy'
@@ -52,8 +53,8 @@ for file in sorted(files):
         leafNum+=1;
         rotateDir = 1;
         continue;
-    
-    cmd = "~/gnubook/autoCropScribe %s %d" % (file, rotateDir)
+        
+    cmd = "/home/scribe/petamnt/gnubook/autoCropScribe %s %d" % (file, rotateDir)
     print cmd
     retval,output = commands.getstatusoutput(cmd)
     assert (0 == retval)
@@ -74,14 +75,18 @@ for file in sorted(files):
     assert(None != m)
     bindingSkew = float(m.group(1))
 
+    m=re.search('grayMode: ([\w-]+)', output)
+    grayMode = m.group(1)
+    print "grayMode is " + grayMode
+
     
-    retval = commands.getstatusoutput('cp ~/public_html/out.jpg "%s/%s/%d.jpg"'%(outDir, proxyDir,leafNum))[0]
+    retval = commands.getstatusoutput('cp /tmp/home/rkumar/out.jpg "%s/%s/%d.jpg"'%(outDir, proxyDir,leafNum))[0]
     assert (0 == retval)    
 
-    retval = commands.getstatusoutput('cp ~/public_html/outbox.jpg "%s/%s/%d.jpg"'%(outDir, skewedDir,leafNum))[0]
+    retval = commands.getstatusoutput('cp /tmp/home/rkumar/outbox.jpg "%s/%s/%d.jpg"'%(outDir, skewedDir,leafNum))[0]
     assert (0 == retval)    
 
-    retval = commands.getstatusoutput('cp ~/public_html/outcrop.jpg "%s/%s/%d.jpg"'%(outDir, croppedDir,leafNum))[0]
+    retval = commands.getstatusoutput('cp /tmp/home/rkumar/outcrop.jpg "%s/%s/%d.jpg"'%(outDir, croppedDir,leafNum))[0]
     assert (0 == retval)    
     
     leaf=leafs[leafNum]
@@ -94,10 +99,13 @@ for file in sorted(files):
     croph = int(leaf.findtext('cropBox/h'))
     if "false" == skewAct:
         skew = 0.0
+
+    rotateDegree = int(leaf.findtext('rotateDegree'))
+    assert((-90 == rotateDegree) or (90 == rotateDegree))
     
     #print "crop x,y,w,h = %d,%d %d,%d"%(cropx, cropy, cropw, croph)
     #print '/home/rkumar/gnubook/tests/cropAndSkewProxy %s "%s/%s/%d.jpg" %d %f %d %d %d %d'%(file, outDir, humanDir,leafNum, rotateDir, skew, cropx, cropy, cropw, croph)
-    retval = commands.getstatusoutput('/home/rkumar/gnubook/tests/cropAndSkewProxy %s "%s/%s/%d.jpg" %d %f %d %d %d %d'%(file, outDir, humanDir,leafNum, rotateDir, skew, cropx/8, cropy/8, cropw/8, croph/8))[0]
+    retval = commands.getstatusoutput('/home/scribe/petamnt/gnubook/tests/cropAndSkewProxy %s "%s/%s/%d.jpg" %d %f %d %d %d %d'%(file, outDir, humanDir,leafNum, rotateDir, skew, cropx/8, cropy/8, cropw/8, croph/8))[0]
     assert (0 == retval)    
 
     f.write('<tr>\n')
@@ -116,6 +124,7 @@ for file in sorted(files):
     f.write("<br>skewMode: %s"%(skewMode))
     f.write("<br>textSkew: %0.2f, textScore: %0.2f"%(textSkew, textScore))
     f.write("<br>bindingSkew: %0.2f"%(bindingSkew))
+    f.write("<br>grayMode: %s"%(grayMode))
     f.write('</td>\n')
 
     f.write('<td valign=top>'),
