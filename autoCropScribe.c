@@ -750,12 +750,26 @@ l_uint32 FindBindingEdge2(PIX      *pixg,
     // Find the strong edge, which should be one of the two sides of the binding
     // Rotate the image to maximize SAD
 
-    l_int32    bindingEdge = -1;
-    l_uint32   bindingEdgeDiff = 0;
-    float      bindingDelta;
+    l_uint32 left, right;
+    if (1 == rotDir) {
+        left  = 0;
+        right = width10;
+    } else {
+        left  = w - width10;
+        right = w - 1;
+    }
+    
+    l_int32    bindingEdge;// = -1;
+    l_uint32   bindingEdgeDiff;// = 0;
+    float      bindingDelta = 0.0;
+    CalculateSADcol(pixg, left, right, jTop, jBot, &bindingEdge, &bindingEdgeDiff);
+    
     float delta;
     //0.05 degrees is a good increment for the final search
-    for (delta=-1.0; delta<=1.0; delta+=0.2) {    
+    for (delta=-1.0; delta<=1.0; delta+=0.05) {
+    
+        if ((delta>-0.01) && (delta<0.01)) { continue;}
+        
         PIX *pixt = pixRotate(pixg,
                         deg2rad*delta,
                         L_ROTATE_AREA_MAP,
@@ -769,7 +783,7 @@ l_uint32 FindBindingEdge2(PIX      *pixg,
         debugmov.angle = delta;
         #endif //DEBUGMOV
 
-        l_uint32 left, right;
+        //l_uint32 left, right;
         if (1 == rotDir) {
             left  = limitLeft;
             right = width10;
@@ -2554,7 +2568,7 @@ printf("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeig
                     deg2rad*angle,
                     L_ROTATE_AREA_MAP,
                     L_BRING_IN_BLACK,0,0);
-
+    //pixWrite("/home/rkumar/public_html/outBigR2.jpg", pixBigR2, IFF_JFIF_JPEG); 
     //pixWrite("/home/rkumar/public_html/outBigT.jpg", pixBigT, IFF_JFIF_JPEG); 
 
 
