@@ -724,7 +724,7 @@ l_uint32 FindBindingEdge(PIX      *pixg,
 
 /// FindBindingEdge2()
 ///____________________________________________________________________________
-l_uint32 FindBindingEdge2(PIX      *pixg,
+l_int32 FindBindingEdge2(PIX      *pixg,
                          l_int32  rotDir,
                          l_uint32 topEdge,
                          l_uint32 bottomEdge,
@@ -847,13 +847,15 @@ l_uint32 FindBindingEdge2(PIX      *pixg,
     
     *thesh = (l_uint32)threshold;
 
-    l_uint32 width3p = (l_uint32)(w * 0.03);
-    l_uint32 rightEdge;
+    l_int32 width3p = (l_int32)(w * 0.03);
+    l_int32 rightEdge, leftEdge;
     l_uint32 numBlackLines = 0;
     
     if (bindingLumaA > bindingLumaB) { //found left edge
-        l_uint32 i;
-        l_uint32 rightLimit = bindingEdge+width3p;
+        l_int32 i;
+        l_int32 rightLimit = bindingEdge+width3p;
+        rightEdge = bindingEdge; //init this something, in case we never break;
+        leftEdge  = bindingEdge;
         for (i=bindingEdge+1; i<rightLimit; i++) {
             double lumaAvg = CalculateAvgCol(pixt, i, jTop, jBot);
             printf("i=%d, avg=%f\n", i, lumaAvg);
@@ -864,12 +866,16 @@ l_uint32 FindBindingEdge2(PIX      *pixg,
                 break;
             }
         }
+        
+        
         printf("numBlackLines = %d\n", numBlackLines);
     
     } else if (bindingLumaA < bindingLumaB) { //found right edge
-        l_uint32 i;
-        l_uint32 leftLimit = bindingEdge-width3p;
+        l_int32 i;
+        l_int32 leftLimit = bindingEdge-width3p;
         rightEdge = bindingEdge;
+        leftEdge  = bindingEdge; //init this something, in case we never break;
+        
         if (leftLimit<0) leftLimit = 0;
         printf("found right edge of gutter, leftLimit=%d, rightLimit=%d\n", leftLimit, bindingEdge-1);
         for (i=bindingEdge-1; i>leftLimit; i--) {
@@ -878,6 +884,7 @@ l_uint32 FindBindingEdge2(PIX      *pixg,
             if (lumaAvg<threshold) {
                 numBlackLines++;
             } else {
+                leftEdge = i-1;
                 break;
             }
         }
@@ -911,9 +918,15 @@ l_uint32 FindBindingEdge2(PIX      *pixg,
     printf("%d: numBlack=%d\n", i, numBlackPels);
     */
     ///end temp code
-
+printf("rightEdge = %d, bindingEdge = %d\n", rightEdge, bindingEdge);
     if ((numBlackLines >=1) && (numBlackLines<width3p)) {
-        return rightEdge;
+        if (1 == rotDir) {
+            return rightEdge;
+        } else if (-1 == rotDir) {
+            return leftEdge;
+        } else {
+            assert(0);
+        }
     } else {
         debugstr("COULD NOT FIND BINDING, using strongest edge!\n");
         return bindingEdge;
