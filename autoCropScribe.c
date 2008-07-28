@@ -2273,9 +2273,56 @@ int main(int argc, char **argv) {
         pixd = pixs;
     }
 
-    pixg = pixConvertRGBToGray (pixd, 0.30, 0.60, 0.10);
+l_int32 maxchannel;
+l_int32 useSingleChannelForGray = 0;
+{
+    NUMA *histR, *histG, *histB;
+    l_int32 ret = pixGetColorHistogram(pixd, 1, &histR, &histG, &histB);
+    assert(0 == ret);
+    
+    l_float32 maxval;
+    l_int32   maxloc[3];
+    
+    ret = numaGetMax(histR, &maxval, &maxloc[0]);
+    assert(0 == ret);
+    
+    printf("red peak at %d with val %f\n", maxloc[0], maxval);
+    
+    ret = numaGetMax(histG, &maxval, &maxloc[1]);
+    assert(0 == ret);
+    printf("green peak at %d with val %f\n", maxloc[1], maxval);
+    
+    ret = numaGetMax(histB, &maxval, &maxloc[2]);
+    assert(0 == ret);
+    printf("blue peak at %d with val %f\n", maxloc[2], maxval);
+    
+    l_int32 i;
+    l_int32 max=0, secondmax=0;
+    for (i=0; i<3; i++) {
+        if (maxloc[i] > max) {
+            max = maxloc[i];
+            maxchannel = i;
+        } else if (maxloc[i] > secondmax) {
+            secondmax = maxloc[i];
+        }
+    }
+    printf("max = %d, secondmax=%d\n", max, secondmax);
+    if (max > (secondmax*2)) {
+        printf("grayMode: SINGLE-channel, channel=%d\n", maxchannel);
+        useSingleChannelForGray = 1;
+    } else {
+        printf("grayMode: three-channel\n");    
+    }
+}
+
+    if (useSingleChannelForGray) {
+        pixg = pixConvertRGBToGray (pixd, (0==maxchannel), (1==maxchannel), (2==maxchannel));
+    } else {
+        pixg = pixConvertRGBToGray (pixd, 0.30, 0.60, 0.10);
+    }
+
     debugstr("Converted to gray\n");
-    //pixWrite("/home/rkumar/public_html/outgray.jpg", pixg, IFF_JFIF_JPEG); 
+    pixWrite("/home/rkumar/public_html/outgray.jpg", pixg, IFF_JFIF_JPEG); 
     pixWrite("/tmp/home/rkumar/out.jpg", pixd, IFF_JFIF_JPEG); 
 
     #if DEBUGMOV
@@ -2391,7 +2438,13 @@ printf("outer thresh is %d\n", threshOuter);
     }
     printf("opened large jpg in %7.3f sec\n", stopTimer());
 
-    PIX *pixBigG = pixConvertRGBToGray (pixBig, 0.30, 0.60, 0.10);
+    PIX *pixBigG;
+    if (useSingleChannelForGray) {
+        pixBigG = pixConvertRGBToGray (pixBig, (0==maxchannel), (1==maxchannel), (2==maxchannel));
+    } else {
+        pixBigG = pixConvertRGBToGray (pixBig, 0.30, 0.60, 0.10);
+    }
+
     PIX *pixBigR = pixRotate90(pixBigG, rotDir);
     //BOX *box     = boxCreate(cropL, cropT, cropR-cropL, cropB-cropT);
     PIX *pixBigC = pixClipRectangle(pixBigR, box, NULL);
@@ -2516,13 +2569,15 @@ printf("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeig
                 break;
             }
         }
-        assert(-1 != darkThresh);
+        //assert(-1 != darkThresh); //this is -1 on all-black pages
         printf("darkThresh at i=%d\n", darkThresh);
 
-        l_int32 outerEdge2 = FindOuterEdgeUsingCleanLines(pixt, rotDir, bindingEdge, outerEdge, topEdge, bottomEdge, darkThresh);
-        //l_int32 outerEdge2 = FindOuterEdgeUsingCleanLines(pixBigT, rotDir, bindingEdge*8, outerEdge*8, topEdge*8, bottomEdge*8, darkThresh);
-        //printf("outerEdge = %d, outerEdge2 = %d\n", outerEdge, outerEdge2);
-        outerEdge = outerEdge2;
+        if (-1 != darkThresh) {
+            l_int32 outerEdge2 = FindOuterEdgeUsingCleanLines(pixt, rotDir, bindingEdge, outerEdge, topEdge, bottomEdge, darkThresh);
+            //l_int32 outerEdge2 = FindOuterEdgeUsingCleanLines(pixBigT, rotDir, bindingEdge*8, outerEdge*8, topEdge*8, bottomEdge*8, darkThresh);
+            //printf("outerEdge = %d, outerEdge2 = %d\n", outerEdge, outerEdge2);
+            outerEdge = outerEdge2;
+        }
     }
 
 
@@ -2538,6 +2593,8 @@ printf("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeig
         assert(0);
     }
 
+    printf("after stage one: cL=%d, cR=%d, cT=%d, cB=%d\n", cropL, cropR, cropT, cropB);
+/*
     printf("finding clean lines...\n");
     //AdjustCropBox(pixBigT, &cropL, &cropR, &cropT, &cropB, 8*5);
     //AdjustCropBoxByVariance(pixBigT, &cropL, &cropR, &cropT, &cropB, 3, angle);
@@ -2588,7 +2645,7 @@ printf("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeig
     //pixWrite("/home/rkumar/public_html/outbig.jpg", pixBigT, IFF_JFIF_JPEG); 
     //PIX *pixTmp = pixThresholdToBinary (pixBigT, threshBinding);    
     //pixWrite("/home/rkumar/public_html/outbin.png", pixTmp, IFF_PNG); 
-
+*/
     printf("adjusted: cL=%d, cR=%d, cT=%d, cB=%d\n", cropL, cropR, cropT, cropB);
     BOX *boxCrop = boxCreate(cropL/8, cropT/8, (cropR-cropL)/8, (cropB-cropT)/8);
 
