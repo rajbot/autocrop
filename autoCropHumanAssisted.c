@@ -152,6 +152,8 @@ void FindBindingGap(PIX       *pixg,
     l_int32 darkThresh = CalculateTreshInitial(pixt);
     l_int32 topEdge    = RemoveBackgroundTop(pixt, rotDir, darkThresh);
     l_int32 bottomEdge = RemoveBackgroundBottom(pixt, rotDir, darkThresh);
+    printf("topEdge: %d\n", topEdge);
+    printf("bottomEdge: %d\n", bottomEdge);
     printf("topGap: %d\n", (cropY - topEdge) * 8);
     printf("bottomGap: %d\n", (bottomEdge - (cropY+cropH)) * 8);
 
@@ -232,6 +234,7 @@ printf("oldW = %d\n", oldW);
     if (1 == rotDir) {
         newX = bindingEdge + gapBinding;
     } else if (-1 == rotDir) {
+        printf("bindingEdge=%d, gapBinding=%d, oldW=%d\n", bindingEdge, gapBinding, oldW);
         newX = bindingEdge - gapBinding - oldW;    
     } else {
         assert(0);
@@ -239,11 +242,12 @@ printf("oldW = %d\n", oldW);
 
     l_int32 topEdge    = RemoveBackgroundTop(pixg, rotDir, darkThresh);
     l_int32 bottomEdge = RemoveBackgroundBottom(pixg, rotDir, darkThresh);
-    assert( (bottomEdge - topEdge) > oldH );
     
     printf("topEdge: %d\n", topEdge);
     printf("bottomEdge: %d\n", bottomEdge);
-    
+
+    assert( (bottomEdge - topEdge) > oldH );
+
     newH = oldH;
     newW = oldW;
 

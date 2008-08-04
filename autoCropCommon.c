@@ -414,7 +414,7 @@ l_int32 FindBindingEdge2(PIX      *pixg,
     printf("%d: numBlack=%d\n", i, numBlackPels);
     */
     ///end temp code
-printf("rightEdge = %d, bindingEdge = %d\n", rightEdge, bindingEdge);
+printf("rightEdge = %d, leftEdge = %d\n", rightEdge, leftEdge);
     if ((numBlackLines >=1) && (numBlackLines<width3p)) {
         if (1 == rotDir) {
             return rightEdge;
