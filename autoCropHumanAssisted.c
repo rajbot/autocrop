@@ -154,7 +154,7 @@ void FindBindingGap(PIX       *pixg,
     l_int32 bottomEdge = RemoveBackgroundBottom(pixt, rotDir, darkThresh);
     printf("topGap: %d\n", (cropY - topEdge) * 8);
     printf("bottomGap: %d\n", (bottomEdge - (cropY+cropH)) * 8);
-    
+
     pixDestroy(&pixt);
 }
 
@@ -168,7 +168,10 @@ void SkewAndCrop(PIX       *pixg,
                  l_int32   oldY,
                  l_int32   oldW, 
                  l_int32   oldH,
-                 l_int32   bindingGap)
+                 l_int32   gapBinding,
+                 l_int32   gapTop,
+                 l_int32   gapBottom,
+                 PIX       *pixOrig)
 {
 printf("oldW = %d\n", oldW);
     l_int32 boxW10 = (l_int32)(oldW * 0.10);
@@ -227,9 +230,9 @@ printf("oldW = %d\n", oldW);
     l_int32 newX, newY, newW, newH;
     
     if (1 == rotDir) {
-        newX = bindingEdge + bindingGap;
+        newX = bindingEdge + gapBinding;
     } else if (-1 == rotDir) {
-        newX = bindingEdge - bindingGap - oldW;    
+        newX = bindingEdge - gapBinding - oldW;    
     } else {
         assert(0);
     }
@@ -242,15 +245,44 @@ printf("oldW = %d\n", oldW);
     printf("bottomEdge: %d\n", bottomEdge);
     
     newH = oldH;
-    newY = topEdge + ((bottomEdge-topEdge) - newH) / 2;
-    
     newW = oldW;
+
+    assert(gapTop>0);
+    assert(gapBottom>0);
+
+    l_int32 errorTop = abs(oldY - (topEdge+gapTop));
+    l_int32 errorBottom = abs((oldY+oldH) - (bottomEdge - gapBottom));
+
+    //newY = topEdge + ((bottomEdge-topEdge) - newH) / 2;
+    if (errorTop<errorBottom) {
+        printf("using top edge for crop box adjustment. errorTop = %d, errorBottom=%d\n", errorTop, errorBottom);
+        newY = topEdge+gapTop;
+    } else {
+        printf("using bottom edge for crop box adjustment. errorTop = %d, errorBottom=%d\n", errorTop, errorBottom);
+        newY = bottomEdge - gapBottom - oldH;
+    }
+
     
     printf("cropX=%d\n", newX);
     printf("cropY=%d\n", newY);
     printf("cropW=%d\n", newW);
     printf("cropH=%d\n", newH);
     
+
+    #if 1   //for debugging
+    PIX *pix = pixScale(pixOrig, 0.125, 0.125);
+    
+    PIX *pixr = pixRotate(pix,
+                    deg2rad*skewAngle,
+                    L_ROTATE_AREA_MAP,
+                    L_BRING_IN_BLACK,0,0);    
+    BOX *boxOld = boxCreate(oldX/8, oldY/8, oldW/8, oldH/8);
+    BOX *boxNew = boxCreate(newX/8, newY/8, newW/8, newH/8);
+
+    pixRenderBoxArb(pixr, boxOld, 1, 255, 0, 0);
+    pixRenderBoxArb(pixr, boxNew, 1, 0, 255, 0);
+    pixWrite("/tmp/home/rkumar/outbox.jpg", pixr, IFF_JFIF_JPEG); 
+    #endif
 }
 
 
@@ -259,7 +291,7 @@ printf("oldW = %d\n", oldW);
 int main(int argc, char **argv) {
     static char  mainName[] = "autoCropHumanAssisted";
 
-    if ((argc != 8) && (argc != 9)) {
+    if ((argc != 8) && (argc != 11)) {
         exit(ERROR_INT(" Syntax:  autoCropHumanAssist filein.jpg rotateDirection angle cropX cropY cropW cropH [bindingGap]",
                          mainName, 1));
     }
@@ -307,8 +339,11 @@ int main(int argc, char **argv) {
     if (8 == argc) {
         FindBindingGap(pixg, rotDir, angle, cropX/8, cropY/8, cropW/8, cropH/8);
     } else {
-        l_int32 bindingGap = atoi(argv[8]);
-        SkewAndCrop(pixg, rotDir, angle, cropX, cropY, cropW, cropH, bindingGap);
+        l_int32 gapBinding = atoi(argv[8]);
+        l_int32 gapTop     = atoi(argv[9]);
+        l_int32 gapBottom  = atoi(argv[10]);
+
+        SkewAndCrop(pixg, rotDir, angle, cropX, cropY, cropW, cropH, gapBinding, gapTop, gapBottom, pixd);
     }
 
     
