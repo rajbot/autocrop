@@ -183,19 +183,9 @@ printf("oldW = %d\n", oldW);
     
     l_int32 darkThresh = CalculateTreshInitial(pixc);
 
-    PIX *pixb = pixThresholdToBinary(pixc, darkThresh);
-    pixWrite("/home/rkumar/public_html/outbin.png", pixb, IFF_PNG); 
 
     l_float32    conf, textAngle;
 
-    printf("calling pixFindSkew\n");
-    if (pixFindSkew(pixb, &textAngle, &conf)) {
-        //error
-        printf("angle=%.2f\nconf=%.2f\n", 0.0, -1.0);
-    } else {
-        printf("angle=%.2f\nconf=%.2f\n", textAngle, conf);
-    }   
-    
     PIX *pixSmall = pixScale(pixg, 0.125, 0.125);
 
     l_float32   bindingAngle;
@@ -209,6 +199,18 @@ printf("oldW = %d\n", oldW);
                                            &bindingThresh);
     
     bindingEdge *= 8;
+
+    PIX *pixb = pixThresholdToBinary(pixc, bindingThresh);
+    pixWrite("/home/rkumar/public_html/outbin.png", pixb, IFF_PNG); 
+
+    printf("calling pixFindSkew\n");
+    if (pixFindSkew(pixb, &textAngle, &conf)) {
+        //error
+        printf("angle=%.2f\nconf=%.2f\n", 0.0, -1.0);
+    } else {
+        printf("angle=%.2f\nconf=%.2f\n", textAngle, conf);
+    }   
+    
 
     #define   kSkewModeText 0
     #define   kSkewModeEdge 1
@@ -240,31 +242,42 @@ printf("oldW = %d\n", oldW);
         assert(0);
     }
 
-    l_int32 topEdge    = RemoveBackgroundTop(pixg, rotDir, darkThresh);
-    l_int32 bottomEdge = RemoveBackgroundBottom(pixg, rotDir, darkThresh);
+    l_int32 topEdge    = RemoveBackgroundTop(pixg, rotDir, bindingThresh);
+    l_int32 bottomEdge = RemoveBackgroundBottom(pixg, rotDir, bindingThresh);
     
     printf("topEdge: %d\n", topEdge);
     printf("bottomEdge: %d\n", bottomEdge);
 
-    assert( (bottomEdge - topEdge) > oldH );
+    //assert( (bottomEdge - topEdge) > oldH );
+    float pageHeight = bottomEdge-topEdge;
+    if (pageHeight > oldH) {
+        newH = oldH;
 
-    newH = oldH;
+        assert(gapTop>0);
+        assert(gapBottom>0);
+    
+        l_int32 errorTop = abs(oldY - (topEdge+gapTop));
+        l_int32 errorBottom = abs((oldY+oldH) - (bottomEdge - gapBottom));
+    
+        //newY = topEdge + ((bottomEdge-topEdge) - newH) / 2;
+        if (errorTop<errorBottom) {
+            printf("using top edge for crop box adjustment. errorTop = %d, errorBottom=%d\n", errorTop, errorBottom);
+            newY = topEdge+gapTop;
+        } else {
+            printf("using bottom edge for crop box adjustment. errorTop = %d, errorBottom=%d\n", errorTop, errorBottom);
+            newY = bottomEdge - gapBottom - oldH;
+        }
+
+    } else if (pageHeight/oldH > 0.90) {
+        newH = bottomEdge-topEdge;
+        newY = topEdge;
+        printf("adjusting cropbox by %.2f%% to fit, newY = topEdge = %d\n", pageHeight/oldH, newY);
+    } else {
+        assert(0);
+    }
+
     newW = oldW;
 
-    assert(gapTop>0);
-    assert(gapBottom>0);
-
-    l_int32 errorTop = abs(oldY - (topEdge+gapTop));
-    l_int32 errorBottom = abs((oldY+oldH) - (bottomEdge - gapBottom));
-
-    //newY = topEdge + ((bottomEdge-topEdge) - newH) / 2;
-    if (errorTop<errorBottom) {
-        printf("using top edge for crop box adjustment. errorTop = %d, errorBottom=%d\n", errorTop, errorBottom);
-        newY = topEdge+gapTop;
-    } else {
-        printf("using bottom edge for crop box adjustment. errorTop = %d, errorBottom=%d\n", errorTop, errorBottom);
-        newY = bottomEdge - gapBottom - oldH;
-    }
 
     
     printf("cropX=%d\n", newX);
