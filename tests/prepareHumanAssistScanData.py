@@ -45,7 +45,7 @@ for oldleaf in leafs:
     cropW    = cropBox.find('w')
     cropH    = cropBox.find('h')    
     print "handSide = " + handSide
-    if ("RIGHT" == handSide) and (("Normal" == pageType) or ("Copyright" == pageType) or ("Title" == pageType)):
+    if ("RIGHT" == handSide) and (("Normal" == pageType) or ("Copyright" == pageType) or ("Title" == pageType) or ("Contents" == pageType)):
         if (gotFirstCropRight):
             cropX.text = rX
             cropY.text = rY
@@ -58,7 +58,7 @@ for oldleaf in leafs:
             rH = cropH.text
             print "set right x,y w,h = %s,%s %s,%s"%(rX,rY,rW,rH)
             gotFirstCropRight = 1 
-    elif ("LEFT" == handSide) and (("Normal" == pageType) or ("Copyright" == pageType) or ("Title" == pageType)):
+    elif ("LEFT" == handSide) and (("Normal" == pageType) or ("Copyright" == pageType) or ("Title" == pageType) or ("Contents" == pageType)):
         if (gotFirstCropLeft):
             cropX.text = lX
             cropY.text = lY
