@@ -133,6 +133,7 @@ for file in sorted(files):
                 cropRy = cropy
                 cropRw = cropw
                 cropRh = croph
+                gotInitCropBoxR = 1
                 (bindingGapR, topGapR, bottomGapR) = getBindingGaps(file, rotDir, skew, cropx, cropy, cropw, croph)
             else:
                 autoCropThisPage = 1
