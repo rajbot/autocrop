@@ -46,8 +46,8 @@ int main(int    argc,
     int          lum, threshold;
     l_float32    angle, conf;
     
-    if (argc != 9) {
-        exit(ERROR_INT(" Syntax:  cropAndSkewProxy filein.jpg filout.jpg rotateDirection angle cropx cropy cropw croph",
+    if ((argc != 9) && (argc != 10)){
+        exit(ERROR_INT(" Syntax:  cropAndSkewProxy filein.jpg filout.jpg rotateDirection angle cropx cropy cropw croph [outputOrig]",
                          mainName, 1));
     }
     
@@ -60,7 +60,7 @@ int main(int    argc,
     l_int32 cropy     = atoi(argv[6]);
     l_int32 cropw     = atoi(argv[7]);
     l_int32 croph     = atoi(argv[8]);
-
+    l_int32 outputOrig= atoi(argv[9]);
     
     if ((fp = fopenReadStream(filein)) == NULL) {
         exit(ERROR_INT("image file not found", mainName, 1));
@@ -99,7 +99,9 @@ int main(int    argc,
     PIX *pixCrop = pixClipRectangle(pixt, box, NULL);
     pixWrite(fileout, pixCrop, IFF_JFIF_JPEG); 
     
-
+    if (1 == outputOrig) {
+        pixWrite("/tmp/home/rkumar/out.jpg", pixd, IFF_JFIF_JPEG); 
+    }
     
     return 0;
 
