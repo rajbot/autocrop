@@ -299,6 +299,16 @@ printf("oldW = %d\n", oldW);
     pixRenderBoxArb(pixr, boxOld, 1, 255, 0, 0);
     pixRenderBoxArb(pixr, boxNew, 1, 0, 255, 0);
     pixWrite("/tmp/home/rkumar/outbox.jpg", pixr, IFF_JFIF_JPEG); 
+
+    PIX *pix2 = pixScale(pixOrig, 0.125, 0.125);
+
+    PIX *pixr2 = pixRotate(pix2,
+                    deg2rad*skewAngle,
+                    L_ROTATE_AREA_MAP,
+                    L_BRING_IN_BLACK,0,0);
+
+    PIX *pixFinalC = pixClipRectangle(pixr2, boxNew, NULL);
+    pixWrite("/tmp/home/rkumar/outcrop.jpg", pixFinalC, IFF_JFIF_JPEG); 
     #endif
 }
 
