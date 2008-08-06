@@ -201,7 +201,7 @@ printf("oldW = %d\n", oldW);
     bindingEdge *= 8;
 
     PIX *pixb = pixThresholdToBinary(pixc, bindingThresh);
-    pixWrite("/home/rkumar/public_html/outbin.png", pixb, IFF_PNG); 
+    pixWrite("/tmp/home/rkumar/outbin.png", pixb, IFF_PNG); 
 
     printf("calling pixFindSkew\n");
     if (pixFindSkew(pixb, &textAngle, &conf)) {
@@ -284,10 +284,17 @@ printf("oldW = %d\n", oldW);
     printf("cropY=%d\n", newY);
     printf("cropW=%d\n", newW);
     printf("cropH=%d\n", newH);
-    
+    if (1 == rotDir) {
+        printf("bindingGap: %d\n", newX - bindingEdge);
+    } else if (-1 == rotDir) {
+        printf("bindingGap: %d\n", bindingEdge - (newX+newW));
+    }
+    printf("topGap: %d\n", newY - topEdge);
+    printf("bottomGap: %d\n", bottomEdge - (newY+newH));
 
     #if 1   //for debugging
     PIX *pix = pixScale(pixOrig, 0.125, 0.125);
+    pixWrite("/tmp/home/rkumar/out.jpg", pix, IFF_JFIF_JPEG); 
     
     PIX *pixr = pixRotate(pix,
                     deg2rad*skewAngle,
@@ -361,7 +368,7 @@ int main(int argc, char **argv) {
     
     pixg = ConvertToGray(pixd);
     debugstr("Converted to gray\n");
-    pixWrite("/home/rkumar/public_html/outgray.jpg", pixg, IFF_JFIF_JPEG); 
+    pixWrite("/tmp/home/rkumar/outgray.jpg", pixg, IFF_JFIF_JPEG); 
     
     if (8 == argc) {
         FindBindingGap(pixg, rotDir, angle, cropX/8, cropY/8, cropW/8, cropH/8);
