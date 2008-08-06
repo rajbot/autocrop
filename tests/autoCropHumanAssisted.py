@@ -116,7 +116,7 @@ for file in sorted(files):
     assert((-90 == rotateDegree) or (90 == rotateDegree))
     pageType = leaf.findtext('pageType')
     
-    if ("Normal" == pageType) or ("Title" == pageType) or ("Copyright" == pageType):
+    if ("Normal" == pageType) or ("Title" == pageType) or ("Copyright" == pageType)  or ("Contents" == pageType):
         if (-90 == rotateDegree):
             if (0 == gotInitCropBoxL):
                 cropLx = cropx
@@ -124,7 +124,7 @@ for file in sorted(files):
                 cropLw = cropw
                 cropLh = croph
                 gotInitCropBoxL = 1
-                (bindingGapL, topGapL, bottomGapL) = getBindingGaps(file, rotDir, skew, cropx, cropy, cropw, croph)
+                (bindingGapL, topGapL, bottomGapL) = getBindingGaps(file, rotateDir, skew, cropx, cropy, cropw, croph)
             else:
                 autoCropThisPage = 1
         else:
@@ -134,18 +134,18 @@ for file in sorted(files):
                 cropRw = cropw
                 cropRh = croph
                 gotInitCropBoxR = 1
-                (bindingGapR, topGapR, bottomGapR) = getBindingGaps(file, rotDir, skew, cropx, cropy, cropw, croph)
+                (bindingGapR, topGapR, bottomGapR) = getBindingGaps(file, rotateDir, skew, cropx, cropy, cropw, croph)
             else:
                 autoCropThisPage = 1
     
     
     if (0 == autoCropThisPage):
-        retval = commands.getstatusoutput('/home/scribe/petamnt/gnubook/tests/cropAndSkewProxy %s "%s/%s/%d.jpg" %d %f %d %d %d %d'%(file, outDir, croppedDir,leafNum, rotateDir, skew, cropx/8, cropy/8, cropw/8, croph/8))[0]
+        retval = commands.getstatusoutput('/home/scribe/petamnt/gnubook/tests/cropAndSkewProxy %s "%s/%s/%d.jpg" %d %f %d %d %d %d 1'%(file, outDir, croppedDir,leafNum, rotateDir, skew, cropx/8, cropy/8, cropw/8, croph/8))[0]
         assert (0 == retval)    
 
     else:
         if (-90 == rotateDegree):
-            cmd = "/home/scribe/petamnt/gnubook/autoCropHumanAssisted %s %d %f %d %d %d %d" % (file, rotateDir, skew, cropLx, cropLy, cropLw, cropLh)
+            cmd = "/home/scribe/petamnt/gnubook/autoCropHumanAssisted %s %d %f %d %d %d %d %d %d %d" % (file, rotateDir, skew, cropLx, cropLy, cropLw, cropLh, bindingGapL, topGapL, bottomGapL)
             print cmd
             retval,output = commands.getstatusoutput(cmd)
             assert (0 == retval)
@@ -153,7 +153,7 @@ for file in sorted(files):
             (bindingGapL, topGapL, bottomGapL) = parseGaps(output)
             (cropLx, cropLy, cropLw, cropLh)   = parseCrops(output)
         else:
-            cmd = "/home/scribe/petamnt/gnubook/autoCropHumanAssisted %s %d %f %d %d %d %d" % (file, rotateDir, skew, cropRx, cropRy, cropRw, cropRh)
+            cmd = "/home/scribe/petamnt/gnubook/autoCropHumanAssisted %s %d %f %d %d %d %d %d %d %d" % (file, rotateDir, skew, cropRx, cropRy, cropRw, cropRh, bindingGapR, topGapR, bottomGapR)
             print cmd
             retval,output = commands.getstatusoutput(cmd)
             assert (0 == retval)
@@ -180,9 +180,7 @@ for file in sorted(files):
         m=re.search('grayMode: ([\w-]+)', output)
         grayMode = m.group(1)
         print "grayMode is " + grayMode
-            
-        retval = commands.getstatusoutput('cp /tmp/home/rkumar/out.jpg "%s/%s/%d.jpg"'%(outDir, proxyDir,leafNum))[0]
-        assert (0 == retval)    
+       
     
         retval = commands.getstatusoutput('cp /tmp/home/rkumar/outbox.jpg "%s/%s/%d.jpg"'%(outDir, skewedDir,leafNum))[0]
         assert (0 == retval)    
@@ -190,6 +188,9 @@ for file in sorted(files):
         retval = commands.getstatusoutput('cp /tmp/home/rkumar/outcrop.jpg "%s/%s/%d.jpg"'%(outDir, croppedDir,leafNum))[0]
         assert (0 == retval)    
 
+
+    retval = commands.getstatusoutput('cp /tmp/home/rkumar/out.jpg "%s/%s/%d.jpg"'%(outDir, proxyDir,leafNum))[0]
+    assert (0 == retval)    
 
     f.write('<tr>\n')
     f.write('<td valign=top>'),
@@ -200,7 +201,7 @@ for file in sorted(files):
     if (1 == autoCropThisPage):
         f.write('<img src="%s/%d.jpg"/>'%(skewedDir,leafNum))
     else:
-        f.write('&nbps;')
+        f.write('&nbsp;')
     f.write('</td>\n')
 
 
