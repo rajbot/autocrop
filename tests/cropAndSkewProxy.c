@@ -67,9 +67,15 @@ int main(int    argc,
     }
     debugstr("Opened file handle\n");
     
-    if ((pixs = pixReadStreamJpeg(fp, 0, 8, NULL, 0)) == NULL) {
-       exit(ERROR_INT("pixs not made", mainName, 1));
+    //if ((pixs = pixReadStreamJpeg(fp, 0, 8, NULL, 0)) == NULL) {
+    //   exit(ERROR_INT("pixs not made", mainName, 1));
+    //}
+    PIX *pixtmp;  
+    if ((pixtmp = pixRead(filein)) == NULL) {
+        exit(ERROR_INT("pixtmp not made", mainName, 1));
     }
+    pixs = pixScale(pixtmp, 0.125, 0.125);
+
     debugstr("Read jpeg\n");
 
     if (rotDir) {

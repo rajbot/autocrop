@@ -201,7 +201,7 @@ printf("oldW = %d\n", oldW);
     bindingEdge *= 8;
 
     PIX *pixb = pixThresholdToBinary(pixc, bindingThresh);
-    pixWrite("/tmp/home/rkumar/outbin.png", pixb, IFF_PNG); 
+    //pixWrite("/tmp/home/rkumar/outbin.png", pixb, IFF_PNG); 
 
     printf("calling pixFindSkew\n");
     if (pixFindSkew(pixb, &textAngle, &conf)) {
@@ -216,20 +216,28 @@ printf("oldW = %d\n", oldW);
     #define   kSkewModeEdge 1
     l_int32   skewMode;
     l_float32 skewAngle;
+    l_float32 skewConf;
     if (conf >= 2.0) {
         debugstr("skewMode: text\n");
         skewAngle = textAngle;
         skewMode  = kSkewModeText;
+        skewConf  = conf;
     } else {
 
         debugstr("skewMode: edge\n");
         //angle = (deltaT + deltaB + deltaV1 + deltaV2)/4;
         skewAngle = bindingAngle; //TODO: calculate average of four edge deltas.
         skewMode  = kSkewModeEdge;
+        skewConf  = 1.0;
     }
 
     printf("textAngle=%f\n", textAngle);
     printf("bindingAngle=%f\n", bindingAngle);
+    printf("skewAngle=%.2f\n", skewAngle);
+    printf("skewConf=%.2f\n", skewConf);
+
+
+    //TODO: at this point, we need to rotate pixg, but it seems we didn't do that.
 
     l_int32 newX, newY, newW, newH;
     
@@ -292,7 +300,7 @@ printf("oldW = %d\n", oldW);
     printf("topGap: %d\n", newY - topEdge);
     printf("bottomGap: %d\n", bottomEdge - (newY+newH));
 
-    #if 1   //for debugging
+    #if 0   //for debugging
     PIX *pix = pixScale(pixOrig, 0.125, 0.125);
     pixWrite("/tmp/home/rkumar/out.jpg", pix, IFF_JFIF_JPEG); 
     
@@ -341,6 +349,7 @@ int main(int argc, char **argv) {
     FILE        *fp;
     PIX         *pixs, *pixd, *pixg;
     
+    /*
     if ((fp = fopenReadStream(filein)) == NULL) {
         exit(ERROR_INT("image file not found", mainName, 1));
     }
@@ -358,6 +367,18 @@ int main(int argc, char **argv) {
         printf("opened large jpg in %7.3f sec\n", stopTimer());    
     }
     debugstr("Read jpeg\n");
+    */
+    if (8 == argc) {
+        PIX *pixtmp;  
+        if ((pixtmp = pixRead(filein)) == NULL) {
+        exit(ERROR_INT("pixtmp not made", mainName, 1));
+        }
+        pixs = pixScale(pixtmp, 0.125, 0.125);
+    } else {
+        if ((pixs = pixRead(filein)) == NULL) {
+        exit(ERROR_INT("pixs not made", mainName, 1));
+        }
+    }
 
     if (rotDir) {
         pixd = pixRotate90(pixs, rotDir);
@@ -368,7 +389,7 @@ int main(int argc, char **argv) {
     
     pixg = ConvertToGray(pixd);
     debugstr("Converted to gray\n");
-    pixWrite("/tmp/home/rkumar/outgray.jpg", pixg, IFF_JFIF_JPEG); 
+    //pixWrite("/tmp/home/rkumar/outgray.jpg", pixg, IFF_JFIF_JPEG); 
     
     if (8 == argc) {
         FindBindingGap(pixg, rotDir, angle, cropX/8, cropY/8, cropW/8, cropH/8);
