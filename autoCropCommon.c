@@ -9,6 +9,14 @@
 
 static const l_float32  deg2rad            = 3.1415926535 / 180.;
 
+l_int32 min_int32(l_int32 a, l_int32 b) {
+    return b + ((a-b) & (a-b)>>31);
+}
+
+l_int32 max_int32(l_int32 a, l_int32 b) {
+    return a - ((a-b) & (a-b)>>31);
+}
+
 //FIXME: left limit for angle=0 should be zero, returns 1
 l_uint32 calcLimitLeft(l_uint32 w, l_uint32 h, l_float32 angle) {
     l_uint32  w2 = w>>1;
@@ -638,4 +646,190 @@ l_int32 RemoveBackgroundBottom(PIX *pixg, l_int32 rotDir, l_int32 initialBlackTh
 
     return h-1;
 
+}
+
+/// CalculateNumBlackPelsRow
+///____________________________________________________________________________
+l_int32 CalculateNumBlackPelsRow(PIX *pixg, l_int32 j, l_int32 limitL, l_int32 limitR, l_uint32 blackThresh) {
+    l_int32 numBlackPels = 0;
+    l_int32 i;
+    l_uint32 a;
+
+    for (i=limitL; i<=limitR; i++) {
+        l_int32 retval = pixGetPixel(pixg, i, j, &a);
+        assert(0 == retval);
+        if (a<blackThresh) {
+            numBlackPels++;
+        }
+    }
+
+    return numBlackPels;
+}
+
+/// CalculateNumBlackPelsCol
+///____________________________________________________________________________
+l_int32 CalculateNumBlackPelsCol(PIX *pixg, l_int32 i, l_int32 limitT, l_int32 limitB, l_uint32 blackThresh) {
+    l_int32 numBlackPels = 0;
+    l_int32 j;
+    l_uint32 a;
+
+    for (j=limitT; j<=limitB; j++) {
+        l_int32 retval = pixGetPixel(pixg, i, j, &a);
+        assert(0 == retval);
+        if (a<blackThresh) {
+            numBlackPels++;
+        }
+    }
+
+    return numBlackPels;
+}
+
+/// CalculateMinRow
+///____________________________________________________________________________
+l_int32 CalculateMinRow(PIX *pixg, l_int32 j, l_int32 limitL, l_int32 limitR) {
+    l_int32 i;
+    l_uint32 a;
+    l_uint32 min = 256; //assume 8-bit image
+    for (i=limitL; i<=limitR; i++) {
+        l_int32 retval = pixGetPixel(pixg, i, j, &a);
+        assert(0 == retval);
+        if (a<min) {
+            min=a;
+        }
+    }
+
+    assert(min <= 255);
+    return min;
+}
+
+/// CalculateMinCol
+///____________________________________________________________________________
+l_int32 CalculateMinCol(PIX *pixg, l_int32 i, l_int32 limitT, l_int32 limitB) {
+    l_int32 j;
+    l_uint32 a;
+    l_uint32 min = 256; //assume 8-bit image
+    for (j=limitT; j<=limitB; j++) {
+        l_int32 retval = pixGetPixel(pixg, i, j, &a);
+        assert(0 == retval);
+        if (a<min) {
+            min=a;
+        }
+    }
+
+    assert(min <= 255);
+    return min;
+}
+
+/// FindDarkRowUp
+///____________________________________________________________________________
+l_int32 FindDarkRowUp(PIX *pixg, l_int32 limitB, l_int32 limitL, l_int32 limitR, l_uint32 blackThresh, l_int32 blackLimit) {
+    l_int32 numBlackPels = 0;
+    l_int32 i, j;
+    l_uint32 a;
+    l_int32 limitT = (l_int32((l_float32)limitB*0.90));
+
+    for (j=limitB; j>=limitT; j--) {
+        l_int32 numBlackPels = CalculateNumBlackPelsRow(pixg, j, limitL, limitR, blackThresh);
+        //printf("FindDarkRowUp: j=%d, numBlackPels=%d\n", j, numBlackPels);
+
+        if (numBlackPels > blackLimit) {
+            //printf("FindDarkRowUp: returning with row=%d, numBlackPels=%d, blackLimit=%d\n", j, numBlackPels, blackLimit);
+            return j;
+        }
+    }
+
+    return -1; //could not find edge (dark row)
+}
+
+
+/// FindDarkRowDown
+///____________________________________________________________________________
+l_int32 FindDarkRowDown(PIX *pixg, l_int32 limitT, l_int32 limitL, l_int32 limitR, l_uint32 blackThresh, l_int32 blackLimit) {
+    l_int32 numBlackPels = 0;
+    l_int32 i, j;
+    l_uint32 a;
+    l_int32 limitB = limitT+((l_int32)(pixGetHeight(pixg)*0.10));
+
+    for (j=limitT; j<=limitB; j++) {
+        l_int32 numBlackPels = CalculateNumBlackPelsRow(pixg, j, limitL, limitR, blackThresh);
+        //printf("FindDarkRowDown: j=%d, numBlackPels=%d\n", j, numBlackPels);
+
+        if (numBlackPels > blackLimit) {
+            //printf("FindDarkRowDown: returning with row=%d, numBlackPels=%d, blackLimit=%d\n", j, numBlackPels, blackLimit);
+            return j;
+        }
+    }
+
+    return -1; //could not find edge (dark row)
+}
+
+
+/// FindDarkColLeft
+///____________________________________________________________________________
+l_int32 FindDarkColLeft(PIX *pixg, l_int32 limitR, l_int32 limitT, l_int32 limitB, l_uint32 blackThresh, l_int32 blackLimit) {
+    l_int32 numBlackPels = 0;
+    l_int32 i;
+    l_uint32 a;
+    l_int32 limitL = min_int32(limitR-((l_int32)(pixGetWidth(pixg)*0.10)), 0);
+
+    for (i=limitR; i>=limitL; i--) {
+        l_int32 numBlackPels = CalculateNumBlackPelsCol(pixg, i, limitT, limitB, blackThresh);
+        //printf("FindDarkColLeft: i=%d, numBlackPels=%d\n", i, numBlackPels);
+
+        if (numBlackPels > blackLimit) {
+            //printf("FindDarkColLeft: returning with col=%d, numBlackPels=%d, blackLimit=%d\n", i, numBlackPels, blackLimit);
+            return i;
+        }
+    }
+
+    return -1; //could not find edge (dark row)
+}
+
+/// FindDarkColRight
+///____________________________________________________________________________
+l_int32 FindDarkColRight(PIX *pixg, l_int32 limitL, l_int32 limitT, l_int32 limitB, l_uint32 blackThresh, l_int32 blackLimit) {
+    l_int32 numBlackPels = 0;
+    l_int32 i;
+    l_uint32 a;
+    l_int32 w = pixGetWidth(pixg);
+    l_int32 limitR = min_int32(limitL+((l_int32)(w*0.10)), w);
+
+    for (i=limitL; i<=limitR; i++) {
+        l_int32 numBlackPels = CalculateNumBlackPelsCol(pixg, i, limitT, limitB, blackThresh);
+        //printf("FindDarkColRight: i=%d, numBlackPels=%d\n", i, numBlackPels);
+
+        if (numBlackPels > blackLimit) {
+            //printf("FindDarkColRight: returning with col=%d, numBlackPels=%d, blackLimit=%d\n", i, numBlackPels, blackLimit);
+            return i;
+        }
+    }
+
+    return -1; //could not find edge (dark row)
+}
+
+
+/// PrintKeyValue_int32
+///____________________________________________________________________________
+void PrintKeyValue_int32(char *key, l_int32 val) {
+    printf("%s: %d\n", key, val);
+}
+
+/// DebugKeyValue_int32
+///____________________________________________________________________________
+void DebugKeyValue_int32(char *key, l_int32 val) {
+    #if 1
+        PrintKeyValue_int32(key, val);
+    #endif
+}
+
+/// PrintKeyValue_float
+///____________________________________________________________________________
+void PrintKeyValue_float(char *key, l_float32 val) {
+    printf("%s: %.2f\n", key, val);
+}
+
+/// PrintKeyValue_str
+///____________________________________________________________________________
+void PrintKeyValue_str(char *key, char *val) {
+    printf("%s: %s\n", key, val);
 }

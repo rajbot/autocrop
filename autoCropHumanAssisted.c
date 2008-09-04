@@ -11,7 +11,7 @@ cd ../prog/
 make
 
 compile with:
-g++ -ansi -Werror -D_BSD_SOURCE -DANSI -fPIC -O3  -Ileptonlib-1.56/src -I/usr/X11R6/include  -DL_LITTLE_ENDIAN -o autoCropHumanAssisted autoCropHumanAssisted.c leptonlib-1.56/lib/nodebug/liblept.a -ltiff -ljpeg -lpng -lz -lm
+g++ -ansi -Werror -D_BSD_SOURCE -DANSI -fPIC -O3  -Ileptonlib-1.56/src -I/usr/X11R6/include  -DL_LITTLE_ENDIAN -o autoCropHumanAssisted autoCropHumanAssisted.c autoCropCommon.c leptonlib-1.56/lib/nodebug/liblept.a -ltiff -ljpeg -lpng -lz -lm
 
 to calculate cropbox:
 autoCropHumanAssisted filein.jpg rotateDirection cropX cropY cropW cropH bindingGap
@@ -35,13 +35,6 @@ autoCropHumanAssisted filein.jpg rotateDirection cropX cropY cropW cropH
 static const l_float32  deg2rad            = 3.1415926535 / 180.;
 
 
-static inline l_int32 min (l_int32 a, l_int32 b) {
-    return b + ((a-b) & (a-b)>>31);
-}
-
-static inline l_int32 max (l_int32 a, l_int32 b) {
-    return a - ((a-b) & (a-b)>>31);
-}
 
 
 /// FindBindingGap()
@@ -327,14 +320,252 @@ printf("oldW = %d\n", oldW);
     #endif
 }
 
+/// AutoDeskewAndCrop()
+///____________________________________________________________________________
+void AutoDeskewAndCrop(PIX       *pixg,
+                 l_int32   rotDir,
+                 l_float32 oldAngle, 
+                 l_int32   oldX,
+                 l_int32   oldY,
+                 l_int32   oldW, 
+                 l_int32   oldH,
+                 l_int32   marginL,
+                 l_int32   marginR,
+                 l_int32   marginT,
+                 l_int32   marginB,
+                 l_int32   threshL,
+                 l_int32   threshR,
+                 l_int32   threshT,
+                 l_int32   threshB)
+{
+
+    l_int32 boxW10 = (l_int32)(oldW * 0.10);
+    l_int32 boxH10 = (l_int32)(oldH * 0.10);
+    BOX     *box   = boxCreate(oldX+boxW10, oldY+boxH10, oldW-boxW10, oldH-boxH10);
+    PIX     *pixc  = pixClipRectangle(pixg, box, NULL);
+    
+    //l_int32 darkThresh = CalculateTreshInitial(pixc);
+
+    l_int32 maxThresh = max_int32(threshL, threshR);
+    maxThresh = max_int32(maxThresh, threshT);
+    maxThresh = max_int32(maxThresh, threshB);
+    
+    l_float32    conf, textAngle;
+
+    PIX *pixSmall = pixScale(pixg, 0.125, 0.125);
+
+    l_float32   bindingAngle;
+    l_uint32    bindingThresh;
+    
+
+    l_int32 bindingEdge = FindBindingEdge2(pixSmall,
+                                           rotDir,
+                                           oldY/8,
+                                           (oldY+oldH)/8,
+                                           &bindingAngle,
+                                           &bindingThresh);
+    
+    bindingEdge *= 8;
+
+    PIX *pixb = pixThresholdToBinary(pixc, bindingThresh);
+    //pixWrite("/tmp/home/rkumar/outbin.png", pixb, IFF_PNG); 
+
+    printf("calling pixFindSkew\n");
+    if (pixFindSkew(pixb, &textAngle, &conf)) {
+        //error
+        //printf("angle=%.2f\nconf=%.2f\n", 0.0, -1.0);
+    } else {
+        //printf("angle=%.2f\nconf=%.2f\n", textAngle, conf);
+    }   
+    
+
+    #define   kSkewModeText 0
+    #define   kSkewModeEdge 1
+    l_int32   skewMode;
+    l_float32 skewAngle;
+    l_float32 skewConf;
+    if (conf >= 2.0) {
+        PrintKeyValue_str("skewMode", "text");
+        skewAngle = textAngle;
+        skewMode  = kSkewModeText;
+        skewConf  = conf;
+    } else {
+
+        PrintKeyValue_str("skewMode", "edge");
+        //angle = (deltaT + deltaB + deltaV1 + deltaV2)/4;
+        skewAngle = bindingAngle; //TODO: calculate average of four edge deltas.
+        skewMode  = kSkewModeEdge;
+        skewConf  = 1.0;
+    }
+
+    PrintKeyValue_float("textAngle", textAngle);
+    PrintKeyValue_float("bindingAngle", bindingAngle);
+    PrintKeyValue_float("skewAngle", skewAngle);
+    PrintKeyValue_float("skewConf", skewConf);
+
+
+    //TODO: at this point, we need to rotate pixg, but it seems we didn't do that.
+/*
+    l_int32 newX, newY, newW, newH;
+    
+    if (1 == rotDir) {
+        newX = bindingEdge + gapBinding;
+    } else if (-1 == rotDir) {
+        printf("bindingEdge=%d, gapBinding=%d, oldW=%d\n", bindingEdge, gapBinding, oldW);
+        newX = bindingEdge - gapBinding - oldW;    
+    } else {
+        assert(0);
+    }
+
+    l_int32 topEdge    = RemoveBackgroundTop(pixg, rotDir, bindingThresh);
+    l_int32 bottomEdge = RemoveBackgroundBottom(pixg, rotDir, bindingThresh);
+    
+    printf("topEdge: %d\n", topEdge);
+    printf("bottomEdge: %d\n", bottomEdge);
+
+    //assert( (bottomEdge - topEdge) > oldH );
+    float pageHeight = bottomEdge-topEdge;
+    if (pageHeight > oldH) {
+        newH = oldH;
+
+        assert(gapTop>0);
+        assert(gapBottom>0);
+    
+        l_int32 errorTop = abs(oldY - (topEdge+gapTop));
+        l_int32 errorBottom = abs((oldY+oldH) - (bottomEdge - gapBottom));
+    
+        //newY = topEdge + ((bottomEdge-topEdge) - newH) / 2;
+        if (errorTop<errorBottom) {
+            printf("using top edge for crop box adjustment. errorTop = %d, errorBottom=%d\n", errorTop, errorBottom);
+            newY = topEdge+gapTop;
+        } else {
+            printf("using bottom edge for crop box adjustment. errorTop = %d, errorBottom=%d\n", errorTop, errorBottom);
+            newY = bottomEdge - gapBottom - oldH;
+        }
+
+    } else if (pageHeight/oldH > 0.90) {
+        newH = bottomEdge-topEdge;
+        newY = topEdge;
+        printf("adjusting cropbox by %.2f%% to fit, newY = topEdge = %d\n", pageHeight/oldH, newY);
+    } else {
+        assert(0);
+    }
+
+    newW = oldW;
+
+
+    
+    printf("cropX=%d\n", newX);
+    printf("cropY=%d\n", newY);
+    printf("cropW=%d\n", newW);
+    printf("cropH=%d\n", newH);
+    if (1 == rotDir) {
+        printf("bindingGap: %d\n", newX - bindingEdge);
+    } else if (-1 == rotDir) {
+        printf("bindingGap: %d\n", bindingEdge - (newX+newW));
+    }
+    printf("topGap: %d\n", newY - topEdge);
+    printf("bottomGap: %d\n", bottomEdge - (newY+newH));
+*/
+    #if 0   //for debugging
+    PIX *pix = pixScale(pixOrig, 0.125, 0.125);
+    pixWrite("/tmp/home/rkumar/out.jpg", pix, IFF_JFIF_JPEG); 
+    
+    PIX *pixr = pixRotate(pix,
+                    deg2rad*skewAngle,
+                    L_ROTATE_AREA_MAP,
+                    L_BRING_IN_BLACK,0,0);    
+    BOX *boxOld = boxCreate(oldX/8, oldY/8, oldW/8, oldH/8);
+    BOX *boxNew = boxCreate(newX/8, newY/8, newW/8, newH/8);
+
+    pixRenderBoxArb(pixr, boxOld, 1, 255, 0, 0);
+    pixRenderBoxArb(pixr, boxNew, 1, 0, 255, 0);
+    pixWrite("/tmp/home/rkumar/outbox.jpg", pixr, IFF_JFIF_JPEG); 
+
+    PIX *pix2 = pixScale(pixOrig, 0.125, 0.125);
+
+    PIX *pixr2 = pixRotate(pix2,
+                    deg2rad*skewAngle,
+                    L_ROTATE_AREA_MAP,
+                    L_BRING_IN_BLACK,0,0);
+
+    PIX *pixFinalC = pixClipRectangle(pixr2, boxNew, NULL);
+    pixWrite("/tmp/home/rkumar/outcrop.jpg", pixFinalC, IFF_JFIF_JPEG); 
+    #endif
+}
+
+/// FindPageMargins()
+///____________________________________________________________________________
+void FindPageMargins(PIX       *pixg,
+                   l_int32   rotDir,
+                   l_float32 angle, 
+                   l_int32   cropX,
+                   l_int32   cropY,
+                   l_int32   cropW, 
+                   l_int32   cropH)
+{
+    ///first, rotate image by angle
+    PIX *pixt = pixRotate(pixg,
+                    deg2rad*angle,
+                    L_ROTATE_AREA_MAP,
+                    L_BRING_IN_BLACK,0,0);
+
+    BOX     *box   = boxCreate(cropX, cropY, cropW, cropH);
+    PIX     *pixc  = pixClipRectangle(pixt, box, NULL);
+    l_int32 blackThresh = CalculateTreshInitial(pixc);
+
+    l_uint32 w = pixGetWidth( pixg );
+    l_uint32 h = pixGetHeight( pixg );
+
+
+    /// Top
+    l_uint32 darkestPelTop = CalculateMinRow(pixt, cropY, cropX, cropX+cropW-1);
+    assert(darkestPelTop > (l_uint32((l_float32)blackThresh*0.90)));
+    l_int32 pageTop = FindDarkRowUp(pixt, cropY, cropX, cropX+cropW-1, darkestPelTop, 10);
+    assert(-1 != pageTop);
+
+    /// Bottom
+    l_uint32 darkestPelBottom = CalculateMinRow(pixt, cropY+cropH-1, cropX, cropX+cropW-1);
+    assert(darkestPelBottom > (l_uint32((l_float32)blackThresh*0.90)));
+    l_int32 pageBottom = FindDarkRowDown(pixt, cropY+cropH-1, cropX, cropX+cropW-1, darkestPelBottom, 10);
+    assert(-1 != pageBottom);
+
+    /// Left
+    l_uint32 darkestPelLeft = CalculateMinCol(pixt, cropX, cropY, cropY+cropH-1);
+    assert(darkestPelLeft > (l_uint32((l_float32)blackThresh*0.90)));
+    l_int32 pageLeft = FindDarkColLeft(pixt, cropX, cropY, cropY+cropH-1, darkestPelLeft, 10);
+
+    /// Right
+    l_uint32 darkestPelRight = CalculateMinCol(pixt, cropX+cropW-1, cropY, cropY+cropH-1);
+    assert(darkestPelRight > (l_uint32((l_float32)blackThresh*0.90)));
+    l_int32 pageRight = FindDarkColRight(pixt, cropX+cropW-1, cropY, cropY+cropH-1, darkestPelRight, 10);
+
+    PrintKeyValue_int32("threshL", darkestPelLeft);
+    PrintKeyValue_int32("threshR", darkestPelRight);
+    PrintKeyValue_int32("threshT", darkestPelTop);
+    PrintKeyValue_int32("threshB", darkestPelBottom);
+    
+    PrintKeyValue_int32("pageL", pageLeft);
+    PrintKeyValue_int32("pageR", pageRight);
+    PrintKeyValue_int32("pageT", pageTop);
+    PrintKeyValue_int32("pageB", pageBottom);
+
+    PrintKeyValue_int32("marginL", cropX-pageLeft);
+    PrintKeyValue_int32("marginR", pageRight-(cropX+cropW-1));
+    PrintKeyValue_int32("marginT", cropY-pageTop);
+    PrintKeyValue_int32("marginB", pageBottom - (cropY+cropH-1));
+    
+    //pixWrite("gray.png", pixt, IFF_PNG); 
+
+}
 
 /// main()
 ///____________________________________________________________________________
 int main(int argc, char **argv) {
     static char  mainName[] = "autoCropHumanAssisted";
 
-    if ((argc != 8) && (argc != 11)) {
-        exit(ERROR_INT(" Syntax:  autoCropHumanAssist filein.jpg rotateDirection angle cropX cropY cropW cropH [bindingGap]",
+    if ((argc != 8) && (argc != 16)) {
+        exit(ERROR_INT(" Syntax:  autoCropHumanAssist filein.jpg rotateDirection angle cropX cropY cropW cropH [marginL marginR marginT marginB threshL threshR threshT threshB]",
                          mainName, 1));
     }
     
@@ -369,11 +600,16 @@ int main(int argc, char **argv) {
     debugstr("Read jpeg\n");
     */
     if (8 == argc) {
+        /*
         PIX *pixtmp;  
         if ((pixtmp = pixRead(filein)) == NULL) {
         exit(ERROR_INT("pixtmp not made", mainName, 1));
         }
         pixs = pixScale(pixtmp, 0.125, 0.125);
+        */
+        if ((pixs = pixRead(filein)) == NULL) {
+        exit(ERROR_INT("pixs not made", mainName, 1));
+        }
     } else {
         if ((pixs = pixRead(filein)) == NULL) {
         exit(ERROR_INT("pixs not made", mainName, 1));
@@ -392,13 +628,29 @@ int main(int argc, char **argv) {
     //pixWrite("/tmp/home/rkumar/outgray.jpg", pixg, IFF_JFIF_JPEG); 
     
     if (8 == argc) {
-        FindBindingGap(pixg, rotDir, angle, cropX/8, cropY/8, cropW/8, cropH/8);
+        //FindBindingGap(pixg, rotDir, angle, cropX/8, cropY/8, cropW/8, cropH/8);
+        FindPageMargins(pixg, rotDir, angle, cropX, cropY, cropW, cropH);
     } else {
+        /*
         l_int32 gapBinding = atoi(argv[8]);
         l_int32 gapTop     = atoi(argv[9]);
         l_int32 gapBottom  = atoi(argv[10]);
-
         SkewAndCrop(pixg, rotDir, angle, cropX, cropY, cropW, cropH, gapBinding, gapTop, gapBottom, pixd);
+        */
+        l_int32 marginL = atoi(argv[8]);
+        l_int32 marginR = atoi(argv[9]);
+        l_int32 marginT = atoi(argv[10]);
+        l_int32 marginB = atoi(argv[11]);
+
+        l_int32 threshL = atoi(argv[12]);
+        l_int32 threshR = atoi(argv[13]);
+        l_int32 threshT = atoi(argv[14]);
+        l_int32 threshB = atoi(argv[15]);
+
+        AutoDeskewAndCrop(pixg, rotDir, angle, cropX, cropY, cropW, cropH, 
+                          marginL, marginR, marginT, marginB,
+                          threshL, threshR, threshT, threshB);
+
     }
 
     
