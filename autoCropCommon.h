@@ -30,6 +30,7 @@ l_int32 RemoveBackgroundTop(PIX *pixg, l_int32 rotDir, l_int32 initialBlackThres
 l_int32 RemoveBackgroundBottom(PIX *pixg, l_int32 rotDir, l_int32 initialBlackThresh);
 
 l_int32 CalculateNumBlackPelsRow(PIX *pixg, l_int32 j, l_int32 limitL, l_int32 limitR, l_uint32 blackThresh);
+l_int32 CalculateNumBlackPelsCol(PIX *pixg, l_int32 i, l_int32 limitT, l_int32 limitB, l_uint32 blackThresh);
 l_int32 CalculateMinRow(PIX *pixg, l_int32 j, l_int32 limitL, l_int32 limitR);
 l_int32 CalculateMinCol(PIX *pixg, l_int32 i, l_int32 limitT, l_int32 limitB);
 

@@ -329,14 +329,14 @@ void AutoDeskewAndCrop(PIX       *pixg,
                  l_int32   oldY,
                  l_int32   oldW, 
                  l_int32   oldH,
-                 l_int32   marginL,
-                 l_int32   marginR,
-                 l_int32   marginT,
-                 l_int32   marginB,
-                 l_int32   threshL,
-                 l_int32   threshR,
-                 l_int32   threshT,
-                 l_int32   threshB)
+                 l_int32   oldMarginL,
+                 l_int32   oldMarginR,
+                 l_int32   oldMarginT,
+                 l_int32   oldMarginB,
+                 l_int32   oldThreshL,
+                 l_int32   oldThreshR,
+                 l_int32   oldThreshT,
+                 l_int32   oldThreshB)
 {
 
     l_int32 boxW10 = (l_int32)(oldW * 0.10);
@@ -346,9 +346,9 @@ void AutoDeskewAndCrop(PIX       *pixg,
     
     //l_int32 darkThresh = CalculateTreshInitial(pixc);
 
-    l_int32 maxThresh = max_int32(threshL, threshR);
-    maxThresh = max_int32(maxThresh, threshT);
-    maxThresh = max_int32(maxThresh, threshB);
+    //l_int32 maxThresh = max_int32(threshL, threshR);
+    //maxThresh = max_int32(maxThresh, threshT);
+    //maxThresh = max_int32(maxThresh, threshB);
     
     l_float32    conf, textAngle;
 
@@ -403,70 +403,143 @@ void AutoDeskewAndCrop(PIX       *pixg,
     PrintKeyValue_float("skewAngle", skewAngle);
     PrintKeyValue_float("skewConf", skewConf);
 
+    PIX *pixr = pixRotate(pixg,
+                    deg2rad*skewAngle,
+                    L_ROTATE_AREA_MAP,
+                    L_BRING_IN_BLACK,0,0);
 
-    //TODO: at this point, we need to rotate pixg, but it seems we didn't do that.
-/*
-    l_int32 newX, newY, newW, newH;
+    int foundPageL = 0;
+    int foundPageR = 0;
+    int foundPageT = 0;
+    int foundPageB = 0;
+
+    l_int32 pageL, pageR, pageT, pageB;
+    l_int32 newX, newY, newH, newW;
     
-    if (1 == rotDir) {
-        newX = bindingEdge + gapBinding;
-    } else if (-1 == rotDir) {
-        printf("bindingEdge=%d, gapBinding=%d, oldW=%d\n", bindingEdge, gapBinding, oldW);
-        newX = bindingEdge - gapBinding - oldW;    
-    } else {
-        assert(0);
+    /// left side
+    l_int32 numBlackPels = CalculateNumBlackPelsCol(pixr, oldX, oldY, oldY+oldH-1, oldThreshL);
+    if (numBlackPels <= 10) {
+        pageL = FindDarkColLeft(pixr, oldX, oldY, oldY+oldH-1, oldThreshL, 10);
+        foundPageL = 1;
+        DebugKeyValue_int32("newPageL", pageL);
     }
 
-    l_int32 topEdge    = RemoveBackgroundTop(pixg, rotDir, bindingThresh);
-    l_int32 bottomEdge = RemoveBackgroundBottom(pixg, rotDir, bindingThresh);
+    /// right side
+    numBlackPels = CalculateNumBlackPelsCol(pixr, oldX+oldW-1, oldY, oldY+oldH-1, oldThreshR);
+    if (numBlackPels <= 10) {
+        pageR = FindDarkColRight(pixr, oldX+oldW-1, oldY, oldY+oldH-1, oldThreshR, 10);
+        foundPageR = 1;
+        DebugKeyValue_int32("newPageR", pageR);
+    }
     
-    printf("topEdge: %d\n", topEdge);
-    printf("bottomEdge: %d\n", bottomEdge);
+    /// top
+    numBlackPels = CalculateNumBlackPelsRow(pixr, oldY, oldX, oldX+oldW-1, oldThreshT);
+    if (numBlackPels <= 10) {
+        pageT = FindDarkRowUp(pixr, oldY, oldX, oldX+oldW-1, oldThreshT, 10);
+        foundPageT = 1;
+        DebugKeyValue_int32("newPageT", pageT);
+    }
+    
+    /// bottom
+    l_int32 darkestPel = CalculateMinRow(pixr, oldY+oldH-1, oldX, oldX+oldW-1);
+    l_int32 newThreshB;
+    if ((darkestPel < oldThreshB) && (darkestPel > (oldThreshB*0.90))) {
+        newThreshB = darkestPel;
+    } else {
+        newThreshB = oldThreshB;
+    }
 
-    //assert( (bottomEdge - topEdge) > oldH );
-    float pageHeight = bottomEdge-topEdge;
-    if (pageHeight > oldH) {
-        newH = oldH;
+    numBlackPels = CalculateNumBlackPelsRow(pixr, oldY+oldH-1, oldX, oldX+oldW-1, newThreshB);
+    if (numBlackPels <= 10) {
+        pageB = FindDarkRowDown(pixr, oldY+oldH-1, oldX, oldX+oldW-1, oldThreshB, 10);
+        foundPageB = 1;
+        DebugKeyValue_int32("newPageB", pageB);
+    }
+    
+    assert(foundPageL & foundPageR & foundPageT & foundPageB);
+    
+    /// Now, find the text block bounderies
+    l_int32 h = pixGetHeight(pixr);
+    l_int32 w = pixGetWidth(pixr);
+        
+    l_int32 textBlockL = FindDarkColRight(pixr, oldX, oldY, oldY+oldH-1, oldThreshL, 10);
+    if (-1 == textBlockL) textBlockL = min_int32(oldX+((l_int32)(w*0.10)), w);
+    DebugKeyValue_int32("textBlockL", textBlockL);
 
-        assert(gapTop>0);
-        assert(gapBottom>0);
+    l_int32 textBlockR = FindDarkColLeft(pixr, oldX+oldW-1, oldY, oldY+oldH-1, oldThreshR, 10);
+    DebugKeyValue_int32("textBlockR", textBlockR);
+
+    l_int32 textBlockT = FindDarkRowDown(pixr, oldY, oldX, oldX+oldW-1, oldThreshT, 10);
+    DebugKeyValue_int32("textBlockT", textBlockT);
+
+    l_int32 textBlockB = FindDarkRowUp(pixr, oldY+oldH-1, oldX, oldX+oldW-1, newThreshB, 10);
+    if (-1 == textBlockB) textBlockB = max_int32(oldY+oldH-1-((l_int32)(h*0.10)), 0);
+    DebugKeyValue_int32("textBlockB", textBlockB);
     
-        l_int32 errorTop = abs(oldY - (topEdge+gapTop));
-        l_int32 errorBottom = abs((oldY+oldH) - (bottomEdge - gapBottom));
-    
-        //newY = topEdge + ((bottomEdge-topEdge) - newH) / 2;
-        if (errorTop<errorBottom) {
-            printf("using top edge for crop box adjustment. errorTop = %d, errorBottom=%d\n", errorTop, errorBottom);
-            newY = topEdge+gapTop;
+    /// Place crop box horizontally
+    if (1 == rotDir) {
+        //right-hand leaf
+        //binding on left side
+
+        if (((pageL+oldMarginL)<textBlockL) && ((pageL+oldMarginL+oldW)>textBlockR) && ((pageL+oldMarginL+oldW)<pageR) ) {
+            debugstr("cropBox width perfect fit!\n");
+            newX = pageL + oldMarginL;
+            newW = oldW;
         } else {
-            printf("using bottom edge for crop box adjustment. errorTop = %d, errorBottom=%d\n", errorTop, errorBottom);
-            newY = bottomEdge - gapBottom - oldH;
+            assert(0);
         }
+    } else if (-1 == rotDir) {
 
-    } else if (pageHeight/oldH > 0.90) {
-        newH = bottomEdge-topEdge;
-        newY = topEdge;
-        printf("adjusting cropbox by %.2f%% to fit, newY = topEdge = %d\n", pageHeight/oldH, newY);
+        if (((pageR-oldMarginR)>textBlockR) && ((pageR-oldMarginR-oldW)<textBlockL) && ((pageR+oldMarginR-oldW)>pageL) ) {
+            debugstr("cropBox width perfect fit!\n");
+            newX = pageR - oldMarginR - oldW;
+            newW = oldW;
+        } else {
+            assert(0);
+        }
+    
     } else {
         assert(0);
     }
 
-    newW = oldW;
-
-
-    
-    printf("cropX=%d\n", newX);
-    printf("cropY=%d\n", newY);
-    printf("cropW=%d\n", newW);
-    printf("cropH=%d\n", newH);
-    if (1 == rotDir) {
-        printf("bindingGap: %d\n", newX - bindingEdge);
-    } else if (-1 == rotDir) {
-        printf("bindingGap: %d\n", bindingEdge - (newX+newW));
+    /// Place crop box vertically
+    //  favor bottom edge, because top edge often has bookmarks sticking out :(
+    if ( ((pageB-oldMarginB)>textBlockB) && ((pageB-oldMarginB-oldH)<textBlockT) && ((pageB-oldMarginB-oldH)>pageT) ) {
+        debugstr("cropBox height perfect fit! using bottom edge\n");
+        newY = pageB - oldMarginB - oldH;
+        newH = oldH;    
+    } if ( ((pageT+oldMarginT)<textBlockT) && ((pageT+oldMarginT+oldH)>textBlockB) && ((pageT+oldMarginT+oldH)<pageB) ) { 
+        debugstr("cropBox height perfect fit! using top edge\n");
+        newY = pageT + oldMarginT;
+        newH = oldH;
+    } else {
+        printf("pageB-oldMarginB = %d \t textBlockB = %d\n", pageB-oldMarginB, textBlockB);
+        printf("pageB-oldMarginB-oldH = %d \t textBlockT = %d\n", pageB-oldMarginB-oldH, textBlockT);
+        printf("pageB-oldMarginB-oldH = %d \t pageT = %d\n", pageB-oldMarginB-oldH, pageT);        
+        
+        printf("pageT+oldMarginT = %d \t textBlockT = %d\n", pageT+oldMarginT, textBlockT);
+        printf("pageT+oldMarginT+oldH = %d \t textBlockB = %d\n", pageT+oldMarginT+oldH, textBlockB);
+        printf("pageT+oldMarginT+oldH = %d \t pageB = %d\n", pageT+oldMarginT+oldH, pageB);
+        assert(0);
     }
-    printf("topGap: %d\n", newY - topEdge);
-    printf("bottomGap: %d\n", bottomEdge - (newY+newH));
-*/
+
+    //TODO: update these with values calculated from this page    
+    PrintKeyValue_int32("threshL", oldThreshL);
+    PrintKeyValue_int32("threshR", oldThreshR);
+    PrintKeyValue_int32("threshT", oldThreshT);
+    PrintKeyValue_int32("threshB", oldThreshB);
+    
+
+    PrintKeyValue_int32("marginL", newX-pageL);
+    PrintKeyValue_int32("marginR", pageR-(newX+newW-1));
+    PrintKeyValue_int32("marginT", newY-pageT);
+    PrintKeyValue_int32("marginB", pageB - (newY+newH-1));
+
+    PrintKeyValue_int32("cropX", newX);
+    PrintKeyValue_int32("cropY", newY);
+    PrintKeyValue_int32("cropW", newW);
+    PrintKeyValue_int32("cropH", newH);
+
     #if 0   //for debugging
     PIX *pix = pixScale(pixOrig, 0.125, 0.125);
     pixWrite("/tmp/home/rkumar/out.jpg", pix, IFF_JFIF_JPEG); 

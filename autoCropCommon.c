@@ -726,7 +726,7 @@ l_int32 FindDarkRowUp(PIX *pixg, l_int32 limitB, l_int32 limitL, l_int32 limitR,
     l_int32 numBlackPels = 0;
     l_int32 i, j;
     l_uint32 a;
-    l_int32 limitT = (l_int32((l_float32)limitB*0.90));
+    l_int32 limitT = max_int32(limitB-((l_int32)(pixGetHeight(pixg)*0.10)), 0);
 
     for (j=limitB; j>=limitT; j--) {
         l_int32 numBlackPels = CalculateNumBlackPelsRow(pixg, j, limitL, limitR, blackThresh);
@@ -748,7 +748,8 @@ l_int32 FindDarkRowDown(PIX *pixg, l_int32 limitT, l_int32 limitL, l_int32 limit
     l_int32 numBlackPels = 0;
     l_int32 i, j;
     l_uint32 a;
-    l_int32 limitB = limitT+((l_int32)(pixGetHeight(pixg)*0.10));
+    l_int32 h = pixGetHeight(pixg);
+    l_int32 limitB = min_int32(limitT+((l_int32(h*0.10))), h);
 
     for (j=limitT; j<=limitB; j++) {
         l_int32 numBlackPels = CalculateNumBlackPelsRow(pixg, j, limitL, limitR, blackThresh);
@@ -770,7 +771,7 @@ l_int32 FindDarkColLeft(PIX *pixg, l_int32 limitR, l_int32 limitT, l_int32 limit
     l_int32 numBlackPels = 0;
     l_int32 i;
     l_uint32 a;
-    l_int32 limitL = min_int32(limitR-((l_int32)(pixGetWidth(pixg)*0.10)), 0);
+    l_int32 limitL = max_int32(limitR-((l_int32)(pixGetWidth(pixg)*0.10)), 0);
 
     for (i=limitR; i>=limitL; i--) {
         l_int32 numBlackPels = CalculateNumBlackPelsCol(pixg, i, limitT, limitB, blackThresh);
