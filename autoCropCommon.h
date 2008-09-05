@@ -5,7 +5,9 @@ l_int32 FindBindingEdge2(PIX      *pixg,
                          l_uint32 topEdge,
                          l_uint32 bottomEdge,
                          float    *skew,
-                         l_uint32 *thesh);
+                         l_uint32 *thesh,
+                         l_int32 textBlockL,
+                         l_int32 textBlockR);
 
 PIX* ConvertToGray(PIX *pix);
 
@@ -49,3 +51,5 @@ void PrintKeyValue_str(char *key, char *val);
 
 l_int32 min_int32(l_int32 a, l_int32 b);
 l_int32 max_int32(l_int32 a, l_int32 b);
+
+void ReduceCol(l_float32 percent, l_int32 oldT, l_int32 oldB, l_int32 *newT, l_int32 *newB);

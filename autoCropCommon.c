@@ -146,6 +146,7 @@ l_uint32 CalculateSADcol(PIX        *pixg,
             assert(0 == retval);
             //printf("%d ", val);
             acc += (abs(a-b));
+            //printf("acc: %d\n", acc);
         }
         //printf("%d \n", acc);
         if (acc > maxDiff) {
@@ -233,8 +234,11 @@ l_int32 FindBindingEdge2(PIX      *pixg,
                          l_uint32 topEdge,
                          l_uint32 bottomEdge,
                          float    *skew,
-                         l_uint32 *thesh)
+                         l_uint32 *thesh,
+                         l_int32 textBlockL,
+                         l_int32 textBlockR)
 {
+    //pixWrite("findbinding.jpg", pixg, IFF_JFIF_JPEG);
 
     //Currently, we can only do right-hand leafs
     assert((1 == rotDir) || (-1 == rotDir));
@@ -257,9 +261,17 @@ l_int32 FindBindingEdge2(PIX      *pixg,
     l_uint32 left, right;
     if (1 == rotDir) {
         left  = 0;
-        right = width10;
+        if (-1 == textBlockL) {
+            right = width10;
+        } else {
+            right = textBlockL;
+        }
     } else {
-        left  = w - width10;
+        if (-1 == textBlockR) {
+            left  = w - width10;
+        } else {
+            left = textBlockR;
+        }
         right = w - 1;
     }
     
@@ -267,7 +279,8 @@ l_int32 FindBindingEdge2(PIX      *pixg,
     l_uint32   bindingEdgeDiff;// = 0;
     float      bindingDelta = 0.0;
     CalculateSADcol(pixg, left, right, jTop, jBot, &bindingEdge, &bindingEdgeDiff);
-    
+    //printf("init bindingEdge=%d, diff=%d\n", bindingEdge*8, bindingEdgeDiff);
+
     float delta;
     //0.05 degrees is a good increment for the final search
     for (delta=-1.0; delta<=1.0; delta+=0.05) {
@@ -290,9 +303,17 @@ l_int32 FindBindingEdge2(PIX      *pixg,
         //l_uint32 left, right;
         if (1 == rotDir) {
             left  = limitLeft;
-            right = width10;
+            if (-1 == textBlockL) {
+                right = width10;
+            } else {
+                right = textBlockL;
+            }
         } else {
-            left  = w - width10;
+            if (-1 == textBlockR) {
+                left  = w - width10;
+            } else {
+                left = textBlockR;
+            }
             right = w - limitLeft-1;
         }
 
@@ -313,7 +334,7 @@ l_int32 FindBindingEdge2(PIX      *pixg,
     }
     
     assert(-1 != bindingEdge); //TODO: handle error
-    printf("BEST: delta=%f, strongest edge of gutter is at i=%d with diff=%d\n", bindingDelta, bindingEdge, bindingEdgeDiff);
+    //printf("BEST: delta=%f, strongest edge of gutter is at i=%d with diff=%d\n", bindingDelta, bindingEdge, bindingEdgeDiff);
     *skew = bindingDelta;
     #if DEBUGMOV
     debugmov.angle = bindingDelta;
@@ -749,7 +770,7 @@ l_int32 FindDarkRowDown(PIX *pixg, l_int32 limitT, l_int32 limitL, l_int32 limit
     l_int32 i, j;
     l_uint32 a;
     l_int32 h = pixGetHeight(pixg);
-    l_int32 limitB = min_int32(limitT+((l_int32(h*0.10))), h);
+    l_int32 limitB = min_int32(limitT+((l_int32(h*0.20))), h);
 
     for (j=limitT; j<=limitB; j++) {
         l_int32 numBlackPels = CalculateNumBlackPelsRow(pixg, j, limitL, limitR, blackThresh);
@@ -897,4 +918,13 @@ void PrintKeyValue_float(char *key, l_float32 val) {
 ///____________________________________________________________________________
 void PrintKeyValue_str(char *key, char *val) {
     printf("%s: %s\n", key, val);
+}
+
+/// ReduceCol
+///____________________________________________________________________________
+void ReduceCol(l_float32 percent, l_int32 oldT, l_int32 oldB, l_int32 *newT, l_int32 *newB) {
+    assert(oldB>oldT);
+    l_int32 reduction = (l_int32)(((oldB-oldT)>>1)*percent);
+    *newT = oldT+reduction;
+    *newB = oldB-reduction;
 }
