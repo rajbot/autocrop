@@ -765,6 +765,50 @@ l_int32 FindDarkRowDown(PIX *pixg, l_int32 limitT, l_int32 limitL, l_int32 limit
 }
 
 
+/// FindWhiteRowUp
+///____________________________________________________________________________
+l_int32 FindWhiteRowUp(PIX *pixg, l_int32 limitB, l_int32 limitL, l_int32 limitR, l_uint32 blackThresh, l_int32 blackLimit) {
+    l_int32 numBlackPels = 0;
+    l_int32 i, j;
+    l_uint32 a;
+    l_int32 limitT = max_int32(limitB-((l_int32)(pixGetHeight(pixg)*0.10)), 0);
+
+    for (j=limitB; j>=limitT; j--) {
+        l_int32 numBlackPels = CalculateNumBlackPelsRow(pixg, j, limitL, limitR, blackThresh);
+        //printf("FindWhiteRowUp: j=%d, numBlackPels=%d\n", j, numBlackPels);
+
+        if (numBlackPels <= blackLimit) {
+            //printf("FindWhiteRowUp: returning with row=%d, numBlackPels=%d, blackLimit=%d\n", j, numBlackPels, blackLimit);
+            return j;
+        }
+    }
+
+    return -1; //could not find white row
+}
+
+/// FindWhiteRowDown
+///____________________________________________________________________________
+l_int32 FindWhiteRowDown(PIX *pixg, l_int32 limitT, l_int32 limitL, l_int32 limitR, l_uint32 blackThresh, l_int32 blackLimit) {
+    l_int32 numBlackPels = 0;
+    l_int32 i, j;
+    l_uint32 a;
+    l_int32 h = pixGetHeight(pixg);
+    l_int32 limitB = min_int32(limitT+((l_int32(h*0.10))), h);
+
+    for (j=limitT; j<=limitB; j++) {
+        l_int32 numBlackPels = CalculateNumBlackPelsRow(pixg, j, limitL, limitR, blackThresh);
+        //printf("FindWhiteRowDown: j=%d, numBlackPels=%d\n", j, numBlackPels);
+
+        if (numBlackPels <= blackLimit) {
+            //printf("FindWhiteRowDown: returning with row=%d, numBlackPels=%d, blackLimit=%d\n", j, numBlackPels, blackLimit);
+            return j;
+        }
+    }
+
+    //printf("FindWhiteRowDown: didn't find white row, returning -1\n");
+    return -1; //could not find edge (dark row)
+}
+
 /// FindDarkColLeft
 ///____________________________________________________________________________
 l_int32 FindDarkColLeft(PIX *pixg, l_int32 limitR, l_int32 limitT, l_int32 limitB, l_uint32 blackThresh, l_int32 blackLimit) {
@@ -808,6 +852,26 @@ l_int32 FindDarkColRight(PIX *pixg, l_int32 limitL, l_int32 limitT, l_int32 limi
     return -1; //could not find edge (dark row)
 }
 
+/// FindWhiteColLeft
+///____________________________________________________________________________
+l_int32 FindWhiteColLeft(PIX *pixg, l_int32 limitR, l_int32 limitT, l_int32 limitB, l_uint32 blackThresh, l_int32 blackLimit) {
+    l_int32 numBlackPels = 0;
+    l_int32 i;
+    l_uint32 a;
+    l_int32 limitL = max_int32(limitR-((l_int32)(pixGetWidth(pixg)*0.10)), 0);
+
+    for (i=limitR; i>=limitL; i--) {
+        l_int32 numBlackPels = CalculateNumBlackPelsCol(pixg, i, limitT, limitB, blackThresh);
+        //printf("FindWhiteColLeft: i=%d, numBlackPels=%d\n", i, numBlackPels);
+
+        if (numBlackPels <= blackLimit) {
+            //printf("FindWhiteColLeft: returning with col=%d, numBlackPels=%d, blackLimit=%d\n", i, numBlackPels, blackLimit);
+            return i;
+        }
+    }
+
+    return -1; //could not white find edge
+}
 
 /// PrintKeyValue_int32
 ///____________________________________________________________________________
