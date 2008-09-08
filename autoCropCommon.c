@@ -920,11 +920,11 @@ void PrintKeyValue_str(char *key, char *val) {
     printf("%s: %s\n", key, val);
 }
 
-/// ReduceCol
+/// ReduceRowOrCol
 ///____________________________________________________________________________
-void ReduceCol(l_float32 percent, l_int32 oldT, l_int32 oldB, l_int32 *newT, l_int32 *newB) {
-    assert(oldB>oldT);
-    l_int32 reduction = (l_int32)(((oldB-oldT)>>1)*percent);
-    *newT = oldT+reduction;
-    *newB = oldB-reduction;
+void ReduceRowOrCol(l_float32 percent, l_int32 oldMin, l_int32 oldMax, l_int32 *newMin, l_int32 *newMax) {
+    assert(oldMax>oldMin);
+    l_int32 reduction = (l_int32)(((oldMax-oldMin)>>1)*percent);
+    *newMin = oldMin+reduction;
+    *newMax = oldMax-reduction;
 }

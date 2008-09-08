@@ -418,22 +418,25 @@ void AutoDeskewAndCrop(PIX       *pixg,
     l_int32 pageL, pageR, pageT, pageB;
     l_int32 newX, newY, newH, newW;
     
+    l_int32 limitL, limitR;
+    ReduceRowOrCol(0.10, oldX, oldX+oldW-1, &limitL, &limitR);
+    
     /// top
-    l_int32 numBlackPels = CalculateNumBlackPelsRow(pixr, oldY, oldX, oldX+oldW-1, bindingThresh);
-    //printf("top num black pels=%d\n", numBlackPels);
+    l_int32 numBlackPels = CalculateNumBlackPelsRow(pixr, oldY, limitL, limitR, bindingThresh);
+    printf("top num black pels=%d\n", numBlackPels);
     if (numBlackPels <= 10) {
-        pageT = FindDarkRowUp(pixr, oldY, oldX, oldX+oldW-1, bindingThresh, 10);
+        pageT = FindDarkRowUp(pixr, oldY, limitL, limitR, bindingThresh, 10);
         foundPageT = 1;
         DebugKeyValue_int32("newPageT", pageT);
     } else {
         //maybe we are in the text block. search up.
-        l_int32 startY = FindWhiteRowUp(pixr, oldY, oldX, oldX+oldW-1, bindingThresh, 10);
+        l_int32 startY = FindWhiteRowUp(pixr, oldY, limitL, limitR, bindingThresh, 10);
 
         if (-1 != startY) {
-            pageT = FindDarkRowUp(pixr, startY, oldX, oldX+oldW-1, bindingThresh, 10);
+            pageT = FindDarkRowUp(pixr, startY, limitL, limitR, bindingThresh, 10);
         } else {
             //not in text block. maybe we are above the page. search down
-            pageT = FindWhiteRowDown(pixr, oldY, oldX, oldX+oldW-1, bindingThresh, 10);            
+            pageT = FindWhiteRowDown(pixr, oldY, limitL, limitR, bindingThresh, 10);            
             assert(pageT);
         }        
         
@@ -451,16 +454,16 @@ void AutoDeskewAndCrop(PIX       *pixg,
         newThreshB = oldThreshB;
     }
     */
-    numBlackPels = CalculateNumBlackPelsRow(pixr, oldY+oldH-1, oldX, oldX+oldW-1, bindingThresh);
+    numBlackPels = CalculateNumBlackPelsRow(pixr, oldY+oldH-1, limitL, limitR, bindingThresh);
     printf("bottom num black pels=%d\n", numBlackPels);
     if (numBlackPels <= 10) {
-        pageB = FindDarkRowDown(pixr, oldY+oldH-1, oldX, oldX+oldW-1, bindingThresh, 10);
+        pageB = FindDarkRowDown(pixr, oldY+oldH-1, limitL, limitR, bindingThresh, 10);
         foundPageB = 1;
         DebugKeyValue_int32("newPageB", pageB);
     } else {
         //maybe we are in the text block. search down first.
-        l_int32 downY = FindWhiteRowDown(pixr, oldY+oldH-1, oldX, oldX+oldW-1, bindingThresh, 10);
-        l_int32 upY   = FindWhiteRowUp(pixr, oldY+oldH-1, oldX, oldX+oldW-1, bindingThresh, 10);
+        l_int32 downY = FindWhiteRowDown(pixr, oldY+oldH-1, limitL, limitR, bindingThresh, 10);
+        l_int32 upY   = FindWhiteRowUp(pixr, oldY+oldH-1, limitL, limitR, bindingThresh, 10);
         DebugKeyValue_int32("downY", downY);
         DebugKeyValue_int32("upY", upY);
         if ( (-1 != upY) && (-1 != downY)) {
@@ -488,7 +491,7 @@ void AutoDeskewAndCrop(PIX       *pixg,
 
     /// left side
     l_int32 limitT, limitB;
-    ReduceCol(0.10, oldY, oldY+oldH-1, &limitT, &limitB);
+    ReduceRowOrCol(0.10, oldY, oldY+oldH-1, &limitT, &limitB);
     numBlackPels = CalculateNumBlackPelsCol(pixr, oldX, limitT /*oldY*/, limitB /*oldY+oldH-1*/, bindingThresh /*oldThreshL*/);
     printf("left num black pels=%d\n", numBlackPels);
     if (numBlackPels <= 10) {
@@ -535,11 +538,11 @@ void AutoDeskewAndCrop(PIX       *pixg,
     if (-1 == textBlockR) textBlockR = max_int32(oldX+oldW-1-((l_int32)(w*0.10)), 0);
     DebugKeyValue_int32("textBlockR", textBlockR);
 
-    l_int32 textBlockT = FindDarkRowDown(pixr, pageT+1 /*oldY*/, oldX, oldX+oldW-1, bindingThresh, 10);
+    l_int32 textBlockT = FindDarkRowDown(pixr, pageT+1 /*oldY*/, limitL, limitR, bindingThresh, 10);
     if (-1 == textBlockT) textBlockT = min_int32(oldY+((l_int32)(h*0.10)), h);
     DebugKeyValue_int32("textBlockT", textBlockT);
 
-    l_int32 textBlockB = FindDarkRowUp(pixr, pageB-1 /*oldY+oldH-1*/, oldX, oldX+oldW-1, bindingThresh, 10);
+    l_int32 textBlockB = FindDarkRowUp(pixr, pageB-1 /*oldY+oldH-1*/, limitL, limitR, bindingThresh, 10);
     if (-1 == textBlockB) textBlockB = max_int32(oldY+oldH-1-((l_int32)(h*0.10)), 0);
     DebugKeyValue_int32("textBlockB", textBlockB);
     
