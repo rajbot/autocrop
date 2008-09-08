@@ -770,7 +770,7 @@ l_int32 FindDarkRowDown(PIX *pixg, l_int32 limitT, l_int32 limitL, l_int32 limit
     l_int32 i, j;
     l_uint32 a;
     l_int32 h = pixGetHeight(pixg);
-    l_int32 limitB = min_int32(limitT+((l_int32(h*0.20))), h);
+    l_int32 limitB = min_int32(limitT+((l_int32(h*0.20))), h-1);
 
     for (j=limitT; j<=limitB; j++) {
         l_int32 numBlackPels = CalculateNumBlackPelsRow(pixg, j, limitL, limitR, blackThresh);
@@ -814,7 +814,7 @@ l_int32 FindWhiteRowDown(PIX *pixg, l_int32 limitT, l_int32 limitL, l_int32 limi
     l_int32 i, j;
     l_uint32 a;
     l_int32 h = pixGetHeight(pixg);
-    l_int32 limitB = min_int32(limitT+((l_int32(h*0.10))), h);
+    l_int32 limitB = min_int32(limitT+((l_int32(h*0.10))), h-1);
 
     for (j=limitT; j<=limitB; j++) {
         l_int32 numBlackPels = CalculateNumBlackPelsRow(pixg, j, limitL, limitR, blackThresh);
@@ -858,7 +858,7 @@ l_int32 FindDarkColRight(PIX *pixg, l_int32 limitL, l_int32 limitT, l_int32 limi
     l_int32 i;
     l_uint32 a;
     l_int32 w = pixGetWidth(pixg);
-    l_int32 limitR = min_int32(limitL+((l_int32)(w*0.10)), w);
+    l_int32 limitR = min_int32(limitL+((l_int32)(w*0.10)), w-1);
 
     for (i=limitL; i<=limitR; i++) {
         l_int32 numBlackPels = CalculateNumBlackPelsCol(pixg, i, limitT, limitB, blackThresh);
@@ -887,6 +887,28 @@ l_int32 FindWhiteColLeft(PIX *pixg, l_int32 limitR, l_int32 limitT, l_int32 limi
 
         if (numBlackPels <= blackLimit) {
             //printf("FindWhiteColLeft: returning with col=%d, numBlackPels=%d, blackLimit=%d\n", i, numBlackPels, blackLimit);
+            return i;
+        }
+    }
+
+    return -1; //could not white find edge
+}
+
+/// FindWhiteColRight
+///____________________________________________________________________________
+l_int32 FindWhiteColRight(PIX *pixg, l_int32 limitL, l_int32 limitT, l_int32 limitB, l_uint32 blackThresh, l_int32 blackLimit) {
+    l_int32 numBlackPels = 0;
+    l_int32 i;
+    l_uint32 a;
+    l_int32 w = pixGetWidth(pixg);
+    l_int32 limitR = min_int32(limitL+((l_int32)(w*0.10)), w-1);
+
+    for (i=limitL; i<=limitR; i++) {
+        l_int32 numBlackPels = CalculateNumBlackPelsCol(pixg, i, limitT, limitB, blackThresh);
+        //printf("FindWhiteColRight: i=%d, numBlackPels=%d\n", i, numBlackPels);
+
+        if (numBlackPels <= blackLimit) {
+            //printf("FindWhiteColRight: returning with col=%d, numBlackPels=%d, blackLimit=%d\n", i, numBlackPels, blackLimit);
             return i;
         }
     }

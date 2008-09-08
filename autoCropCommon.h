@@ -43,6 +43,7 @@ l_int32 FindDarkColRight(PIX *pixg, l_int32 limitL, l_int32 limitT, l_int32 limi
 l_int32 FindWhiteRowUp(PIX *pixg, l_int32 limitB, l_int32 limitL, l_int32 limitR, l_uint32 blackThresh, l_int32 blackLimit);
 l_int32 FindWhiteRowDown(PIX *pixg, l_int32 limitB, l_int32 limitL, l_int32 limitR, l_uint32 blackThresh, l_int32 blackLimit);
 l_int32 FindWhiteColLeft(PIX *pixg, l_int32 limitR, l_int32 limitT, l_int32 limitB, l_uint32 blackThresh, l_int32 blackLimit);
+l_int32 FindWhiteColRight(PIX *pixg, l_int32 limitL, l_int32 limitT, l_int32 limitB, l_uint32 blackThresh, l_int32 blackLimit);
 
 void PrintKeyValue_int32(char *key, l_int32 val);
 void DebugKeyValue_int32(char *key, l_int32 val);

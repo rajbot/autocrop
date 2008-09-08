@@ -103,7 +103,7 @@ for file in sorted(files):
     leaf=leafs[leafNum]
     
     if ('RIGHT' == leaf.findtext('handSide')):
-        rotateDir = 1
+        rotateDir = 1        
         #leafNum+=1;
         #continue
     else:

@@ -368,6 +368,7 @@ void AutoDeskewAndCrop(PIX       *pixg,
                                            (oldX+oldW)/8);
     
     bindingEdge *= 8;
+    DebugKeyValue_int32("bindingEdge", bindingEdge);        
 
     PIX *pixb = pixThresholdToBinary(pixc, bindingThresh);
     //pixWrite("/tmp/home/rkumar/outbin.png", pixb, IFF_PNG); 
@@ -462,13 +463,15 @@ void AutoDeskewAndCrop(PIX       *pixg,
         DebugKeyValue_int32("newPageB", pageB);
     } else {
         //maybe we are in the text block. search down first.
+        printf("finding white rows down\n");
         l_int32 downY = FindWhiteRowDown(pixr, oldY+oldH-1, limitL, limitR, bindingThresh, 10);
+        printf("finding white rows up\n");
         l_int32 upY   = FindWhiteRowUp(pixr, oldY+oldH-1, limitL, limitR, bindingThresh, 10);
         DebugKeyValue_int32("downY", downY);
         DebugKeyValue_int32("upY", upY);
         if ( (-1 != upY) && (-1 != downY)) {
             l_int32 oldCropB = oldX+oldW-1;
-            DebugKeyValue_int32("oldCropB", pageB);
+            DebugKeyValue_int32("oldCropB", oldCropB);
             if (abs(upY-oldCropB) < abs(downY - oldCropB)) {
                 pageB = upY;
             } else {
@@ -498,6 +501,25 @@ void AutoDeskewAndCrop(PIX       *pixg,
         pageL = FindDarkColLeft(pixr, oldX, limitT, limitB, bindingThresh, 10);
         foundPageL = 1;
         DebugKeyValue_int32("newPageL", pageL);
+    } else {
+        if (-1 == rotDir) {
+            //left hand leaf, binding on right side
+            pageL = FindWhiteColLeft(pixr,  oldX, limitT, limitB, bindingThresh, 10);
+            if (-1 == pageL) {
+                pageL = FindWhiteColRight(pixr,  oldX, limitT, limitB, bindingThresh, 10);
+                assert(-1 != pageL);
+            }
+            foundPageL = 1;            
+            DebugKeyValue_int32("newPageL", pageL);
+        } else if (1 == rotDir) {
+            //right hand leaf, binding on left side
+            pageL = FindWhiteColRight(pixr, bindingEdge, limitT, limitB, bindingThresh, 10);
+            assert(-1 != pageL);
+            foundPageL = 1;
+            DebugKeyValue_int32("newPageL", pageL);  
+        } else {
+            assert(0);
+        }
     }
 
     /// right side
@@ -517,6 +539,19 @@ void AutoDeskewAndCrop(PIX       *pixg,
                 foundPageR = 1;
                 DebugKeyValue_int32("newPageR", pageR);
             //}
+        } else if (1 == rotDir) {
+            //right hand leaf, binding on left side
+            pageR = FindWhiteColRight(pixr,  oldX+oldW-1, limitT /*oldY*/, limitB /*oldY+oldH-1*/, bindingThresh, 10);
+            if (-1 == pageR) {
+                pageR = FindWhiteColLeft(pixr,  oldX+oldW-1, limitT /*oldY*/, limitB /*oldY+oldH-1*/, bindingThresh, 10);
+                assert(-1 != pageR);
+            }
+            
+            foundPageR = 1;
+            DebugKeyValue_int32("newPageR", pageR);
+            
+        } else {
+            assert(0);
         }
     }
     
@@ -530,7 +565,7 @@ void AutoDeskewAndCrop(PIX       *pixg,
     
 
     //TODO: use newThresh[l,r,t,b] here instead of bindingThresh
-    l_int32 textBlockL = FindDarkColRight(pixr, oldX, limitT /*oldY*/, limitB /*oldY+oldH-1*/, bindingThresh, 10);
+    l_int32 textBlockL = FindDarkColRight(pixr, pageL+1, limitT /*oldY*/, limitB /*oldY+oldH-1*/, bindingThresh, 10);
     if (-1 == textBlockL) textBlockL = min_int32(oldX+((l_int32)(w*0.10)), w);
     DebugKeyValue_int32("textBlockL", textBlockL);
 
@@ -552,19 +587,47 @@ void AutoDeskewAndCrop(PIX       *pixg,
     assert(textBlockB<pageB);
 
     /// Place crop box horizontally
+    l_int32 textBlockW = textBlockR-textBlockL;
+    l_int32 pageW = pageR-pageL;
     if (1 == rotDir) {
         //right-hand leaf
         //binding on left side
+        if ((oldW < pageW) && (oldW > textBlockW)) {
 
-        if (((pageL+oldMarginL)<textBlockL) && ((pageL+oldMarginL+oldW)>textBlockR) && ((pageL+oldMarginL+oldW)<pageR) ) {
-            debugstr("cropBox width perfect fit!\n");
-            newX = pageL + oldMarginL;
-            newW = oldW;
+            if (((pageL+oldMarginL)<textBlockL) && ((pageL+oldMarginL+oldW)>textBlockR) && ((pageL+oldMarginL+oldW)<pageR) ) {
+                debugstr("cropBox width perfect fit!\n");
+                newX = pageL + oldMarginL;
+                newW = oldW;
+            } else if ((pageL+oldMarginL)<textBlockL) {
+                newX = pageL+oldMarginL;
+                newW = pageR-newX;
+                printf("REDUCING cropWidth by %.2f percent!\n", 100.0*((float)(oldW-newW))/((float)oldW) );                
+            } else {
+                printf("pageL+oldMarginL = %d \t textBlockL = %d\n", pageL+oldMarginL , textBlockL);
+                printf("pageL+oldMarginL+oldW = %d \t textBlockR = %d\n", pageL+oldMarginL+oldW, textBlockR);
+                printf("pageL+oldMarginL+oldW = %d \t pageR = %d\n", pageL+oldMarginL+oldW, pageR);            
+                assert(0);
+            }
+
+        } else if (oldW>textBlockW) {
+            int tmpR;
+            if ((pageL+oldMarginL) < textBlockL) {
+                newX = pageL+oldMarginL;
+            } else {
+                newX = pageL;
+            }
+            if ((pageR-oldMarginR) > textBlockR) {
+                tmpR = pageR-oldMarginR; 
+            } else {
+                tmpR = pageR;
+            }
+            newW = tmpR - newX;
+            printf("REDUCING cropWidth by %.2f percent!\n", 100.0*((float)(oldW-newW))/((float)oldW) );            
         } else {
+        
             assert(0);
         }
     } else if (-1 == rotDir) {
-        l_int32 textBlockW = textBlockR-textBlockL;
         if ((oldW < (pageR-pageL)) && (oldW > (textBlockR-textBlockL))) {
             if (((pageR-oldMarginR)>textBlockR) && ((pageR-oldMarginR-oldW)<textBlockL) && ((pageR-oldMarginR-oldW)>pageL) ) {
                 debugstr("cropBox width perfect fit!\n");
@@ -715,25 +778,27 @@ void FindPageMargins(PIX       *pixg,
 
     /// Top
     l_uint32 darkestPelTop = CalculateMinRow(pixt, cropY, cropX, cropX+cropW-1);
-    assert(darkestPelTop > (l_uint32((l_float32)blackThresh*0.90)));
+    //assert(darkestPelTop > (l_uint32((l_float32)blackThresh*0.90)));
     l_int32 pageTop = FindDarkRowUp(pixt, cropY, cropX, cropX+cropW-1, bindingThresh /*darkestPelTop*/, 10);
     assert(-1 != pageTop);
 
     /// Bottom
     l_uint32 darkestPelBottom = CalculateMinRow(pixt, cropY+cropH-1, cropX, cropX+cropW-1);
-    assert(darkestPelBottom > (l_uint32((l_float32)blackThresh*0.90)));
+    //assert(darkestPelBottom > (l_uint32((l_float32)blackThresh*0.90)));
     l_int32 pageBottom = FindDarkRowDown(pixt, cropY+cropH-1, cropX, cropX+cropW-1, bindingThresh /*darkestPelBottom*/, 10);
     assert(-1 != pageBottom);
 
     /// Left
     l_uint32 darkestPelLeft = CalculateMinCol(pixt, cropX, cropY, cropY+cropH-1);
-    assert(darkestPelLeft > (l_uint32((l_float32)blackThresh*0.90)));
+    //assert(darkestPelLeft > (l_uint32((l_float32)blackThresh*0.90)));
     l_int32 pageLeft = FindDarkColLeft(pixt, cropX, cropY, cropY+cropH-1, bindingThresh /*darkestPelLeft*/, 10);
 
     /// Right
     l_uint32 darkestPelRight = CalculateMinCol(pixt, cropX+cropW-1, cropY, cropY+cropH-1);
-    assert(darkestPelRight > (l_uint32((l_float32)blackThresh*0.90)));
+    //assert(darkestPelRight > (l_uint32((l_float32)blackThresh*0.90)));
     l_int32 pageRight = FindDarkColRight(pixt, cropX+cropW-1, cropY, cropY+cropH-1, bindingThresh /*darkestPelRight*/, 10);
+
+    PrintKeyValue_int32("bindingThresh", bindingThresh);
 
     PrintKeyValue_int32("threshL", darkestPelLeft);
     PrintKeyValue_int32("threshR", darkestPelRight);
