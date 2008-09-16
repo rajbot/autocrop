@@ -26,7 +26,7 @@ l_uint32 CalculateSADcol(PIX        *pixg,
                          l_uint32   *retDiff
                         );
 
-l_int32 CalculateTreshInitial(PIX *pixg);
+l_int32 CalculateTreshInitial(PIX *pixg, l_int32 *histmax);
 
 l_int32 RemoveBackgroundTop(PIX *pixg, l_int32 rotDir, l_int32 initialBlackThresh);
 l_int32 RemoveBackgroundBottom(PIX *pixg, l_int32 rotDir, l_int32 initialBlackThresh);
@@ -54,3 +54,10 @@ l_int32 min_int32(l_int32 a, l_int32 b);
 l_int32 max_int32(l_int32 a, l_int32 b);
 
 void ReduceRowOrCol(l_float32 percent, l_int32 oldT, l_int32 oldB, l_int32 *newT, l_int32 *newB);
+
+l_int32 FindBindingUsingBlackBar(PIX      *pixg,
+                                 l_int32  rotDir,
+                                 l_int32 topEdge,
+                                 l_int32 bottomEdge,
+                                 l_int32 textBlockL,
+                                 l_int32 textBlockR);

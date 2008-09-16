@@ -227,6 +227,178 @@ l_uint32 CalculateSADrow(PIX        *pixg,
     return (-1 != maxj);
 }
 
+/// CalculateTreshInitial ()
+///____________________________________________________________________________
+
+l_int32 CalculateTreshInitial(PIX *pixg, l_int32 *histmax) {
+        NUMA *hist = pixGetGrayHistogram(pixg, 1);
+        assert(NULL != hist);
+        assert(256 == numaGetCount(hist));
+        int i;
+        
+//         for (i=0; i<255; i++) {
+//             int dummy;
+//             numaGetIValue(hist, i, &dummy);
+//             printf("init hist: %d: %d\n", i, dummy);
+//         }
+        
+        float peak = 0;
+        l_int32 peaki;
+        for (i=255; i>=0; i--) {
+            float dummy;
+            numaGetFValue(hist, i, &dummy);
+            if (dummy > peak) {
+                peak = dummy;
+                peaki = i;
+            }
+        }
+        //printf("hist peak at i=%d with val=%f\n", peaki, peak);
+        
+        l_int32 thresh = -1;
+        float threshLimit = peak * 0.2;
+        //printf("thresh limit = %f\n", threshLimit);
+        for (i=peaki-1; i>0; i--) {
+            float dummy;
+            numaGetFValue(hist, i, &dummy);
+            if (dummy<threshLimit) {
+                thresh = i;
+                break;
+            }
+        }
+        
+        if (-1 == thresh) {
+            thresh = peaki >>1;
+        }
+        
+        if (0 == thresh) {
+            //this could be a plain black img.
+            thresh = 140;
+        }
+
+        //printf("init thresh at i=%d\n", thresh);
+        *histmax = peaki;
+        return thresh;
+}
+
+/// CalculateNumBlackPelsRow
+///____________________________________________________________________________
+l_int32 CalculateNumBlackPelsRow(PIX *pixg, l_int32 j, l_int32 limitL, l_int32 limitR, l_uint32 blackThresh) {
+    l_int32 numBlackPels = 0;
+    l_int32 i;
+    l_uint32 a;
+
+    for (i=limitL; i<=limitR; i++) {
+        l_int32 retval = pixGetPixel(pixg, i, j, &a);
+        assert(0 == retval);
+        if (a<blackThresh) {
+            numBlackPels++;
+        }
+    }
+
+    return numBlackPels;
+}
+
+/// CalculateNumBlackPelsCol
+///____________________________________________________________________________
+l_int32 CalculateNumBlackPelsCol(PIX *pixg, l_int32 i, l_int32 limitT, l_int32 limitB, l_uint32 blackThresh) {
+    l_int32 numBlackPels = 0;
+    l_int32 j;
+    l_uint32 a;
+
+    for (j=limitT; j<=limitB; j++) {
+        l_int32 retval = pixGetPixel(pixg, i, j, &a);
+        assert(0 == retval);
+        if (a<blackThresh) {
+            numBlackPels++;
+        }
+    }
+
+    return numBlackPels;
+}
+
+/// FindBlackBar()
+///____________________________________________________________________________
+void FindBlackBar(PIX *pixg, 
+                  l_int32 left, 
+                  l_int32 right,
+                  l_int32 h,
+                  l_int32 thresh,
+                  l_int32 *bindingEdgeL, 
+                  l_int32 *bindingEdgeR)
+{
+    l_int32 i;
+    l_int32 gotEdgeL = 0;
+    l_int32 gotEdgeR = 0;
+
+    for (i=left; i<=right; i++) {
+        //printf("%d (%d): ", i, i*8);
+
+        l_int32 numBlackPels = CalculateNumBlackPelsCol(pixg, i, 0, h-1, thresh);
+        //printf("numBlackPels=%d, h=%d thresh=%d", numBlackPels, h, thresh);
+        if (numBlackPels == h) {
+            *bindingEdgeL = i;
+            gotEdgeL      = 1;
+            //printf("FOUND!\n");
+            break;
+        }
+        //printf("\n");
+    }
+
+    for (i=right; i>=left; i--) {
+        //printf("%d: ", i);
+
+        l_int32 numBlackPels = CalculateNumBlackPelsCol(pixg, i, 0, h-1, thresh);
+        //printf("numBlackPels=%d, h=%d ", numBlackPels, h);
+        if (numBlackPels == h) {
+            *bindingEdgeR = i;
+            gotEdgeR      = 1;
+            //printf("FOUND!\n");
+            break;
+        }
+        //printf("\n");
+    }
+
+    if (!(gotEdgeL & gotEdgeR)) {
+        assert(0);
+    }
+
+
+}
+
+/// FindBlackBarAndThresh()
+///____________________________________________________________________________
+void FindBlackBarAndThresh(PIX *pixg, 
+                  l_int32 left, 
+                  l_int32 right,
+                  l_int32 h,
+                  l_int32 *barEdgeL, 
+                  l_int32 *barEdgeR,
+                  l_int32 *barThresh)
+
+{
+
+    l_int32 histmax;
+    l_int32 darkThresh = CalculateTreshInitial(pixg, &histmax);
+    l_int32 thresh;
+
+    for (thresh = darkThresh; thresh<histmax; thresh++) {
+        l_int32 blackBarL, blackBarR;
+        FindBlackBar(pixg, left, right, h, thresh, &blackBarL, &blackBarR);
+
+        l_int32 barWidth = blackBarR - blackBarL;
+        if (barWidth > 3) {
+            *barEdgeL = blackBarL;
+            *barEdgeR = blackBarR;
+            *barThresh = thresh;
+            return;
+        }
+    }
+
+    assert(0);
+}
+
+
+
 /// FindBindingEdge2()
 ///____________________________________________________________________________
 l_int32 FindBindingEdge2(PIX      *pixg,
@@ -278,7 +450,17 @@ l_int32 FindBindingEdge2(PIX      *pixg,
     l_int32    bindingEdge;// = -1;
     l_uint32   bindingEdgeDiff;// = 0;
     float      bindingDelta = 0.0;
-    CalculateSADcol(pixg, left, right, jTop, jBot, &bindingEdge, &bindingEdgeDiff);
+
+    printf("left = %d, right=%d, textBlockR = %d, width = %d, width10=%d\n", left, right, textBlockR, w, width10);
+    l_int32 blackBarL, blackBarR;
+    l_int32 histmax;
+    l_int32 darkThresh; // = CalculateTreshInitial(pixg, &histmax);
+    //FindBlackBar(pixg, left, right, h, darkThresh, &blackBarL, &blackBarR);
+    FindBlackBarAndThresh(pixg, left, right, h, &blackBarL, &blackBarR, &darkThresh);
+    printf("init blackBar L=%d, R=%d, width=%d, thresh=%d\n", blackBarL, blackBarR, blackBarR-blackBarL, darkThresh);
+
+    //CalculateSADcol(pixg, left, right, jTop, jBot, &bindingEdge, &bindingEdgeDiff);
+    CalculateSADcol(pixg, blackBarL, blackBarR, jTop, jBot, &bindingEdge, &bindingEdgeDiff);
     //printf("init bindingEdge=%d, diff=%d\n", bindingEdge*8, bindingEdgeDiff);
 
     float delta;
@@ -317,13 +499,18 @@ l_int32 FindBindingEdge2(PIX      *pixg,
             right = w - limitLeft-1;
         }
 
-        CalculateSADcol(pixt, left, right, jTop, jBot, &strongEdge, &strongEdgeDiff);
+        FindBlackBar(pixg, left, right, h, darkThresh, &blackBarL, &blackBarR);
+        //printf("blackBar L=%d, R=%d, width=%d\n", blackBarL, blackBarR, blackBarR-blackBarL);
+
+        //CalculateSADcol(pixt, left, right, jTop, jBot, &strongEdge, &strongEdgeDiff);
+        CalculateSADcol(pixt, blackBarL, blackBarR, jTop, jBot, &strongEdge, &strongEdgeDiff);
+
         //printf("delta=%f, strongest edge of gutter is at i=%d with diff=%d, w,h=(%d,%d)\n", delta, strongEdge, strongEdgeDiff, w, h);
         if (strongEdgeDiff > bindingEdgeDiff) {
             bindingEdge = strongEdge;
             bindingEdgeDiff = strongEdgeDiff;
             bindingDelta = delta;
-
+            //printf("setting best delta to %f\n", bindingDelta);
             #if DEBUGMOV
             debugmov.edgeBinding = bindingEdge;
             #endif //DEBUGMOV
@@ -460,6 +647,71 @@ printf("rightEdge = %d, leftEdge = %d\n", rightEdge, leftEdge);
     return 1; //TODO: return error code on failure
 }
 
+
+
+/// FindBindingUsingBlackBar()
+///____________________________________________________________________________
+l_int32 FindBindingUsingBlackBar(PIX      *pixg,
+                                 l_int32  rotDir,
+                                 l_int32 topEdge,
+                                 l_int32 bottomEdge,
+                                 l_int32 textBlockL,
+                                 l_int32 textBlockR)
+{
+    //Currently, we can only do right-hand leafs
+    assert((1 == rotDir) || (-1 == rotDir));
+
+    l_uint32 w = pixGetWidth( pixg );
+    l_uint32 h = pixGetHeight( pixg );
+
+    l_uint32 width10 = (l_uint32)(w * 0.10);
+    l_int32 histmax;
+    l_int32 darkThresh = CalculateTreshInitial(pixg, &histmax);
+
+    l_int32 kernelHeight10 = (l_uint32)(0.10*(bottomEdge-topEdge));
+    //l_uint32 jTop = (l_uint32)((1-kKernelHeight)*0.5*h);
+    //l_uint32 jBot = (l_uint32)((1+kKernelHeight)*0.5*h);    
+    l_int32 jTop = topEdge+kernelHeight10;
+    l_int32 jBot = bottomEdge-kernelHeight10;
+
+    l_uint32 left, right;
+    if (1 == rotDir) {
+        left  = 0;
+        if (-1 == textBlockL) {
+            right = width10;
+        } else {
+            right = textBlockL;
+        }
+    } else {
+        if (-1 == textBlockR) {
+            left  = w - width10;
+        } else {
+            left = textBlockR;
+        }
+        right = w - 1;
+    }
+
+    l_int32    bindingEdge;// = -1;
+    l_uint32   bindingEdgeDiff;// = 0;
+    l_int32    blackBarL, blackBarR;// = -1;
+    l_int32    bindingWidth;// = 0;
+    float      bindingDelta = 0.0;
+    FindBlackBar(pixg, left, right, h, darkThresh, &blackBarL, &blackBarR);
+    printf("init blackBar L=%d, R=%d, width=%d\n", blackBarL, blackBarR, blackBarR-blackBarL);
+
+
+    CalculateSADcol(pixg, blackBarL, blackBarR, jTop, jBot, &bindingEdge, &bindingEdgeDiff);
+    printf("init bindingEdge=%d, diff=%d\n", bindingEdge, bindingEdgeDiff);
+
+
+    //if (1 == rotDir) {
+    //    return bindingEdgeL;
+    //} else {
+    //    return bindingEdgeR;
+    //}
+    return 1;
+}
+
 /// ConvertToGray()
 ///____________________________________________________________________________
 PIX* ConvertToGray(PIX *pix) {
@@ -516,57 +768,7 @@ PIX* ConvertToGray(PIX *pix) {
 
 }
 
-/// CalculateTreshInitial ()
-///____________________________________________________________________________
 
-l_int32 CalculateTreshInitial(PIX *pixg) {
-        NUMA *hist = pixGetGrayHistogram(pixg, 1);
-        assert(NULL != hist);
-        assert(256 == numaGetCount(hist));
-        int i;
-        
-//         for (i=0; i<255; i++) {
-//             int dummy;
-//             numaGetIValue(hist, i, &dummy);
-//             printf("init hist: %d: %d\n", i, dummy);
-//         }
-        
-        float peak = 0;
-        int peaki;
-        for (i=255; i>=0; i--) {
-            float dummy;
-            numaGetFValue(hist, i, &dummy);
-            if (dummy > peak) {
-                peak = dummy;
-                peaki = i;
-            }
-        }
-        //printf("hist peak at i=%d with val=%f\n", peaki, peak);
-        
-        l_int32 thresh = -1;
-        float threshLimit = peak * 0.1;
-        //printf("thresh limit = %f\n", threshLimit);
-        for (i=peaki-1; i>0; i--) {
-            float dummy;
-            numaGetFValue(hist, i, &dummy);
-            if (dummy<threshLimit) {
-                thresh = i;
-                break;
-            }
-        }
-        
-        if (-1 == thresh) {
-            thresh = peaki >>1;
-        }
-        
-        if (0 == thresh) {
-            //this could be a plain black img.
-            thresh = 140;
-        }
-
-        printf("init thresh at i=%d\n", thresh);
-        return thresh;
-}
 
 /// RemoveBackgroundTop()
 ///____________________________________________________________________________
@@ -669,41 +871,7 @@ l_int32 RemoveBackgroundBottom(PIX *pixg, l_int32 rotDir, l_int32 initialBlackTh
 
 }
 
-/// CalculateNumBlackPelsRow
-///____________________________________________________________________________
-l_int32 CalculateNumBlackPelsRow(PIX *pixg, l_int32 j, l_int32 limitL, l_int32 limitR, l_uint32 blackThresh) {
-    l_int32 numBlackPels = 0;
-    l_int32 i;
-    l_uint32 a;
 
-    for (i=limitL; i<=limitR; i++) {
-        l_int32 retval = pixGetPixel(pixg, i, j, &a);
-        assert(0 == retval);
-        if (a<blackThresh) {
-            numBlackPels++;
-        }
-    }
-
-    return numBlackPels;
-}
-
-/// CalculateNumBlackPelsCol
-///____________________________________________________________________________
-l_int32 CalculateNumBlackPelsCol(PIX *pixg, l_int32 i, l_int32 limitT, l_int32 limitB, l_uint32 blackThresh) {
-    l_int32 numBlackPels = 0;
-    l_int32 j;
-    l_uint32 a;
-
-    for (j=limitT; j<=limitB; j++) {
-        l_int32 retval = pixGetPixel(pixg, i, j, &a);
-        assert(0 == retval);
-        if (a<blackThresh) {
-            numBlackPels++;
-        }
-    }
-
-    return numBlackPels;
-}
 
 /// CalculateMinRow
 ///____________________________________________________________________________

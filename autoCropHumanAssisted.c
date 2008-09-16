@@ -142,7 +142,8 @@ void FindBindingGap(PIX       *pixg,
         assert(0);
     }
     
-    l_int32 darkThresh = CalculateTreshInitial(pixt);
+    l_int32 histmax;
+    l_int32 darkThresh = CalculateTreshInitial(pixt, &histmax);
     l_int32 topEdge    = RemoveBackgroundTop(pixt, rotDir, darkThresh);
     l_int32 bottomEdge = RemoveBackgroundBottom(pixt, rotDir, darkThresh);
     printf("topEdge: %d\n", topEdge);
@@ -174,7 +175,7 @@ printf("oldW = %d\n", oldW);
     BOX     *box   = boxCreate(oldX+boxW10, oldY+boxH10, oldW-boxW10, oldH-boxH10);
     PIX     *pixc  = pixClipRectangle(pixg, box, NULL);
     
-    l_int32 darkThresh = CalculateTreshInitial(pixc);
+    //l_int32 darkThresh = CalculateTreshInitial(pixc);
 
 
     l_float32    conf, textAngle;
@@ -369,6 +370,8 @@ void AutoDeskewAndCrop(PIX       *pixg,
     
     bindingEdge *= 8;
     DebugKeyValue_int32("bindingEdge", bindingEdge);        
+
+    //l_int32 bindingEdgeBlackBar = FindBindingUsingBlackBar(pixg, rotDir, oldY, oldY+oldH, -1, -1);
 
     PIX *pixb = pixThresholdToBinary(pixc, bindingThresh);
     //pixWrite("/tmp/home/rkumar/outbin.png", pixb, IFF_PNG); 
@@ -601,7 +604,11 @@ void AutoDeskewAndCrop(PIX       *pixg,
             } else if ((pageL+oldMarginL)<textBlockL) {
                 newX = pageL+oldMarginL;
                 newW = pageR-newX;
-                printf("REDUCING cropWidth by %.2f percent!\n", 100.0*((float)(oldW-newW))/((float)oldW) );                
+                printf("REDUCING cropWidth by %.2f percent!\n", 100.0*((float)(oldW-newW))/((float)oldW) );
+            } else if ( ((pageR-oldMarginR) < pageR) && ((pageR-oldMarginR) > textBlockR) ) {
+                newX = pageL;
+                newW = pageR-oldMarginR-newX;
+                printf("REDUCING cropWidth by %.2f percent!\n", 100.0*((float)(oldW-newW))/((float)oldW) );
             } else {
                 printf("pageL+oldMarginL = %d \t textBlockL = %d\n", pageL+oldMarginL , textBlockL);
                 printf("pageL+oldMarginL+oldW = %d \t textBlockR = %d\n", pageL+oldMarginL+oldW, textBlockR);
@@ -760,7 +767,7 @@ void FindPageMargins(PIX       *pixg,
 
     BOX     *box   = boxCreate(cropX, cropY, cropW, cropH);
     PIX     *pixc  = pixClipRectangle(pixt, box, NULL);
-    l_int32 blackThresh = CalculateTreshInitial(pixc);
+    //l_int32 blackThresh = CalculateTreshInitial(pixc);
 
     l_uint32 w = pixGetWidth( pixg );
     l_uint32 h = pixGetHeight( pixg );
