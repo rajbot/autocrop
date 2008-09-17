@@ -241,10 +241,34 @@ l_int32 CalculateTreshInitial(PIX *pixg, l_int32 *histmax) {
 //             numaGetIValue(hist, i, &dummy);
 //             printf("init hist: %d: %d\n", i, dummy);
 //         }
+
+        l_int32 brightestPel;
+        for (i=255; i>=0; i--) {
+            float dummy;
+            numaGetFValue(hist, i, &dummy);
+            if (dummy > 0) {
+                brightestPel = i;
+                break;
+            }
+        }
+
+        l_int32 darkestPel;
+        for (i=0; i<=255; i++) {
+            float dummy;
+            numaGetFValue(hist, i, &dummy);
+            if (dummy > 0) {
+                darkestPel = i;
+                break;
+            }
+        }
+        
+        l_int32 limit = (brightestPel-darkestPel)/2;
+        
+        printf("brighestPel=%d, darkestPel=%d, limit=%d\n", brightestPel, darkestPel, limit);
         
         float peak = 0;
         l_int32 peaki;
-        for (i=255; i>=0; i--) {
+        for (i=255; i>=limit; i--) {
             float dummy;
             numaGetFValue(hist, i, &dummy);
             if (dummy > peak) {
@@ -383,10 +407,12 @@ void FindBlackBarAndThresh(PIX *pixg,
 
     for (thresh = darkThresh; thresh<histmax; thresh++) {
         l_int32 blackBarL, blackBarR;
+        printf("thresh=%d ", thresh);
         FindBlackBar(pixg, left, right, h, thresh, &blackBarL, &blackBarR);
 
         l_int32 barWidth = blackBarR - blackBarL;
-        if (barWidth > 3) {
+        printf("L=%d, R=%d, W=%d\n", thresh, blackBarL, blackBarR, barWidth);
+        if (barWidth >= 2) {
             *barEdgeL = blackBarL;
             *barEdgeR = blackBarR;
             *barThresh = thresh;

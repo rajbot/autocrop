@@ -1,4 +1,4 @@
-/*
+    /*
 Copyright(c)2008 Internet Archive. Software license GPL version 2.
 
 build leptonica first:
@@ -344,6 +344,7 @@ void AutoDeskewAndCrop(PIX       *pixg,
     l_int32 boxH10 = (l_int32)(oldH * 0.10);
     BOX     *box   = boxCreate(oldX+boxW10, oldY+boxH10, oldW-boxW10, oldH-boxH10);
     PIX     *pixc  = pixClipRectangle(pixg, box, NULL);
+
     
     //l_int32 darkThresh = CalculateTreshInitial(pixc);
 
@@ -414,6 +415,9 @@ void AutoDeskewAndCrop(PIX       *pixg,
                     L_ROTATE_AREA_MAP,
                     L_BRING_IN_BLACK,0,0);
 
+    l_int32 h = pixGetHeight(pixr);
+    l_int32 w = pixGetWidth(pixr);
+    
     int foundPageL = 0;
     int foundPageR = 0;
     int foundPageT = 0;
@@ -503,6 +507,10 @@ void AutoDeskewAndCrop(PIX       *pixg,
     if (numBlackPels <= 10) {
         pageL = FindDarkColLeft(pixr, oldX, limitT, limitB, bindingThresh, 10);
         foundPageL = 1;
+        if (-1 == pageL) {
+            //sometimes the camera is too close and the full page is not captured.
+            pageL = 0;
+        }
         DebugKeyValue_int32("newPageL", pageL);
     } else {
         if (-1 == rotDir) {
@@ -517,7 +525,11 @@ void AutoDeskewAndCrop(PIX       *pixg,
         } else if (1 == rotDir) {
             //right hand leaf, binding on left side
             pageL = FindWhiteColRight(pixr, bindingEdge, limitT, limitB, bindingThresh, 10);
-            assert(-1 != pageL);
+            //assert(-1 != pageL);
+            if (-1 == pageL) {
+                //we seem to have a tight binding.
+                pageL = bindingEdge;
+            }
             foundPageL = 1;
             DebugKeyValue_int32("newPageL", pageL);  
         } else {
@@ -530,6 +542,10 @@ void AutoDeskewAndCrop(PIX       *pixg,
     printf("right num black pels=%d\n", numBlackPels);
     if (numBlackPels <= 10) {
         pageR = FindDarkColRight(pixr, oldX+oldW-1, limitT /*oldY*/, limitB /*oldY+oldH-1*/, bindingThresh, 10);
+        if (-1 == pageR) {
+            //sometimes the camera is too close and the full page is not captured.
+            pageR = w-1;
+        }
         foundPageR = 1;
         DebugKeyValue_int32("newPageR", pageR);
     } else {
@@ -538,7 +554,11 @@ void AutoDeskewAndCrop(PIX       *pixg,
             printf("binding edge at %d\n", bindingEdge);
             //if (bindingEdge > (oldX+oldW-1)) {
                 pageR = FindWhiteColLeft(pixr, bindingEdge /*oldX+oldW-1*/, limitT /*oldY*/, limitB /*oldY+oldH-1*/, bindingThresh, 10);
-                assert(-1 != pageR);
+                //assert(-1 != pageR);
+                if (-1 == pageR) {
+                    //we seem to have a tight binding.
+                    pageR = bindingEdge;
+                }
                 foundPageR = 1;
                 DebugKeyValue_int32("newPageR", pageR);
             //}
@@ -562,11 +582,8 @@ void AutoDeskewAndCrop(PIX       *pixg,
     
     assert(foundPageL & foundPageR & foundPageT & foundPageB);
     
-    /// Now, find the text block bounderies
-    l_int32 h = pixGetHeight(pixr);
-    l_int32 w = pixGetWidth(pixr);
     
-
+    /// Now, find the text block bounderies
     //TODO: use newThresh[l,r,t,b] here instead of bindingThresh
     l_int32 textBlockL = FindDarkColRight(pixr, pageL+1, limitT /*oldY*/, limitB /*oldY+oldH-1*/, bindingThresh, 10);
     if (-1 == textBlockL) textBlockL = min_int32(oldX+((l_int32)(w*0.10)), w);
@@ -643,11 +660,11 @@ void AutoDeskewAndCrop(PIX       *pixg,
             } else if ((pageR-oldMarginR)>textBlockR) {
                 newX = pageL;
                 newW = pageR-oldMarginR-pageL;
-                printf("REDUCING cropWidth by %.2f percent!\n", 100.0*((float)(oldW-newW))/((float)oldW) );
+                printf("REDUCING cropWidth by %.2f percent! (newX = pageL)\n", 100.0*((float)(oldW-newW))/((float)oldW) );
             } else if ( ((pageL+oldMarginL) > pageL) && ((pageL+oldMarginL) < textBlockL) ) {
                 newX = pageL+oldMarginL;
                 newW = pageR-newX;
-                printf("REDUCING cropWidth by %.2f percent!\n", 100.0*((float)(oldW-newW))/((float)oldW) );
+                printf("REDUCING cropWidth by %.2f percent! (newX = pageL+oldMarginL)\n", 100.0*((float)(oldW-newW))/((float)oldW) );
             } else {
                 printf("pageR-oldMarginR = %d \t textBlockR = %d\n", pageR-oldMarginR , textBlockR);
                 printf("pageR-oldMarginR-oldW = %d \t textBlockL = %d\n", pageR-oldMarginR-oldW, textBlockL);
@@ -669,7 +686,10 @@ void AutoDeskewAndCrop(PIX       *pixg,
             newW = tmpR - newX;
             printf("REDUCING cropWidth by %.2f percent!\n", 100.0*((float)(oldW-newW))/((float)oldW) );
         } else {
-            assert(0);
+            //assert(0);
+            newX = pageL;
+            newW = pageR - pageL;
+            printf("oldW didn't fit.. REDUCING cropWidth by %.2f percent!\n", 100.0*((float)(oldW-newW))/((float)oldW) );
         }
     } else {
         assert(0);
