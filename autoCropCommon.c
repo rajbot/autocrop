@@ -342,7 +342,7 @@ l_int32 CalculateNumBlackPelsCol(PIX *pixg, l_int32 i, l_int32 limitT, l_int32 l
 
 /// FindBlackBar()
 ///____________________________________________________________________________
-void FindBlackBar(PIX *pixg, 
+l_int32 FindBlackBar(PIX *pixg, 
                   l_int32 left, 
                   l_int32 right,
                   l_int32 h,
@@ -383,10 +383,11 @@ void FindBlackBar(PIX *pixg,
     }
 
     if (!(gotEdgeL & gotEdgeR)) {
-        assert(0);
+        return -1;
+        //assert(0);
     }
 
-
+    return 1;
 }
 
 /// FindBlackBarAndThresh()
@@ -409,7 +410,8 @@ void FindBlackBarAndThresh(PIX *pixg,
     for (thresh = darkThresh; thresh<histmax; thresh++) {
         l_int32 blackBarL, blackBarR;
         printf("thresh=%d ", thresh);
-        FindBlackBar(pixg, left, right, h, thresh, &blackBarL, &blackBarR);
+        l_int32 retval = FindBlackBar(pixg, left, right, h, thresh, &blackBarL, &blackBarR);
+        if (-1 == retval) continue;
 
         l_int32 barWidth = blackBarR - blackBarL;
         printf("L=%d, R=%d, W=%d\n", blackBarL, blackBarR, barWidth);

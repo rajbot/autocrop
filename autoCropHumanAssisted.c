@@ -370,7 +370,8 @@ void AutoDeskewAndCrop(PIX       *pixg,
                                            (oldX+oldW)/8);
     
     bindingEdge *= 8;
-    DebugKeyValue_int32("bindingEdge", bindingEdge);        
+    DebugKeyValue_int32("bindingEdge", bindingEdge);
+    DebugKeyValue_int32("bindingThresh", bindingThresh);
 
     //l_int32 bindingEdgeBlackBar = FindBindingUsingBlackBar(pixg, rotDir, oldY, oldY+oldH, -1, -1);
 
