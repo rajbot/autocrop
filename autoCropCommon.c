@@ -400,6 +400,7 @@ void FindBlackBarAndThresh(PIX *pixg,
                   l_int32 *barThresh)
 
 {
+    //pixWrite("findblackbar.jpg", pixg, IFF_JFIF_JPEG);
 
     l_int32 histmax;
     l_int32 darkThresh = CalculateTreshInitial(pixg, &histmax);
@@ -411,8 +412,8 @@ void FindBlackBarAndThresh(PIX *pixg,
         FindBlackBar(pixg, left, right, h, thresh, &blackBarL, &blackBarR);
 
         l_int32 barWidth = blackBarR - blackBarL;
-        printf("L=%d, R=%d, W=%d\n", thresh, blackBarL, blackBarR, barWidth);
-        if (barWidth >= 2) {
+        printf("L=%d, R=%d, W=%d\n", blackBarL, blackBarR, barWidth);
+        if (barWidth >= 1) {
             *barEdgeL = blackBarL;
             *barEdgeR = blackBarR;
             *barThresh = thresh;
