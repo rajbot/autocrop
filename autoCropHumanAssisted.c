@@ -321,6 +321,58 @@ printf("oldW = %d\n", oldW);
     #endif
 }
 
+/// PlaceCropBox()
+///____________________________________________________________________________
+void PlaceCropBox(l_int32   pageL,
+                    l_int32   pageR,
+                    l_int32   pageT,
+                    l_int32   pageB,
+                    l_int32   textBlockL,
+                    l_int32   textBlockR,
+                    l_int32   textBlockT,
+                    l_int32   textBlockB,
+                    l_int32   origMarginL,
+                    l_int32   origMarginR,
+                    l_int32   origMarginT,
+                    l_int32   origMarginB,
+                    l_int32   *newX,
+                    l_int32   *newY,
+                    l_int32   *newW,
+                    l_int32   *newH)
+{
+
+    l_int32 l,t,r,b;
+
+    if ((pageL+origMarginL)<textBlockL) {
+        l = pageL+origMarginL;
+    } else {
+        l = pageL;
+    }
+
+    if ((pageT+origMarginT)<textBlockT) {
+        t = pageT+origMarginT;
+    } else {
+        t = pageT;
+    }
+
+    if ((pageR-origMarginR)>textBlockR) {
+        r = pageR-origMarginR;
+    } else {
+        r = pageR;
+    }
+
+    if ((pageB-origMarginB)>textBlockB) {
+        b = pageB-origMarginB;
+    } else {
+        b = pageB;
+    }
+
+    *newX = l;
+    *newY = t;
+    *newW = (r-l);
+    *newH = (b-t);
+}
+
 /// AutoDeskewAndCrop()
 ///____________________________________________________________________________
 void AutoDeskewAndCrop(PIX       *pixg,
@@ -334,10 +386,10 @@ void AutoDeskewAndCrop(PIX       *pixg,
                  l_int32   oldMarginR,
                  l_int32   oldMarginT,
                  l_int32   oldMarginB,
-                 l_int32   oldThreshL,
-                 l_int32   oldThreshR,
-                 l_int32   oldThreshT,
-                 l_int32   oldThreshB)
+                 l_int32   origMarginL,
+                 l_int32   origMarginR,
+                 l_int32   origMarginT,
+                 l_int32   origMarginB)
 {
 
     l_int32 boxW10 = (l_int32)(oldW * 0.10);
@@ -607,6 +659,7 @@ void AutoDeskewAndCrop(PIX       *pixg,
     assert(textBlockT>pageT);
     assert(textBlockB<pageB);
 
+#if 1
     /// Place crop box horizontally
     l_int32 textBlockW = textBlockR-textBlockL;
     l_int32 pageW = pageR-pageL;
@@ -725,13 +778,11 @@ void AutoDeskewAndCrop(PIX       *pixg,
         printf("pageT+oldMarginT+oldH = %d \t pageB = %d\n", pageT+oldMarginT+oldH, pageB);
         assert(0);
     }
+#else
+    PlaceCropBox(pageL, pageR, pageT, pageB, textBlockL, textBlockR, textBlockT, textBlockB, origMarginL, origMarginR, origMarginT, origMarginB, &newX, &newY, &newW, &newH);
 
-    //TODO: update these with values calculated from this page    
-    PrintKeyValue_int32("threshL", oldThreshL);
-    PrintKeyValue_int32("threshR", oldThreshR);
-    PrintKeyValue_int32("threshT", oldThreshT);
-    PrintKeyValue_int32("threshB", oldThreshB);
-    
+#endif
+
 
     PrintKeyValue_int32("marginL", newX-pageL);
     PrintKeyValue_int32("marginR", pageR-(newX+newW));
@@ -930,14 +981,14 @@ int main(int argc, char **argv) {
         l_int32 marginT = atoi(argv[10]);
         l_int32 marginB = atoi(argv[11]);
 
-        l_int32 threshL = atoi(argv[12]);
-        l_int32 threshR = atoi(argv[13]);
-        l_int32 threshT = atoi(argv[14]);
-        l_int32 threshB = atoi(argv[15]);
+        l_int32 origMarginL = atoi(argv[12]);
+        l_int32 origMarginR = atoi(argv[13]);
+        l_int32 origMarginT = atoi(argv[14]);
+        l_int32 origMarginB = atoi(argv[15]);
 
         AutoDeskewAndCrop(pixg, rotDir, angle, cropX, cropY, cropW, cropH, 
                           marginL, marginR, marginT, marginB,
-                          threshL, threshR, threshT, threshB);
+                          origMarginL, origMarginR, origMarginT, origMarginB);
 
     }
 
