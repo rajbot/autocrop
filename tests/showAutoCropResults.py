@@ -125,6 +125,10 @@ for file in sorted(files):
     #assert((-90 == rotateDegree) or (90 == rotateDegree))
     pageType = leaf.findtext('pageType')
     
+    if ('Delete' == pageType):
+            f.write('<tr><td colspan="2">Deleted leaf %d</td></tr>\n'%(leafNum))
+            leafNum+=1;
+            continue
     
     
     retval = commands.getstatusoutput('LD_LIBRARY_PATH=~/kdubin ~/kdubin/kdu_expand -i %s -o tmp.tif'%file)[0]
