@@ -426,6 +426,25 @@ void FindBlackBarAndThresh(PIX *pixg,
     assert(0);
 }
 
+/// ExpandRowOrCol()
+///____________________________________________________________________________
+void ExpandRowOrCol(l_int32 numPels, l_int32 limitMin, l_int32 limitMax, l_int32 *min, l_int32 *max) {
+    l_int32 localMin = *min;
+    l_int32 localMax = *max;
+
+    if ((localMin - numPels) < limitMin) {
+        *min = limitMin;
+    } else {
+        *min = localMin - numPels;
+    }
+
+    if ((localMax+numPels) > limitMax) {
+        *max = limitMax;
+    } else {
+        *max = localMax + numPels;
+    }
+
+}
 
 
 /// FindBindingEdge2()
@@ -529,6 +548,8 @@ l_int32 FindBindingEdge2(PIX      *pixg,
         }
 
         FindBlackBar(pixg, left, right, h, darkThresh, &blackBarL, &blackBarR);
+        ExpandRowOrCol(1, left, right, &blackBarL, &blackBarR); /*fix for reportofsuperint1314leen leaf 37*/
+
         //printf("blackBar L=%d, R=%d, width=%d\n", blackBarL, blackBarR, blackBarR-blackBarL);
 
         //CalculateSADcol(pixt, left, right, jTop, jBot, &strongEdge, &strongEdgeDiff);

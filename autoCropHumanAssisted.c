@@ -720,6 +720,8 @@ void AutoDeskewAndCrop(PIX       *pixg,
                 newW = pageR-newX;
                 printf("REDUCING cropWidth by %.2f percent! (newX = pageL+oldMarginL)\n", 100.0*((float)(oldW-newW))/((float)oldW) );
             } else {
+                //PlaceCropBox(pageL, pageR, pageT, pageB, textBlockL, textBlockR, textBlockT, textBlockB, origMarginL, origMarginR, origMarginT, origMarginB, &newX, &newY, &newW, &newH);
+
                 printf("pageR-oldMarginR = %d \t textBlockR = %d\n", pageR-oldMarginR , textBlockR);
                 printf("pageR-oldMarginR-oldW = %d \t textBlockL = %d\n", pageR-oldMarginR-oldW, textBlockL);
                 printf("pageR-oldMarginR-oldW = %d \t pageL = %d\n", pageR-oldMarginR-oldW, pageL);            
