@@ -525,6 +525,7 @@ l_int32 FindBindingEdge2(PIX      *pixg,
         l_uint32   strongEdgeDiff;
         l_uint32   limitLeft = calcLimitLeft(w,h,delta);
         //printf("limitLeft = %d\n", limitLeft);
+        //printf("textBlockL=%d, textBlockR=%d, width=%d, limitLeft=%d\n", textBlockL, textBlockR, w, limitLeft);
 
         #if DEBUGMOV
         debugmov.angle = delta;
@@ -536,13 +537,21 @@ l_int32 FindBindingEdge2(PIX      *pixg,
             if (-1 == textBlockL) {
                 right = width10;
             } else {
-                right = textBlockL;
+                if (textBlockL <= limitLeft) {
+                    right = width10;
+                } else {
+                   right = textBlockL;
+                }
             }
         } else {
             if (-1 == textBlockR) {
                 left  = w - width10;
             } else {
-                left = textBlockR;
+                if (textBlockR >= w-limitLeft-1) {  /*fix for reportofsuperint196566leen leaf 8*/
+                    left = w- width10;
+                } else {
+                    left = textBlockR;
+                }
             }
             right = w - limitLeft-1;
         }
@@ -616,12 +625,15 @@ l_int32 FindBindingEdge2(PIX      *pixg,
     if (bindingLumaA > bindingLumaB) { //found left edge
         l_int32 i;
         l_int32 rightLimit = bindingEdge+width3p;
+        rightLimit = min_int32(rightLimit, w-1); /*fix for reportofsuperint196566leen leaf 34*/
+
         rightEdge = bindingEdge; //init this something, in case we never break;
         leftEdge  = bindingEdge;
         for (i=bindingEdge+1; i<rightLimit; i++) {
             double lumaAvg = CalculateAvgCol(pixt, i, jTop, jBot);
             printf("i=%d, avg=%f\n", i, lumaAvg);
             if (lumaAvg<threshold) {
+                rightEdge = i;                  /*fix for reportofsuperint196566leen leaf 34*/
                 numBlackLines++;
             } else {
                 rightEdge = i-1;
@@ -635,6 +647,8 @@ l_int32 FindBindingEdge2(PIX      *pixg,
     } else if (bindingLumaA < bindingLumaB) { //found right edge
         l_int32 i;
         l_int32 leftLimit = bindingEdge-width3p;
+        leftLimit = max_int32(leftLimit, 0);
+
         rightEdge = bindingEdge;
         leftEdge  = bindingEdge; //init this something, in case we never break;
         
@@ -644,9 +658,10 @@ l_int32 FindBindingEdge2(PIX      *pixg,
             double lumaAvg = CalculateAvgCol(pixt, i, jTop, jBot);
             printf("i=%d, avg=%f\n", i, lumaAvg);
             if (lumaAvg<threshold) {
+                leftEdge = i;
                 numBlackLines++;
             } else {
-                leftEdge = i-1;
+                leftEdge = i-1; //should this be i+1?
                 break;
             }
         }
