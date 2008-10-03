@@ -25,6 +25,7 @@ mflm-skewDetectGray filein.jpg
 #include <sys/errno.h>  //for stat()
 
 #include <assert.h>
+#include "autoCropCommon.h"
 
 #define debugstr printf
 //#define debugstr
@@ -56,11 +57,19 @@ int main(int    argc,
     }
     
     l_int32 depth = pixGetDepth(pixin);
-    assert(8 == depth);
+    //assert(8 == depth);
+    PIX *pixg;
+    if(32 == depth) {
+        pixg = ConvertToGray(pixin);
+    } else if (8 == depth) {
+        pixg = pixin;
+    } else {
+        assert(0);
+    }
 
+    srcW = pixGetWidth(pixg);
+    srcH = pixGetHeight(pixg);
 
-    srcW = pixGetWidth(pixin);
-    srcH = pixGetHeight(pixin);
 
     debugstr("sourceWidth = %d\n", srcW);
     debugstr("sourceHeight = %d\n", srcH);
@@ -72,7 +81,7 @@ int main(int    argc,
     }
 
     //NUMA *hist = pixGrayHistogram(pixin);
-    NUMA *hist = pixGetGrayHistogram(pixin, 1);
+    NUMA *hist = pixGetGrayHistogram(pixg, 1);
 
     //printf("colors: %d\n", numaGetCount(hist));
     assert(256 == numaGetCount(hist));
@@ -104,7 +113,7 @@ int main(int    argc,
     printf ("threshold = %d\n", i);
 
 
-    PIX *pixb = pixThresholdToBinary(pixin, i);    
+    PIX *pixb = pixThresholdToBinary(pixg, i);    
     //pixWrite("/home/rkumar/public_html/outbin.png", pixb, IFF_PNG); 
 
     if (pixFindSkew(pixb, &angle, &conf)) {
