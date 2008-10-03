@@ -6,6 +6,9 @@ linked against Leptonica 1.37
 compile with:
 g++ -ansi -Werror -Wall -D_BSD_SOURCE -DANSI -fPIC -O3  -I../src -I/usr/X11R6/include  -DL_LITTLE_ENDIAN -o mflm-skewDetectGray mflm-skewDetectGray.c ../lib/nodebug/liblept.a -ltiff -ljpeg -lpng -lz -lm
 
+linked against leptonica 1.56:
+g++ -ansi -Werror -D_BSD_SOURCE -DANSI -fPIC -O3  -Ileptonlib-1.56/src -I/usr/X11R6/include  -DL_LITTLE_ENDIAN -o mflm-skewDetectGray mflm-skewDetectGray.c leptonlib-1.56/lib/nodebug/liblept.a -ltiff -ljpeg -lpng -lz -lm
+
 run with:
 mflm-skewDetectGray filein.jpg
 
@@ -68,7 +71,9 @@ int main(int    argc,
         return 0;
     }
 
-    NUMA *hist = pixGrayHistogram(pixin);
+    //NUMA *hist = pixGrayHistogram(pixin);
+    NUMA *hist = pixGetGrayHistogram(pixin, 1);
+
     //printf("colors: %d\n", numaGetCount(hist));
     assert(256 == numaGetCount(hist));
     int i;
