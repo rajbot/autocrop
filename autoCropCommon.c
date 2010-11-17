@@ -401,7 +401,7 @@ void FindBlackBarAndThresh(PIX *pixg,
                   l_int32 *barThresh)
 
 {
-    //pixWrite("findblackbar.jpg", pixg, IFF_JFIF_JPEG);
+    pixWrite("findblackbar.jpg", pixg, IFF_JFIF_JPEG);
 
     l_int32 histmax;
     l_int32 darkThresh = CalculateTreshInitial(pixg, &histmax);
@@ -422,6 +422,32 @@ void FindBlackBarAndThresh(PIX *pixg,
             return;
         }
     }
+
+//     float delta;
+//     //0.05 degrees is a good increment for the final search
+//     for (delta=-1.0; delta<=1.0; delta+=0.05) {
+//         printf("trying delta=%f\n", delta);
+//         if ((delta>-0.01) && (delta<0.01)) { continue;}
+//         
+//         PIX *pixt = pixRotate(pixg,
+//                         deg2rad*delta,
+//                         L_ROTATE_AREA_MAP,
+//                         L_BRING_IN_BLACK,0,0);
+//         l_int32 blackBarL, blackBarR;
+//         l_int32 retval = FindBlackBar(pixg, left, right, h, thresh, &blackBarL, &blackBarR);
+//         if (-1 == retval) continue;
+// 
+//         l_int32 barWidth = blackBarR - blackBarL;
+//         printf("delta=%f, L=%d, R=%d, W=%d\n", delta, blackBarL, blackBarR, barWidth);
+//         if (barWidth >= 1) {
+//             *barEdgeL = blackBarL;
+//             *barEdgeR = blackBarR;
+//             *barThresh = thresh;
+//             return;
+//         }
+// 
+//         pixDestroy(&pixt);    
+//     }
 
     assert(0);
 }
