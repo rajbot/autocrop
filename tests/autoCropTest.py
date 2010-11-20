@@ -13,7 +13,9 @@ import xml.etree.ElementTree as ET
 files = glob.glob("*.jpg")
 assert len(files) > 0
 
-outDir      = '/var/www/autocrop/' + os.path.basename(os.getcwd()).split('_')[0]
+#outDir      = '/var/www/autocrop/' + os.path.basename(os.getcwd()).split('_')[0]
+outDir      = '/home/rkumar/public_html/autocrop/' + os.path.basename(os.getcwd()).split('_')[0]
+
 #outDir     = '/home/rkumar/public_html/autocrop/picturesquenewen00swee'
 #outDir     = '/home/rkumar/public_html/autocrop/nouveautraitde00bout'
 #outDir     = '/home/rkumar/public_html/autocrop/morritosentrem00alva'
@@ -54,7 +56,7 @@ for file in sorted(files):
         rotateDir = 1;
         continue;
         
-    cmd = "/home/scribe/petamnt/gnubook/autoCropScribe %s %d" % (file, rotateDir)
+    cmd = "/home/rkumar/gnubook/autoCropScribe %s %d" % (file, rotateDir)
     print cmd
     retval,output = commands.getstatusoutput(cmd)
     assert (0 == retval)
@@ -105,7 +107,7 @@ for file in sorted(files):
     
     #print "crop x,y,w,h = %d,%d %d,%d"%(cropx, cropy, cropw, croph)
     #print '/home/rkumar/gnubook/tests/cropAndSkewProxy %s "%s/%s/%d.jpg" %d %f %d %d %d %d'%(file, outDir, humanDir,leafNum, rotateDir, skew, cropx, cropy, cropw, croph)
-    retval = commands.getstatusoutput('/home/scribe/petamnt/gnubook/tests/cropAndSkewProxy %s "%s/%s/%d.jpg" %d %f %d %d %d %d'%(file, outDir, humanDir,leafNum, rotateDir, skew, cropx/8, cropy/8, cropw/8, croph/8))[0]
+    retval = commands.getstatusoutput('/home/rkumar/gnubook/tests/cropAndSkewProxy %s "%s/%s/%d.jpg" %d %f %d %d %d %d'%(file, outDir, humanDir,leafNum, rotateDir, skew, cropx/8, cropy/8, cropw/8, croph/8))[0]
     assert (0 == retval)    
 
     f.write('<tr>\n')
