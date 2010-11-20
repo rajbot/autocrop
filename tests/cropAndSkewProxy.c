@@ -45,7 +45,6 @@ int main(int    argc,
     FILE        *fpOut;
     int          lum, threshold;
     l_float32    angle, conf;
-    
     if ((argc != 9) && (argc != 10)){
         exit(ERROR_INT(" Syntax:  cropAndSkewProxy filein.jpg filout.jpg rotateDirection angle cropx cropy cropw croph [outputOrig]",
                          mainName, 1));
@@ -54,14 +53,19 @@ int main(int    argc,
     filein   = argv[1];
     fileout  = argv[2];
     rotDir   = atoi(argv[3]);
-
-    float skew        = atof(argv[4]);
+  
+    float skew        = atof(argv[4]); 
     l_int32 cropx     = atoi(argv[5]);
     l_int32 cropy     = atoi(argv[6]);
     l_int32 cropw     = atoi(argv[7]);
     l_int32 croph     = atoi(argv[8]);
-    l_int32 outputOrig= atoi(argv[9]);
-    
+    l_int32 outputOrig;
+    if (10 == argc) {
+        outputOrig= atoi(argv[9]);
+    } else {
+        outputOrig = 0;
+    }
+
     if ((fp = fopenReadStream(filein)) == NULL) {
         exit(ERROR_INT("image file not found", mainName, 1));
     }
@@ -100,7 +104,6 @@ int main(int    argc,
                     L_ROTATE_AREA_MAP,
                     L_BRING_IN_BLACK,0,0);
     BOX *box = boxCreate(cropx, cropy, cropw, croph);
-
  
     PIX *pixCrop = pixClipRectangle(pixt, box, NULL);
     pixWrite(fileout, pixCrop, IFF_JFIF_JPEG); 
