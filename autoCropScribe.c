@@ -25,8 +25,8 @@ autoCropScribe filein.jpg rotateDirection
 #include <float.h>  //for DBL_MAX
 #include <limits.h> //for INT_MAX
 
-#define debugstr printf
-//#define debugstr
+//#define debugstr printf
+#define debugstr
 
 
 static const l_float32  deg2rad            = 3.1415926535 / 180.;
@@ -2133,12 +2133,12 @@ l_int32 FindOuterEdgeUsingCleanLines_R(PIX     *pixg,
         
 
         storage[i-limitL]++;
-        printf("j=%d, numWhitePels = %d\n", j, numWhitePels);
+        //printf("j=%d, numWhitePels = %d\n", j, numWhitePels);
     }
 
-    for (i=limitL; i<=limitR; i++) {
-        printf("storage %d: %d\n", i, storage[i-limitL]);
-    }
+    //for (i=limitL; i<=limitR; i++) {
+    //    printf("storage %d: %d\n", i, storage[i-limitL]);
+    //}
 
 
     l_int32 longestLine = 0;
@@ -2286,11 +2286,11 @@ l_int32 CalculateTreshInitial(PIX *pixg) {
         assert(256 == numaGetCount(hist));
         int i;
     
-        for (i=0; i<255; i++) {
-            int dummy;
-            numaGetIValue(hist, i, &dummy);
-            printf("init hist: %d: %d\n", i, dummy);
-        }
+        //for (i=0; i<255; i++) {
+        //    int dummy;
+        //    numaGetIValue(hist, i, &dummy);
+        //    printf("init hist: %d: %d\n", i, dummy);
+        //}
         
         float peak = 0;
         int peaki;
@@ -2411,12 +2411,12 @@ l_int32 useSingleChannelForGray = 0;
         pixg = pixConvertRGBToGray (pixd, 0.30, 0.60, 0.10);
     }
 
-    pixWrite("/tmp/home/rkumar/out.jpg", pixd, IFF_JFIF_JPEG); 
+    //pixWrite("/tmp/home/rkumar/out.jpg", pixd, IFF_JFIF_JPEG); 
 
     l_int32 threshInitial = CalculateTreshInitial(pixg);
 
     debugstr("Converted to gray\n");
-    pixWrite("/home/rkumar/public_html/outgray.jpg", pixg, IFF_JFIF_JPEG); 
+    //pixWrite("/home/rkumar/public_html/outgray.jpg", pixg, IFF_JFIF_JPEG); 
 
     #if DEBUGMOV
     {
@@ -2631,11 +2631,11 @@ printf("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeig
         float acc=0;
         int i;
     
-        for (i=0; i<255; i++) {
-            int dummy;
-            numaGetIValue(hist, i, &dummy);
-            printf("hist: %d: %d\n", i, dummy);
-        }
+        //for (i=0; i<255; i++) {
+        //    int dummy;
+        //    numaGetIValue(hist, i, &dummy);
+        //    printf("hist: %d: %d\n", i, dummy);
+        //}
 
         float peak = 0;
         int peaki;
@@ -2644,7 +2644,7 @@ printf("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeig
             float dummy;
             numaGetFValue(hist, i, &dummy);
             if (dummy > peak) {
-                printf("found new peak at %d with val %f\n", i, dummy);
+                debugstr("found new peak at %d with val %f\n", i, dummy);
                 peak = dummy;
                 peaki = i;
             }
@@ -2740,6 +2740,12 @@ printf("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeig
     //pixWrite("/home/rkumar/public_html/outbin.png", pixTmp, IFF_PNG); 
 
     printf("adjusted: cL=%d, cR=%d, cT=%d, cB=%d\n", cropL, cropR, cropT, cropB);
+    printf("cropL=%d\n", cropL);
+    printf("cropR=%d\n", cropR);
+    printf("cropT=%d\n", cropT);
+    printf("cropB=%d\n", cropB);
+    
+    /*
     BOX *boxCrop = boxCreate(cropL/8, cropT/8, (cropR-cropL)/8, (cropB-cropT)/8);
 
     PIX *pixFinalR = pixRotate(pixd,
@@ -2757,7 +2763,8 @@ printf("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeig
 
     PIX *pixFinalC = pixClipRectangle(pixFinalR2, boxCrop, NULL);
     pixWrite("/tmp/home/rkumar/outcrop.jpg", pixFinalC, IFF_JFIF_JPEG); 
-
+    */
+    
     /// cleanup
     pixDestroy(&pixg);
     pixDestroy(&pixs);
