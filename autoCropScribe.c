@@ -1274,13 +1274,13 @@ int AdjustCropBox(PIX     *pixg,
 
     //printf("w,h = (%d,%d)  t,b = (%d,%d)\n", w, h, newT, newB);
     CalculateSADcol(pixg, limitLeft, limitRight, newT, newB, &strongEdge, &strongEdgeDiff);
-    printf("AdjustCropBox Left i=%d with diff=%d\n", strongEdge, strongEdgeDiff);
+    debugstr("AdjustCropBox Left i=%d with diff=%d\n", strongEdge, strongEdgeDiff);
     assert(-1 != strongEdge);
     newL = strongEdge;
     l_int32 vari;
     double var;
     FindMinVarCol(pixg, limitLeft, limitRight, newT, newB, 140, &vari, &var);
-    printf("LEFT: min var found at i=%d, var=%f\n", vari, var);
+    debugstr("LEFT: min var found at i=%d, var=%f\n", vari, var);
     newL = vari;
 
     limitLeft  = newR-delta;
@@ -1290,11 +1290,11 @@ int AdjustCropBox(PIX     *pixg,
     limitRight = min(w-1, limitRight);
 
     CalculateSADcol(pixg, limitLeft, limitRight, newT, newB, &strongEdge, &strongEdgeDiff);
-    printf("AdjustCropBox Right i=%d with diff=%d\n", strongEdge, strongEdgeDiff);
+    debugstr("AdjustCropBox Right i=%d with diff=%d\n", strongEdge, strongEdgeDiff);
     assert(-1 != strongEdge);
     newR = strongEdge;
     FindMinVarCol(pixg, limitLeft, limitRight, newT, newB, 140, &vari, &var);
-    printf("RIGHT: min var found at i=%d, var=%f\n", vari, var);
+    debugstr("RIGHT: min var found at i=%d, var=%f\n", vari, var);
     newR = vari;
 
 
@@ -1310,7 +1310,7 @@ int AdjustCropBox(PIX     *pixg,
     //newT = strongEdge;
     l_int32 varj; 
     FindMinVarRow(pixg, newL, newR, limitTop, limitBot, 140, &varj, &var);
-    printf("TOP: min var found at j=%d, var=%f\n", varj, var);
+    debugstr("TOP: min var found at j=%d, var=%f\n", varj, var);
     newT = varj;
 
     limitTop  = newB-delta;
@@ -1324,7 +1324,7 @@ int AdjustCropBox(PIX     *pixg,
     //assert(-1 != strongEdge);
     //newB = strongEdge;
     FindMinVarRow(pixg, newL, newR, limitTop, limitBot, 140, &varj, &var);
-    printf("BOT: min var found at j=%d, var=%f\n", varj, var);
+    debugstr("BOT: min var found at j=%d, var=%f\n", varj, var);
     newB = varj;
 
     *cropL = newL;
@@ -1418,14 +1418,14 @@ int AdjustCropBoxByVariance(PIX     *pixg,
    l_int32 varL;
     double var;
     FindMinBlockVarCol(pixg, left, right, newT, newB, 10, &varL, &var); 
-    printf("VARBLOCKLEFT: %d\n", varL);
+    debugstr("VARBLOCKLEFT: %d\n", varL);
     newL = varL;
 
     left  = (l_int32)(0.75*w);
     right = (l_int32)(w-limitL);
 
     FindMinBlockVarCol(pixg, left, right, newT, newB, 10, &varL, &var); 
-    printf("VARBLOCKRIGHT: %d\n", varL);
+    debugstr("VARBLOCKRIGHT: %d\n", varL);
     newR = varL;
 
     *cropL = newL;
@@ -1454,11 +1454,11 @@ l_uint32 removeBlackPelsColRight(PIX *pixg, l_uint32 starti, l_uint32 endi, l_ui
             numBlackPels++;
         }
     }
-    printf("init: numBlack=%d\n", numBlackPels);
+    debugstr("init: numBlack=%d\n", numBlackPels);
     l_int32 allowedNumberOfBlackPels = (l_int32)(0.05 * numBlackPels);
 
     if (numBlackPels > 10) {
-        printf(" needs adjustment!\n");
+        debugstr(" needs adjustment!\n");
         for (i=starti-2; i>=endi; i--) {
             numBlackPels = 0;
             for (j=top; j<bottom; j++) {
@@ -1468,9 +1468,9 @@ l_uint32 removeBlackPelsColRight(PIX *pixg, l_uint32 starti, l_uint32 endi, l_ui
                     numBlackPels++;
                 }
             }
-            printf("%d: numBlack=%d\n", i, numBlackPels);
+            debugstr("%d: numBlack=%d\n", i, numBlackPels);
             if (numBlackPels<5) {
-                printf("break!\n");
+                debugstr("break!\n");
                 return i;
             }
         }
@@ -1496,7 +1496,7 @@ l_uint32 RemoveBlackPelsBlockColRight(PIX *pixg, l_uint32 starti, l_uint32 endi,
     top += kernelHeight05;
     bottom -= kernelHeight05;
 
-    printf("RIGHT: starti = %d, endi=%d, thresh=%d\n", starti, endi, blackThresh);
+    debugstr("RIGHT: starti = %d, endi=%d, thresh=%d\n", starti, endi, blackThresh);
 
     for (i=starti-kernelWidth; i>=endi; i--) {
         numBlackPels = 0;
@@ -1509,9 +1509,9 @@ l_uint32 RemoveBlackPelsBlockColRight(PIX *pixg, l_uint32 starti, l_uint32 endi,
                 }
             }
         }
-        //printf("R %d: numBlack=%d\n", i, numBlackPels);
+        //debugstr("R %d: numBlack=%d\n", i, numBlackPels);
         if (numBlackPels<5) {
-            //printf("break!\n");
+            //debugstr("break!\n");
             return i;
         }
 
@@ -1537,7 +1537,7 @@ l_uint32 RemoveBlackPelsBlockColLeft(PIX *pixg, l_uint32 starti, l_uint32 endi, 
     top += kernelHeight05;
     bottom -= kernelHeight05;
 
-    //printf("LEFT: starti = %d, endi=%d, thresh=%d\n", starti, endi, blackThresh);
+    //debugstr("LEFT: starti = %d, endi=%d, thresh=%d\n", starti, endi, blackThresh);
 
     for (i=starti+1; i<=endi; i++) {
         numBlackPels = 0;
@@ -1550,9 +1550,9 @@ l_uint32 RemoveBlackPelsBlockColLeft(PIX *pixg, l_uint32 starti, l_uint32 endi, 
                 }
             }
         }
-        //printf("L %d: numBlack=%d\n", i, numBlackPels);
+        //debugstr("L %d: numBlack=%d\n", i, numBlackPels);
         if (numBlackPels<5) {
-            //printf("break!\n");
+            //debugstr("break!\n");
             return i;
         }
 
@@ -1574,7 +1574,7 @@ l_uint32 RemoveBlackPelsBlockRowTop(PIX *pixg, l_uint32 startj, l_uint32 endj, l
     numBlackPels = 0;
     l_uint32 x, y;
     
-    //printf("TOP: startj= %d, endj=%d, thresh=%d, left=%d, right=%d\n", startj, endj, blackThresh, left, right);
+    //debugstr("TOP: startj= %d, endj=%d, thresh=%d, left=%d, right=%d\n", startj, endj, blackThresh, left, right);
 
     //reduce kernel width by 20%
     l_uint32 kernelWidth10 = (l_uint32)(0.10*(right-left));
@@ -1592,9 +1592,9 @@ l_uint32 RemoveBlackPelsBlockRowTop(PIX *pixg, l_uint32 startj, l_uint32 endj, l
                 }
             }
         }
-        //printf("T %d: numBlack=%d\n", j, numBlackPels);
+        //debugstr("T %d: numBlack=%d\n", j, numBlackPels);
         if (numBlackPels<5) {
-            //printf("break!\n");
+            //debugstr("break!\n");
             return j;
         }
 
@@ -1616,7 +1616,7 @@ l_uint32 RemoveBlackPelsBlockRowBot(PIX *pixg, l_uint32 startj, l_uint32 endj, l
     numBlackPels = 0;
     l_uint32 x, y;
 
-    //printf("BOTTOM: startj= %d, endj=%d, thresh=%d, left=%d, right=%d\n", startj, endj, blackThresh, left, right);
+    //debugstr("BOTTOM: startj= %d, endj=%d, thresh=%d, left=%d, right=%d\n", startj, endj, blackThresh, left, right);
 
     //reduce kernel width by 20%
     l_uint32 kernelWidth10 = (l_uint32)(0.10*(right-left));
@@ -1634,9 +1634,9 @@ l_uint32 RemoveBlackPelsBlockRowBot(PIX *pixg, l_uint32 startj, l_uint32 endj, l
                 }
             }
         }
-        //printf("B %d: numBlack=%d\n", j, numBlackPels);
+        //debugstr("B %d: numBlack=%d\n", j, numBlackPels);
         if (numBlackPels<5) {
-            //printf("break!\n");
+            //debugstr("break!\n");
             return j;
         }
 
@@ -1669,7 +1669,7 @@ l_int32 RemoveBackgroundTop(PIX *pixg, l_int32 rotDir, l_int32 initialBlackThres
     }
 
     limitB = l_uint32(0.80*h);
-    printf("T: limitL=%d, limitR=%d, limitB=%d\n", limitL, limitR, limitB);
+    debugstr("T: limitL=%d, limitR=%d, limitB=%d\n", limitL, limitR, limitB);
     //l_int32 initialBlackThresh = 140;
     l_uint32 numBlackRequired   = (l_uint32)(0.90*(limitR-limitL));
 
@@ -1685,9 +1685,9 @@ l_int32 RemoveBackgroundTop(PIX *pixg, l_int32 rotDir, l_int32 initialBlackThres
                 numBlackPels++;
             }
         }
-        printf("T %d: numBlack=%d\n", j, numBlackPels);
+        debugstr("T %d: numBlack=%d\n", j, numBlackPels);
         if (numBlackPels<numBlackRequired) {
-            printf("break!\n");
+            debugstr("break!\n");
             return j;
         }
     }
@@ -1719,7 +1719,7 @@ l_int32 RemoveBackgroundBottom(PIX *pixg, l_int32 rotDir, l_int32 initialBlackTh
     }
 
     limitT = l_uint32(0.20*h);
-    printf("B: limitL=%d, limitR=%d, limitT=%d\n", limitL, limitR, limitT);
+    debugstr("B: limitL=%d, limitR=%d, limitT=%d\n", limitL, limitR, limitT);
 
     //l_int32 initialBlackThresh = 140;
     l_uint32 numBlackRequired   = (l_uint32)(0.90*(limitR-limitL));
@@ -1736,9 +1736,9 @@ l_int32 RemoveBackgroundBottom(PIX *pixg, l_int32 rotDir, l_int32 initialBlackTh
                 numBlackPels++;
             }
         }
-        printf("B %d: numBlack=%d\n", j, numBlackPels);
+        debugstr("B %d: numBlack=%d\n", j, numBlackPels);
         if (numBlackPels<numBlackRequired) {
-            printf("break!\n");
+            debugstr("break!\n");
             return j;
         }
     }
@@ -1767,9 +1767,9 @@ l_int32 RemoveBackgroundOuter_L(PIX *pixg, l_int32 iStart, l_int32 iEnd, l_int32
                 numBlackPels++;
             }
         }
-        printf("O %d: numBlack=%d\n", i, numBlackPels);
+        debugstr("O %d: numBlack=%d\n", i, numBlackPels);
         if (numBlackPels<numBlackRequired) {
-            printf("break! (thresh=%d)\n", numBlackRequired);
+            debugstr("break! (thresh=%d)\n", numBlackRequired);
             return i;
         }
     }
@@ -1797,9 +1797,9 @@ l_int32 RemoveBackgroundOuter_R(PIX *pixg, l_int32 iStart, l_int32 iEnd, l_int32
                 numBlackPels++;
             }
         }
-        printf("O %d: numBlack=%d\n", i, numBlackPels);
+        debugstr("O %d: numBlack=%d\n", i, numBlackPels);
         if (numBlackPels<numBlackRequired) {
-            printf("break! (thresh=%d)\n", numBlackRequired);
+            debugstr("break! (thresh=%d)\n", numBlackRequired);
             return i;
         }
     }
@@ -1835,7 +1835,7 @@ l_int32 RemoveBackgroundOuter(PIX *pixg, l_int32 rotDir, l_uint32 topEdge, l_uin
         iStart = w-1;
         iEnd   = (l_int32)(w*0.20);
 
-        printf("O: iStart=%d, iEnd=%d, limitT=%d, limitB=%d\n", iStart, iEnd, limitT, limitB);
+        debugstr("O: iStart=%d, iEnd=%d, limitT=%d, limitB=%d\n", iStart, iEnd, limitT, limitB);
 
         return RemoveBackgroundOuter_R(pixg, iStart, iEnd, limitT, limitB, initialBlackThresh, numBlackRequired);
 
@@ -1843,7 +1843,7 @@ l_int32 RemoveBackgroundOuter(PIX *pixg, l_int32 rotDir, l_uint32 topEdge, l_uin
         iStart = 0;
         iEnd   = (l_uint32)(w*0.80);
 
-        printf("O: iStart=%d, iEnd=%d, limitT=%d, limitB=%d\n", iStart, iEnd, limitT, limitB);
+        debugstr("O: iStart=%d, iEnd=%d, limitT=%d, limitB=%d\n", iStart, iEnd, limitT, limitB);
 
         return RemoveBackgroundOuter_L(pixg, iStart, iEnd, limitT, limitB, initialBlackThresh, numBlackRequired);
 
@@ -1864,9 +1864,9 @@ l_int32 RemoveBackgroundOuter(PIX *pixg, l_int32 rotDir, l_uint32 topEdge, l_uin
                 numBlackPels++;
             }
         }
-        printf("O %d: numBlack=%d\n", i, numBlackPels);
+        debugstr("O %d: numBlack=%d\n", i, numBlackPels);
         if (numBlackPels<numBlackRequired) {
-            printf("break! (thresh=%d)\n", numBlackRequired);
+            debugstr("break! (thresh=%d)\n", numBlackRequired);
             return i;
         }
     }
@@ -1923,11 +1923,11 @@ l_int32 EdgeDetectOuter(PIX       *pixg,
     
     
     assert(-1 != outerEdge); //TODO: handle error
-    printf("CLEANUP OUTER: outer edge is at i=%d with diff=%d\n", outerEdge, outerEdgeDiff);
+    debugstr("CLEANUP OUTER: outer edge is at i=%d with diff=%d\n", outerEdge, outerEdgeDiff);
     
 
     if (outerEdgeDiff > ((cropB-cropT)*3)) {
-        printf("CLEANUP OUTER: diff greater than threshold (%d), adjusting!\n", (cropB-cropT)*3);
+        debugstr("CLEANUP OUTER: diff greater than threshold (%d), adjusting!\n", (cropB-cropT)*3);
         if (1 == rotDir) {
             *cropR = outerEdge;
         } else if (-1 == rotDir) {
@@ -1972,11 +1972,11 @@ l_int32 EdgeDetectBottom(PIX       *pixg,
     l_uint32   strongEdgeDiff;
     CalculateSADrow(pixg, left, right, top, limitBottom, &strongEdge, &strongEdgeDiff);
  
-    printf("CLEANUP BOTTOM:  edge is at j=%d with diff=%d\n", strongEdge, strongEdgeDiff);
+    debugstr("CLEANUP BOTTOM:  edge is at j=%d with diff=%d\n", strongEdge, strongEdgeDiff);
     
 
     if (strongEdgeDiff > ((right-left)*3)) {
-        printf("CLEANUP BOTTOM: diff greater than threshold (%d), adjusting!\n", (right-left)*3);
+        debugstr("CLEANUP BOTTOM: diff greater than threshold (%d), adjusting!\n", (right-left)*3);
         *bottom = strongEdge;
     }
 
@@ -2013,10 +2013,10 @@ l_int32 FindCleanestLineHoriz(PIX     *pixg,
             lowestBlackPels = numBlackPels;
         }
         storage[j-top] = numBlackPels;
-        //printf("j=%d, numBlackPels = %d\n", j, numBlackPels);
+        //debugstr("j=%d, numBlackPels = %d\n", j, numBlackPels);
     }
     
-    //printf("lowestBlackPels = %d\n", lowestBlackPels);
+    //debugstr("lowestBlackPels = %d\n", lowestBlackPels);
     free(storage);
     return lowestBlackPels;
 }
@@ -2059,10 +2059,10 @@ l_int32 FindCleanLinesBottom(PIX     *pixg,
             lowestBlackPels = numBlackPels;
         }
         storage[j-top] = numBlackPels;
-        //printf("j=%d, numBlackPels = %d\n", j, numBlackPels);
+        //debugstr("j=%d, numBlackPels = %d\n", j, numBlackPels);
     }
     
-    //printf("lowestBlackPels = %d\n", lowestBlackPels);
+    //debugstr("lowestBlackPels = %d\n", lowestBlackPels);
     
     l_int32 largestBlockJ;
     l_int32 largestBlock = 0;
@@ -2076,14 +2076,14 @@ l_int32 FindCleanLinesBottom(PIX     *pixg,
                 break;
             }
         }
-        //printf("j=%d, numCleanLines = %d\n", j, numCleanLines);
+        //debugstr("j=%d, numCleanLines = %d\n", j, numCleanLines);
 
         if (numCleanLines > largestBlock) {
             largestBlock  = numCleanLines;
             largestBlockJ = j;
         }
     }
-    //printf("largestBlock at j=%d with %d lines\n", largestBlockJ, largestBlock);
+    //debugstr("largestBlock at j=%d with %d lines\n", largestBlockJ, largestBlock);
     free(storage);
     
     return largestBlockJ;
@@ -2118,7 +2118,7 @@ l_int32 FindOuterEdgeUsingCleanLines_R(PIX     *pixg,
         for (i=limitL; i<=limitR; i++) {
             l_int32 retval = pixGetPixel(pixg, i, j, &a);
             assert(0 == retval);
-            //if (i == limitL) printf("j=%d, i=%d, a=%d\n", j, i, a);    
+            //if (i == limitL) debugstr("j=%d, i=%d, a=%d\n", j, i, a);    
             if (a>thresh) {
                 numWhitePels++;
             } else {
@@ -2133,11 +2133,11 @@ l_int32 FindOuterEdgeUsingCleanLines_R(PIX     *pixg,
         
 
         storage[i-limitL]++;
-        //printf("j=%d, numWhitePels = %d\n", j, numWhitePels);
+        //debugstr("j=%d, numWhitePels = %d\n", j, numWhitePels);
     }
 
     //for (i=limitL; i<=limitR; i++) {
-    //    printf("storage %d: %d\n", i, storage[i-limitL]);
+    //    debugstr("storage %d: %d\n", i, storage[i-limitL]);
     //}
 
 
@@ -2147,7 +2147,7 @@ l_int32 FindOuterEdgeUsingCleanLines_R(PIX     *pixg,
             longestLine = i;
         }
     }
-    printf("longest clean line is %d with count=%d\n", longestLine, storage[longestLine-limitL]);
+    debugstr("longest clean line is %d with count=%d\n", longestLine, storage[longestLine-limitL]);
     
     l_int32 peak = storage[longestLine-limitL];
     l_int32 peaki = longestLine;
@@ -2158,12 +2158,12 @@ l_int32 FindOuterEdgeUsingCleanLines_R(PIX     *pixg,
         }
     }
     
-    printf("peak i within 5%% of longest line at %d with peak=%d\n", peaki, peak);
+    debugstr("peak i within 5%% of longest line at %d with peak=%d\n", peaki, peak);
 
     free(storage);
 
     if (0 == (limitL-peaki)) {
-        printf("couldn't find a clean line with length > 0. fail!\n");
+        debugstr("couldn't find a clean line with length > 0. fail!\n");
         return edgeOuter;           
     } else {
         return peaki;
@@ -2200,7 +2200,7 @@ l_int32 FindOuterEdgeUsingCleanLines_L(PIX     *pixg,
         for (i=limitR; i>=limitL; i--) {
             l_int32 retval = pixGetPixel(pixg, i, j, &a);
             assert(0 == retval);
-            //if (i == limitR) printf("j=%d, i=%d, a=%d\n", j, i, a);    
+            //if (i == limitR) debugstr("j=%d, i=%d, a=%d\n", j, i, a);    
             if (a>thresh) {
                 numWhitePels++;
             } else {
@@ -2214,11 +2214,11 @@ l_int32 FindOuterEdgeUsingCleanLines_L(PIX     *pixg,
         }
 
         storage[i-limitL]++;
-        printf("j=%d, numWhitePels = %d, i=%d, limitL=%d, limitR=%d\n", j, numWhitePels, i, limitL, limitR);
+        debugstr("j=%d, numWhitePels = %d, i=%d, limitL=%d, limitR=%d\n", j, numWhitePels, i, limitL, limitR);
     }
 
     for (i=limitL; i<=limitR; i++) {
-        printf("storage %d: %d\n", i, storage[i-limitL]);
+        debugstr("storage %d: %d\n", i, storage[i-limitL]);
     }
 
 
@@ -2228,7 +2228,7 @@ l_int32 FindOuterEdgeUsingCleanLines_L(PIX     *pixg,
             longestLine = i;
         }
     }
-    printf("longest clean line is %d with count=%d\n", longestLine, storage[longestLine-limitL]);
+    debugstr("longest clean line is %d with count=%d\n", longestLine, storage[longestLine-limitL]);
     
     l_int32 peak = storage[longestLine-limitL];
     l_int32 peaki = longestLine;
@@ -2241,12 +2241,12 @@ l_int32 FindOuterEdgeUsingCleanLines_L(PIX     *pixg,
         }
     }
     
-    printf("peak i within 5%% of longest line at %d with peak=%d\n", peaki, peak);
+    debugstr("peak i within 5%% of longest line at %d with peak=%d\n", peaki, peak);
 
     free(storage);
 
     if (0 == (limitR-peaki)) {
-        printf("couldn't find a clean line with length > 0. fail!\n");
+        debugstr("couldn't find a clean line with length > 0. fail!\n");
         return edgeOuter;           
     } else {
         return peaki;
@@ -2289,7 +2289,7 @@ l_int32 CalculateTreshInitial(PIX *pixg) {
         //for (i=0; i<255; i++) {
         //    int dummy;
         //    numaGetIValue(hist, i, &dummy);
-        //    printf("init hist: %d: %d\n", i, dummy);
+        //    debugstr("init hist: %d: %d\n", i, dummy);
         //}
         
         float peak = 0;
@@ -2302,11 +2302,11 @@ l_int32 CalculateTreshInitial(PIX *pixg) {
                 peaki = i;
             }
         }
-        printf("hist peak at i=%d with val=%f\n", peaki, peak);
+        debugstr("hist peak at i=%d with val=%f\n", peaki, peak);
         
         l_int32 thresh = -1;
         float threshLimit = peak * 0.1;
-        printf("thresh limit = %f\n", threshLimit);
+        debugstr("thresh limit = %f\n", threshLimit);
         for (i=peaki-1; i>0; i--) {
             float dummy;
             numaGetFValue(hist, i, &dummy);
@@ -2325,7 +2325,7 @@ l_int32 CalculateTreshInitial(PIX *pixg) {
             thresh = 140;
         }
 
-        printf("init thresh at i=%d\n", thresh);
+        debugstr("init thresh at i=%d\n", thresh);
         return thresh;
 }
     
@@ -2376,15 +2376,15 @@ l_int32 useSingleChannelForGray = 0;
     ret = numaGetMax(histR, &maxval, &maxloc[0]);
     assert(0 == ret);
     
-    printf("red peak at %d with val %f\n", maxloc[0], maxval);
+    debugstr("red peak at %d with val %f\n", maxloc[0], maxval);
     
     ret = numaGetMax(histG, &maxval, &maxloc[1]);
     assert(0 == ret);
-    printf("green peak at %d with val %f\n", maxloc[1], maxval);
+    debugstr("green peak at %d with val %f\n", maxloc[1], maxval);
     
     ret = numaGetMax(histB, &maxval, &maxloc[2]);
     assert(0 == ret);
-    printf("blue peak at %d with val %f\n", maxloc[2], maxval);
+    debugstr("blue peak at %d with val %f\n", maxloc[2], maxval);
     
     l_int32 i;
     l_int32 max=0, secondmax=0;
@@ -2396,7 +2396,7 @@ l_int32 useSingleChannelForGray = 0;
             secondmax = maxloc[i];
         }
     }
-    printf("max = %d, secondmax=%d\n", max, secondmax);
+    debugstr("max = %d, secondmax=%d\n", max, secondmax);
     if (max > (secondmax*2)) {
         printf("grayMode: SINGLE-channel, channel=%d\n", maxchannel);
         useSingleChannelForGray = 1;
@@ -2481,15 +2481,15 @@ l_int32 useSingleChannelForGray = 0;
 
 l_int32 bindingEdge = FindBindingEdge2(pixg, rotDir, topEdge, bottomEdge, &deltaBinding, &threshBinding);
 if (-1 == bindingEdge) {
-    printf("COULD NOT FIND BINDING!");
+    debugstr("COULD NOT FIND BINDING!");
 } else {
-    printf("binding edge= %d\n", bindingEdge);
+    debugstr("binding edge= %d\n", bindingEdge);
 }
-printf("binding edge threshold is %d\n", threshBinding);
+debugstr("binding edge threshold is %d\n", threshBinding);
 
     /// find the outer vertical edge
 //    l_int32 outerEdge = FindOuterEdge(pixg, rotDir, &deltaV2, &threshOuter);
-//printf("outer thresh is %d\n", threshOuter);
+//debugstr("outer thresh is %d\n", threshOuter);
     l_int32 outerEdge = RemoveBackgroundOuter(pixg, rotDir, topEdge, bottomEdge, threshInitial);
    
     //l_int32 outerEdge2 = FindOuterEdgeUsingCleanLines(pixg, rotDir, bindingEdge, outerEdge, topEdge, bottomEdge, threshBinding);
@@ -2517,7 +2517,7 @@ printf("binding edge threshold is %d\n", threshBinding);
         assert(0);
     }
 
-    //printf("in main: cL=%d, cR=%d, cT=%d, cB=%d\n", cropL, cropR, cropT, cropB);
+    //debugstr("in main: cL=%d, cR=%d, cT=%d, cB=%d\n", cropL, cropR, cropT, cropB);
 
     /// Now that we have the crop box, use Postl's meathod for deskew
     double skewScore, skewConf;
@@ -2541,39 +2541,39 @@ printf("binding edge threshold is %d\n", threshBinding);
     PIX *pixBigR = pixRotate90(pixBigG, rotDir);
     //BOX *box     = boxCreate(cropL, cropT, cropR-cropL, cropB-cropT);
     PIX *pixBigC = pixClipRectangle(pixBigR, box, NULL);
-printf("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeight(pixBigC));
+debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeight(pixBigC));
     PIX *pixBigB = pixThresholdToBinary (pixBigC, threshBinding);    
     //pixWrite("/home/rkumar/public_html/outbin.png", pixBigB, IFF_PNG); 
 
     l_float32    angle, conf, textAngle;
 
-    printf("calling pixFindSkew\n");
+    debugstr("calling pixFindSkew\n");
     if (pixFindSkew(pixBigB, &textAngle, &conf)) {
       /* an error occured! */
-        printf("angle=%.2f\nconf=%.2f\n", 0.0, -1.0);
+        debugstr("textAngle=%.2f\ntextConf=%.2f\n", 0.0, -1.0);
      } else {
-        printf("angle=%.2f\nconf=%.2f\n", textAngle, conf);
+        debugstr("textAngle=%.2f\ntextConf=%.2f\n", textAngle, conf);
     }   
 
-    printf("bindingAngle=%.2f\n", deltaBinding);
+    debugstr("bindingAngle=%.2f\n", deltaBinding);
 
     //Deskew(pixbBig, cropL*8, cropR*8, cropT*8, cropB*8, &skewScore, &skewConf);
     #define kSkewModeText 0
     #define kSkewModeEdge 1
     l_int32 skewMode;
     if (conf >= 2.0) {
-        debugstr("skewMode: text\n");
+        printf("skewMode: text\n");
         angle = textAngle;
         skewMode = kSkewModeText;
     } else {
 
-        debugstr("skewMode: edge\n");
+        printf("skewMode: edge\n");
         //angle = (deltaT + deltaB + deltaV1 + deltaV2)/4;
         angle = deltaBinding; //TODO: calculate average of four edge deltas.
         skewMode = kSkewModeEdge;
     }
     
-    printf("rotating bigR by %f\n", angle);
+    debugstr("rotating bigR by %f\n", angle);
 
     PIX *pixBigR2 = pixRotate90(pixBigG, rotDir);
     //TODO: why does this segfault when passing in pixBigR?
@@ -2625,7 +2625,7 @@ printf("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeig
         assert(NULL != hist);
         assert(256 == numaGetCount(hist));
         int numPels = pixGetWidth(pixt)*pixGetHeight(pixt);
-        printf("numPels = %d\n", numPels);
+        debugstr("numPels = %d\n", numPels);
         
         
         float acc=0;
@@ -2634,7 +2634,7 @@ printf("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeig
         //for (i=0; i<255; i++) {
         //    int dummy;
         //    numaGetIValue(hist, i, &dummy);
-        //    printf("hist: %d: %d\n", i, dummy);
+        //    debugstr("hist: %d: %d\n", i, dummy);
         //}
 
         float peak = 0;
@@ -2649,11 +2649,11 @@ printf("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeig
                 peaki = i;
             }
         }
-        printf("hist peak at i=%d with val=%f\n", peaki, peak);
+        debugstr("hist peak at i=%d with val=%f\n", peaki, peak);
         
         l_int32 darkThresh = -1;
         float threshLimit = peak * 0.1;
-        printf("thresh limit = %f\n", threshLimit);
+        debugstr("thresh limit = %f\n", threshLimit);
         for (i=peaki-1; i>0; i--) {
             float dummy;
             numaGetFValue(hist, i, &dummy);
@@ -2663,12 +2663,12 @@ printf("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeig
             }
         }
         //assert(-1 != darkThresh); //this is -1 on all-black pages
-        printf("darkThresh at i=%d\n", darkThresh);
+        debugstr("darkThresh at i=%d\n", darkThresh);
 
         if (-1 != darkThresh) {
             l_int32 outerEdge2 = FindOuterEdgeUsingCleanLines(pixt, rotDir, bindingEdge, outerEdge, topEdge, bottomEdge, darkThresh);
             //l_int32 outerEdge2 = FindOuterEdgeUsingCleanLines(pixBigT, rotDir, bindingEdge*8, outerEdge*8, topEdge*8, bottomEdge*8, darkThresh);
-            //printf("outerEdge = %d, outerEdge2 = %d\n", outerEdge, outerEdge2);
+            //debugstr("outerEdge = %d, outerEdge2 = %d\n", outerEdge, outerEdge2);
             outerEdge = outerEdge2;
         }
     }
@@ -2686,9 +2686,9 @@ printf("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeig
         assert(0);
     }
 
-    printf("after stage one: cL=%d, cR=%d, cT=%d, cB=%d\n", cropL, cropR, cropT, cropB);
+    debugstr("after stage one: cL=%d, cR=%d, cT=%d, cB=%d\n", cropL, cropR, cropT, cropB);
 
-    printf("finding clean lines...\n");
+    debugstr("finding clean lines...\n");
     //AdjustCropBox(pixBigT, &cropL, &cropR, &cropT, &cropB, 8*5);
     //AdjustCropBoxByVariance(pixBigT, &cropL, &cropR, &cropT, &cropB, 3, angle);
 
@@ -2727,7 +2727,7 @@ printf("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeig
     } else {
         assert(0);
     }
-    printf("bigW=%d, bigH=%d\n", w, h);
+    debugstr("bigW=%d, bigH=%d\n", w, h);
     cropR = RemoveBlackPelsBlockColRight(pixBigT, right, left, cropT, cropB, 3, threshR);
 
     //cropT = RemoveBlackPelsBlockRowTop(pixBigT, cropT, cropT+2*limitTop, cropL, cropR, 3, threshBinding); //we no longer calculate threshT
@@ -2739,7 +2739,10 @@ printf("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeig
     //PIX *pixTmp = pixThresholdToBinary (pixBigT, threshBinding);    
     //pixWrite("/home/rkumar/public_html/outbin.png", pixTmp, IFF_PNG); 
 
-    printf("adjusted: cL=%d, cR=%d, cT=%d, cB=%d\n", cropL, cropR, cropT, cropB);
+    debugstr("adjusted: cL=%d, cR=%d, cT=%d, cB=%d\n", cropL, cropR, cropT, cropB);
+
+    printf("angle=%.2f\n", angle);
+    printf("conf=%.2f\n", conf); //TODO: this is the text deskew angle, but what if we are deskewing using the binding mode?
     printf("cropL=%d\n", cropL);
     printf("cropR=%d\n", cropR);
     printf("cropT=%d\n", cropT);
