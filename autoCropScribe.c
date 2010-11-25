@@ -2741,12 +2741,12 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
 
     debugstr("adjusted: cL=%d, cR=%d, cT=%d, cB=%d\n", cropL, cropR, cropT, cropB);
 
-    printf("angle=%.2f\n", angle);
-    printf("conf=%.2f\n", conf); //TODO: this is the text deskew angle, but what if we are deskewing using the binding mode?
-    printf("cropL=%d\n", cropL);
-    printf("cropR=%d\n", cropR);
-    printf("cropT=%d\n", cropT);
-    printf("cropB=%d\n", cropB);
+    printf("angle: %.2f\n", angle);
+    printf("conf: %.2f\n", conf); //TODO: this is the text deskew angle, but what if we are deskewing using the binding mode?
+    printf("cropX: %d\n", cropL);
+    printf("cropY: %d\n", cropT);
+    printf("cropW: %d\n", cropR-cropL);
+    printf("cropH: %d\n", cropB-cropT);
     
     /*
     BOX *boxCrop = boxCreate(cropL/8, cropT/8, (cropR-cropL)/8, (cropB-cropT)/8);
