@@ -1,0 +1,2 @@
+shag: i wonder if there's some way to recognize that sticky mat pattern and subtract it from the image some how?
+shag: that might result in a good way to nail rod fail, paper fail -type of things

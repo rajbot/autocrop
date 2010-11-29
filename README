@@ -1,0 +1,22 @@
+This package contains a tool for automatically cropping and deskewing
+images of book pages captured by an Internet Archive Scribe bookscanner.
+
+This software was written over the course of a couple months in 2008
+and has not been optimized. In its current state, it can process a 
+single page image in about 2 seconds on a Scribe bookscanner. Since it
+is too slow to run in realtime during the scanning process, it was never 
+deployed.
+
+autoCropScibe.c contains the autocrop code for the Scribe bookscanner.
+
+processScribe.py is a wrapper that will process images after the image
+capture phase is complete and will write crop and skew information into
+scandata.xml (which is created by Scribe).
+
+autoCropScribe depends on the Leptonica image processing library. This
+tool has been compiled against Leptonica 1.56 and has not been tested
+with more modern versions of Leptionica.
+
+To compile autocrop scribe, first download leptonlib-1.56 from
+http://code.google.com/p/leptonica/downloads/list and build that first.
+Then follow the compile instructions at the top of autoCropScribe.c
