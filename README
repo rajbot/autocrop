@@ -7,6 +7,9 @@ single page image in about 2 seconds on a Scribe bookscanner. Since it
 is too slow to run in realtime during the scanning process, it was never 
 deployed.
 
+Example output of the autocrop algorithm is available here:
+http://www.archive.org/download/autocrop_test_picturesquenewen00swee/picturesquenewen00swee/index.html
+
 autoCropScibe.c contains the autocrop code for the Scribe bookscanner.
 
 processScribe.py is a wrapper that will process images after the image
