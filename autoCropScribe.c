@@ -24,6 +24,7 @@ autoCropScribe filein.jpg rotateDirection
 #include <math.h>   //for sqrt
 #include <float.h>  //for DBL_MAX
 #include <limits.h> //for INT_MAX
+#include "autoCropCommon.h"
 
 //#define debugstr printf
 #define debugstr
@@ -55,6 +56,7 @@ struct DebugMov{
 } debugmov;
 #endif //DEBUGMOV
 
+#if 0 //COMMON
 //FIXME: left limit for angle=0 should be zero, returns 1
 l_uint32 calcLimitLeft(l_uint32 w, l_uint32 h, l_float32 angle) {
     l_uint32  w2 = w>>1;
@@ -77,7 +79,9 @@ l_uint32 calcLimitTop(l_uint32 w, l_uint32 h, l_float32 angle) {
     
     return h2 - (int)(r*sin(theta - radang));
 }
+#endif //COMMON
 
+#if 0 //COMMON
 /// CalculateAvgCol()
 /// calculate avg luma of a column
 /// last SAD calculation is for row i=right and i=right+1.
@@ -112,7 +116,9 @@ double CalculateAvgCol(PIX      *pixg,
     avg /= (jBot-jTop);
     return avg;
 }
+#endif //COMMON
 
+#if 0 //COMMON
 /// CalculateAvgRow()
 /// calculate avg luma of a row
 ///____________________________________________________________________________
@@ -142,6 +148,7 @@ double CalculateAvgRow(PIX      *pixg,
     avg /= (iRight-iLeft);
     return avg;
 }
+#endif //COMMON
 
 /// CalculateAvgBlock()
 /// calculate avg luma of a block
@@ -177,6 +184,7 @@ double CalculateAvgBlock(PIX      *pixg,
     return avg;
 }
 
+#if 0 //COMMON
 /// CalculateSADcol()
 /// calculate sum of absolute differences of two rows of adjacent columns
 /// last SAD calculation is for row i=right and i=right+1.
@@ -243,8 +251,9 @@ l_uint32 CalculateSADcol(PIX        *pixg,
     *retDiff = maxDiff;
     return (-1 != maxi);
 }
+#endif //COMMON
 
-
+#if 0 //COMMON
 /// CalculateSADrow()
 /// calculate sum of absolute differences of two rows of adjacent columns
 /// last SAD calculation is for row i=right and i=right+1.
@@ -297,6 +306,7 @@ l_uint32 CalculateSADrow(PIX        *pixg,
     *retDiff = maxDiff;
     return (-1 != maxj);
 }
+#endif //COMMON
 
 /// FindBestVarRow()
 /// find row with least variance
@@ -1646,6 +1656,7 @@ l_uint32 RemoveBlackPelsBlockRowBot(PIX *pixg, l_uint32 startj, l_uint32 endj, l
     
 }
 
+#if 0 //COMMON
 /// RemoveBackgroundTop()
 ///____________________________________________________________________________
 l_int32 RemoveBackgroundTop(PIX *pixg, l_int32 rotDir, l_int32 initialBlackThresh) {
@@ -1695,7 +1706,9 @@ l_int32 RemoveBackgroundTop(PIX *pixg, l_int32 rotDir, l_int32 initialBlackThres
     return 0;
 
 }
+#endif //COMMON
 
+#if 0 //COMMON
 /// RemoveBackgroundBottom()
 ///____________________________________________________________________________
 l_int32 RemoveBackgroundBottom(PIX *pixg, l_int32 rotDir, l_int32 initialBlackThresh) {
@@ -1746,6 +1759,7 @@ l_int32 RemoveBackgroundBottom(PIX *pixg, l_int32 rotDir, l_int32 initialBlackTh
     return h-1;
 
 }
+#endif //COMMON
 
 /// RemoveBackgroundOuter_L()
 ///____________________________________________________________________________
@@ -2277,6 +2291,14 @@ l_int32 FindOuterEdgeUsingCleanLines(PIX     *pixg,
     return newEdgeOuter;
 }
 
+
+#if 0 //COMMON
+// Note that CalculateTreshInitial() in autoCropCommon.c is different than
+// the version below. The new algorithm uses 
+// thresh = (brightestPel - lightestPel) / 2. The old algorithm used
+// thresh = brightestPel * 0.1
+// The change was introduced in this commit:
+// https://github.com/rajbot/autocrop/commit/e61f5ab14a703eae6a7fdb5f4a1dfd244f5f7dab
 /// CalculateTreshInitial ()
 ///____________________________________________________________________________
 
@@ -2328,7 +2350,8 @@ l_int32 CalculateTreshInitial(PIX *pixg) {
         debugstr("init thresh at i=%d\n", thresh);
         return thresh;
 }
-    
+#endif //COMMON
+
 /// main()
 ///____________________________________________________________________________
 int main(int argc, char **argv) {
@@ -2411,9 +2434,10 @@ l_int32 useSingleChannelForGray = 0;
         pixg = pixConvertRGBToGray (pixd, 0.30, 0.60, 0.10);
     }
 
-    //pixWrite("/tmp/home/rkumar/out.jpg", pixd, IFF_JFIF_JPEG); 
+    pixWrite("/tmp/home/rkumar/out.jpg", pixd, IFF_JFIF_JPEG); 
 
-    l_int32 threshInitial = CalculateTreshInitial(pixg);
+    l_int32 histmax;
+    l_int32 threshInitial = CalculateTreshInitial(pixg, &histmax);
 
     debugstr("Converted to gray\n");
     //pixWrite("/home/rkumar/public_html/outgray.jpg", pixg, IFF_JFIF_JPEG); 
@@ -2555,7 +2579,7 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
         debugstr("textAngle=%.2f\ntextConf=%.2f\n", textAngle, conf);
     }   
 
-    debugstr("bindingAngle=%.2f\n", deltaBinding);
+    printf("bindingAngle: %.2f\n", deltaBinding);
 
     //Deskew(pixbBig, cropL*8, cropR*8, cropT*8, cropB*8, &skewScore, &skewConf);
     #define kSkewModeText 0
@@ -2748,7 +2772,7 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
     printf("cropW: %d\n", cropR-cropL);
     printf("cropH: %d\n", cropB-cropT);
     
-    /*
+    #if 0
     BOX *boxCrop = boxCreate(cropL/8, cropT/8, (cropR-cropL)/8, (cropB-cropT)/8);
 
     PIX *pixFinalR = pixRotate(pixd,
@@ -2766,7 +2790,7 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
 
     PIX *pixFinalC = pixClipRectangle(pixFinalR2, boxCrop, NULL);
     pixWrite("/tmp/home/rkumar/outcrop.jpg", pixFinalC, IFF_JFIF_JPEG); 
-    */
+    #endif
     
     /// cleanup
     pixDestroy(&pixg);
