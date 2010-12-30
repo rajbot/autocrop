@@ -65,15 +65,15 @@ for file in sorted(files):
     skewMode = m.group(1)
     print "skewMode is " + skewMode
     
-    m=re.search('angle=([-.\d]+)', output)
+    m=re.search('angle: ([-.\d]+)', output)
     assert(None != m)
     textSkew = float(m.group(1))
 
-    m=re.search('conf=([-.\d]+)', output)
+    m=re.search('conf: ([-.\d]+)', output)
     assert(None != m)
     textScore = float(m.group(1))
     
-    m=re.search('bindingAngle=([-.\d]+)', output)
+    m=re.search('bindingAngle: ([-.\d]+)', output)
     assert(None != m)
     bindingSkew = float(m.group(1))
 
