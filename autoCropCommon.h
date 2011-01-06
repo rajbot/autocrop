@@ -1,3 +1,6 @@
+#define kGrayModeSingleChannel 1
+#define kGrayModeThreeChannel  3
+
 l_uint32 calcLimitLeft(l_uint32 w, l_uint32 h, l_float32 angle);
 l_uint32 calcLimitTop(l_uint32 w, l_uint32 h, l_float32 angle);
 
@@ -10,7 +13,7 @@ l_int32 FindBindingEdge2(PIX      *pixg,
                          l_int32 textBlockL,
                          l_int32 textBlockR);
 
-PIX* ConvertToGray(PIX *pix);
+PIX* ConvertToGray(PIX *pix, l_int32 *grayChannel);
 
 
 double CalculateAvgCol(PIX      *pixg,

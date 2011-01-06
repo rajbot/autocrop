@@ -3,6 +3,7 @@
 #include "allheaders.h"
 #include <math.h>   //for sqrt
 #include <assert.h>
+#include "autoCropCommon.h"
 
 #define debugstr printf
 //#define debugstr
@@ -805,7 +806,7 @@ l_int32 FindBindingUsingBlackBar(PIX      *pixg,
 
 /// ConvertToGray()
 ///____________________________________________________________________________
-PIX* ConvertToGray(PIX *pix) {
+PIX* ConvertToGray(PIX *pix, l_int32 *grayChannel) {
 
     PIX *pixg;
     l_int32 maxchannel;
@@ -851,8 +852,10 @@ PIX* ConvertToGray(PIX *pix) {
 
     if (useSingleChannelForGray) {
         pixg = pixConvertRGBToGray (pix, (0==maxchannel), (1==maxchannel), (2==maxchannel));
+        *grayChannel = maxchannel;
     } else {
         pixg = pixConvertRGBToGray (pix, 0.30, 0.60, 0.10);
+        *grayChannel = kGrayModeThreeChannel;
     }
     
     return pixg;

@@ -11,7 +11,7 @@ cd ../prog/
 make
 
 compile with:
-g++ -ansi -Werror -D_BSD_SOURCE -DANSI -fPIC -O3  -Ileptonlib-1.56/src -I/usr/X11R6/include  -DL_LITTLE_ENDIAN -o autoCropScribe autoCropScribe.c leptonlib-1.56/lib/nodebug/liblept.a -ltiff -ljpeg -lpng -lz -lm
+g++ -ansi -Werror -D_BSD_SOURCE -DANSI -fPIC -O3  -Ileptonlib-1.56/src -I/usr/X11R6/include  -DL_LITTLE_ENDIAN -o autoCropScribe autoCropScribe.c autoCropCommon.c leptonlib-1.56/lib/nodebug/liblept.a -ltiff -ljpeg -lpng -lz -lm
 
 run with:
 autoCropScribe filein.jpg rotateDirection
@@ -28,7 +28,7 @@ autoCropScribe filein.jpg rotateDirection
 
 //#define debugstr printf
 #define debugstr
-
+#define WRITE_DEBUG_IMAGES 1
 
 static const l_float32  deg2rad            = 3.1415926535 / 180.;
 
@@ -2007,61 +2007,18 @@ int main(int argc, char **argv) {
         pixd = pixs;
     }
 
-l_int32 maxchannel;
-l_int32 useSingleChannelForGray = 0;
-{
-    NUMA *histR, *histG, *histB;
-    l_int32 ret = pixGetColorHistogram(pixd, 1, &histR, &histG, &histB);
-    assert(0 == ret);
+    #if WRITE_DEBUG_IMAGES
+    pixWrite("/tmp/home/rkumar/out.jpg", pixd, IFF_JFIF_JPEG);     
+    #endif
     
-    l_float32 maxval;
-    l_int32   maxloc[3];
-    
-    ret = numaGetMax(histR, &maxval, &maxloc[0]);
-    assert(0 == ret);
-    
-    debugstr("red peak at %d with val %f\n", maxloc[0], maxval);
-    
-    ret = numaGetMax(histG, &maxval, &maxloc[1]);
-    assert(0 == ret);
-    debugstr("green peak at %d with val %f\n", maxloc[1], maxval);
-    
-    ret = numaGetMax(histB, &maxval, &maxloc[2]);
-    assert(0 == ret);
-    debugstr("blue peak at %d with val %f\n", maxloc[2], maxval);
-    
-    l_int32 i;
-    l_int32 max=0, secondmax=0;
-    for (i=0; i<3; i++) {
-        if (maxloc[i] > max) {
-            max = maxloc[i];
-            maxchannel = i;
-        } else if (maxloc[i] > secondmax) {
-            secondmax = maxloc[i];
-        }
-    }
-    debugstr("max = %d, secondmax=%d\n", max, secondmax);
-    if (max > (secondmax*2)) {
-        printf("grayMode: SINGLE-channel, channel=%d\n", maxchannel);
-        useSingleChannelForGray = 1;
-    } else {
-        printf("grayMode: three-channel\n");    
-    }
-}
-
-    if (useSingleChannelForGray) {
-        pixg = pixConvertRGBToGray (pixd, (0==maxchannel), (1==maxchannel), (2==maxchannel));
-    } else {
-        pixg = pixConvertRGBToGray (pixd, 0.30, 0.60, 0.10);
-    }
-
-    pixWrite("/tmp/home/rkumar/out.jpg", pixd, IFF_JFIF_JPEG); 
+    l_int32 grayChannel;
+    pixg = ConvertToGray(pixd, &grayChannel);
+    debugstr("Converted to gray\n");
+    //pixWrite("/home/rkumar/public_html/outgray.jpg", pixg, IFF_JFIF_JPEG); 
 
     l_int32 histmax;
     l_int32 threshInitial = CalculateTreshInitial(pixg, &histmax);
 
-    debugstr("Converted to gray\n");
-    //pixWrite("/home/rkumar/public_html/outgray.jpg", pixg, IFF_JFIF_JPEG); 
 
     #if DEBUGMOV
     {
@@ -2177,8 +2134,8 @@ debugstr("binding edge threshold is %d\n", threshBinding);
     printf("opened large jpg in %7.3f sec\n", stopTimer());
 
     PIX *pixBigG;
-    if (useSingleChannelForGray) {
-        pixBigG = pixConvertRGBToGray (pixBig, (0==maxchannel), (1==maxchannel), (2==maxchannel));
+    if (kGrayModeThreeChannel != grayChannel) {
+        pixBigG = pixConvertRGBToGray (pixBig, (0==grayChannel), (1==grayChannel), (2==grayChannel));
     } else {
         pixBigG = pixConvertRGBToGray (pixBig, 0.30, 0.60, 0.10);
     }
@@ -2393,7 +2350,7 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
     printf("cropW: %d\n", cropR-cropL);
     printf("cropH: %d\n", cropB-cropT);
     
-    #if 0
+    #if WRITE_DEBUG_IMAGES
     BOX *boxCrop = boxCreate(cropL/8, cropT/8, (cropR-cropL)/8, (cropB-cropT)/8);
 
     PIX *pixFinalR = pixRotate(pixd,
