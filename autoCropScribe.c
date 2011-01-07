@@ -15,6 +15,12 @@ g++ -ansi -Werror -D_BSD_SOURCE -DANSI -fPIC -O3  -Ileptonlib-1.56/src -I/usr/X1
 
 run with:
 autoCropScribe filein.jpg rotateDirection
+
+rotationDirection is 1, -1, or 0
+We use 1 to indicate that the page should be rotated clockwise, and -1 to
+indicate counter-clockwise rotation. We use 0 to indicate foldout pages,
+which do not need to be rotated.
+
 */
 
 #include <stdio.h>
