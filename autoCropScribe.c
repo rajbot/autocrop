@@ -20,7 +20,6 @@ rotationDirection is 1, -1, or 0
 We use 1 to indicate that the page should be rotated clockwise, and -1 to
 indicate counter-clockwise rotation. We use 0 to indicate foldout pages,
 which do not need to be rotated.
-
 */
 
 #include <stdio.h>
@@ -32,8 +31,8 @@ which do not need to be rotated.
 #include <limits.h> //for INT_MAX
 #include "autoCropCommon.h"
 
-//#define debugstr printf
-#define debugstr
+#define debugstr printf
+//#define debugstr
 #define WRITE_DEBUG_IMAGES 1
 
 static const l_float32  deg2rad            = 3.1415926535 / 180.;
@@ -1469,9 +1468,9 @@ l_int32 RemoveBackgroundOuter_L(PIX *pixg, l_int32 iStart, l_int32 iEnd, l_int32
                 numBlackPels++;
             }
         }
-        debugstr("O %d: numBlack=%d\n", i, numBlackPels);
+        //debugstr("O %d: numBlack=%d\n", i, numBlackPels);
         if (numBlackPels<numBlackRequired) {
-            debugstr("break! (thresh=%d)\n", numBlackRequired);
+            debugstr("RemoveBackgroundOuter_L break! (thresh=%d)\n", numBlackRequired);
             return i;
         }
     }
@@ -1499,9 +1498,9 @@ l_int32 RemoveBackgroundOuter_R(PIX *pixg, l_int32 iStart, l_int32 iEnd, l_int32
                 numBlackPels++;
             }
         }
-        debugstr("O %d: numBlack=%d\n", i, numBlackPels);
+        //debugstr("O %d: numBlack=%d\n", i, numBlackPels);
         if (numBlackPels<numBlackRequired) {
-            debugstr("break! (thresh=%d)\n", numBlackRequired);
+            debugstr("RemoveBackgroundOuter_R break! (thresh=%d)\n", numBlackRequired);
             return i;
         }
     }
@@ -2252,7 +2251,7 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
             float dummy;
             numaGetFValue(hist, i, &dummy);
             if (dummy > peak) {
-                debugstr("found new peak at %d with val %f\n", i, dummy);
+                //debugstr("found new peak at %d with val %f\n", i, dummy);
                 peak = dummy;
                 peaki = i;
             }
@@ -2273,10 +2272,19 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
         //assert(-1 != darkThresh); //this is -1 on all-black pages
         debugstr("darkThresh at i=%d\n", darkThresh);
 
+        #if WRITE_DEBUG_IMAGES
+        {        
+            PIX *p = pixThresholdToBinary (pixt, darkThresh);    
+            pixWrite("/tmp/home/rkumar/outDark.png", p, IFF_PNG); 
+            pixDestroy(&p);
+        }
+        #endif //WRITE_DEBUG_IMAGES
+
         if (-1 != darkThresh) {
-            l_int32 outerEdge2 = FindOuterEdgeUsingCleanLines(pixt, rotDir, bindingEdge, outerEdge, topEdge, bottomEdge, darkThresh);
-            //l_int32 outerEdge2 = FindOuterEdgeUsingCleanLines(pixBigT, rotDir, bindingEdge*8, outerEdge*8, topEdge*8, bottomEdge*8, darkThresh);
-            //debugstr("outerEdge = %d, outerEdge2 = %d\n", outerEdge, outerEdge2);
+            //l_int32 outerEdge2 = FindOuterEdgeUsingCleanLines(pixt, rotDir, bindingEdge, outerEdge, topEdge, bottomEdge, darkThresh);
+            l_int32 outerEdge2 = FindOuterEdgeUsingCleanLines(pixBigT, rotDir, bindingEdge*8, outerEdge*8, topEdge*8, bottomEdge*8, darkThresh);
+            outerEdge2/=8;
+            debugstr("outerEdge = %d, outerEdge2 = %d\n", outerEdge, outerEdge2);            
             outerEdge = outerEdge2;
         }
     }
@@ -2295,6 +2303,22 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
     }
 
     debugstr("after stage one: cL=%d, cR=%d, cT=%d, cB=%d\n", cropL, cropR, cropT, cropB);
+
+    #if WRITE_DEBUG_IMAGES
+    {
+        BOX *b = boxCreate(cropL/8, cropT/8, (cropR-cropL)/8, (cropB-cropT)/8);
+    
+        PIX *p = pixRotate(pixd,
+                        deg2rad*angle,
+                        L_ROTATE_AREA_MAP,
+                        L_BRING_IN_BLACK,0,0);
+    
+        pixRenderBoxArb(p, b, 1, 255, 0, 0);
+        pixWrite("/tmp/home/rkumar/outs1.jpg", p, IFF_JFIF_JPEG); 
+        pixDestroy(&p);
+        boxDestroy(&b);
+    }
+    #endif //WRITE_DEBUG_IMAGES
 
     debugstr("finding clean lines...\n");
     //AdjustCropBox(pixBigT, &cropL, &cropR, &cropT, &cropB, 8*5);
