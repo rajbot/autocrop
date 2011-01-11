@@ -2285,11 +2285,15 @@ int FindInnerCrop(PIX *pixBigT,
     l_int32 *innerCropB)
 {
     double innerCrop_val;
+
+    l_int32 h2 = (outerCropB-outerCropT)/2;
+    l_int32 bottom = pixGetHeight(pixBigT) - 1;
+    
     FindTextBlockRow_T(              pixBigT,
                                 outerCropL,
                                 outerCropR,
                                 outerCropT,
-                                (outerCropB-outerCropT)/2,
+                                min(outerCropT + h2, bottom),
                                 50000,
                                 innerCropT,
                                 &innerCrop_val
@@ -2775,9 +2779,12 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
     
     Box *boxOuterCrop = boxCreate(outerCropL/8, outerCropT/8, (outerCropR-outerCropL)/8, (outerCropB-outerCropT)/8);
     pixRenderBoxArb(pixFinalR, boxOuterCrop, 1, 0, 0, 255);    
-
-    BOX *boxCropVar = boxCreate(innerCropL/8, innerCropT/8, (innerCropR-innerCropL)/8, (innerCropB-innerCropT)/8);
-    pixRenderBoxArb(pixFinalR, boxCropVar, 1, 0, 255, 0);    
+    
+    if ((-1 != innerCropL) & (-1 != innerCropR) & (-1 != innerCropT) & (-1 != innerCropB)) {
+        BOX *boxCropVar = boxCreate(innerCropL/8, innerCropT/8, (innerCropR-innerCropL)/8, (innerCropB-innerCropT)/8);
+        pixRenderBoxArb(pixFinalR, boxCropVar, 1, 0, 255, 0);    
+        boxDestroy(&boxCropVar);
+    }
     
     pixWrite("/home/rkumar/public_html/outbox.jpg", pixFinalR, IFF_JFIF_JPEG); 
 
@@ -2787,11 +2794,10 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
                     L_BRING_IN_BLACK,0,0);
 
     PIX *pixFinalC = pixClipRectangle(pixFinalR2, boxCrop, NULL);
-    pixWrite("/home/rkumar/public_html/outcrop.jpg", pixFinalC, IFF_JFIF_JPEG); 
+    pixWrite("/home/rkumar/public_html/outcrop.jpg", pixFinalC, IFF_JFIF_JPEG);        
     
     boxDestroy(&boxCrop);    
     boxDestroy(&boxOuterCrop);
-    boxDestroy(&boxCropVar);
     #endif
     
     /// cleanup
