@@ -2696,10 +2696,6 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
         boxDestroy(&b);
     }
     #endif //WRITE_DEBUG_IMAGES
-
-    debugstr("finding inner crop box (text block)...\n");
-    l_int32 innerCropT, innerCropB, innerCropL, innerCropR;
-    FindInnerCrop(pixBigT, threshBinding, outerCropL, outerCropR, outerCropT, outerCropB, &innerCropL, &innerCropR, &innerCropT, &innerCropB);
                         
     debugstr("finding clean lines...\n");
     //AdjustCropBox(pixBigT, &cropL, &cropR, &cropT, &cropB, 8*5);
@@ -2717,7 +2713,7 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
         //left-side leaf
         left  = cropL;
         //right = cropL+2*limitLeft;
-        right = (l_uint32)((cropR-cropL)*0.10);
+        right = left + (l_uint32)((cropR-cropL)*0.10);
         threshL = threshBinding;
         threshR = threshBinding; //threshOuter; //binding thresh works better
     } else if (-1 == rotDir) {
@@ -2760,6 +2756,11 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
     printf("cropY: %d\n", cropT);
     printf("cropW: %d\n", cropR-cropL);
     printf("cropH: %d\n", cropB-cropT);
+    
+    debugstr("finding inner crop box (text block)...\n");
+    l_int32 innerCropT, innerCropB, innerCropL, innerCropR;
+    FindInnerCrop(pixBigT, threshBinding, cropL, cropR, cropT, cropB, &innerCropL, &innerCropR, &innerCropT, &innerCropB);
+
     
     #if WRITE_DEBUG_IMAGES
     BOX *boxCrop = boxCreate(cropL/8, cropT/8, (cropR-cropL)/8, (cropB-cropT)/8);
