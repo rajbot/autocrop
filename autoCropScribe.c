@@ -131,11 +131,11 @@ l_uint32 FindMinVarRow(PIX        *pixg,
     l_uint32 width20 = (l_uint32)(w * 0.20);
 
     for (j=top; j<=bottom; j++) {
-        //printf("%d: ", j);
+        printf("%d: ", j);
         var = 0;
         double avg = CalculateAvgRow(pixg, j, left+width20, right-width20);
         if (avg<thresh) {
-            //printf("avg too low, continuing! (%f)\n", avg);
+            printf("avg too low, continuing! (%f)\n", avg);
             continue;
         }
         for (i=left+width20; i<right-width20; i++) {
@@ -144,7 +144,7 @@ l_uint32 FindMinVarRow(PIX        *pixg,
             double diff = avg-a;
             var += (diff * diff);
         }
-        //printf("var=%f avg=%f\n", var, avg);
+        printf("var=%f avg=%f\n", var, avg);
         if (var < minVar) {
             minVar = var;
             minj   = j; 
@@ -155,6 +155,299 @@ l_uint32 FindMinVarRow(PIX        *pixg,
     *retj = minj;
     *retVar = minVar;
     return (-1 != minj);
+}
+
+/// FindTextBlockRow_T()
+/// find text block using difference of line variances
+///____________________________________________________________________________
+l_uint32 FindTextBlockRow_T(PIX        *pixg,
+                         l_uint32   left,
+                         l_uint32   right,
+                         l_uint32   top,
+                         l_uint32   bottom,
+                         double     thresh,
+                         l_int32    *retj,
+                         double     *retVar
+                        )
+{
+
+    l_uint32 i, j;
+    l_uint32 a;
+    double textrow_var=DBL_MAX;
+    l_int32 textrow=-1;
+    
+    l_uint32 w = pixGetWidth( pixg );
+    l_uint32 h = pixGetHeight( pixg );
+    assert(left>=0);
+    assert(left<right);
+    assert(right<w);
+    assert(top>=0);
+    assert(top<bottom);
+    assert(bottom<h);
+    double var;
+    l_uint32 width20 = (l_uint32)(w * 0.20);
+    
+    double prevAvg, prevVar;
+    l_int32 jStart, jEnd;
+    
+    prevAvg = CalculateAvgRow(pixg, top, left+width20, right-width20);
+    prevVar = CalculateVarRow(pixg, top, left+width20, right-width20);
+    jStart  = top+1;
+    jEnd    = bottom;
+        
+    for (j=jStart; j<=jEnd; j++) {
+        printf("%d: ", j);
+        
+        double avg = CalculateAvgRow(pixg, j, left+width20, right-width20);
+        //if (avg<thresh) {
+        //    printf("avg too low, continuing! (%f)\n", avg);
+        //    continue;
+        //}
+        var = CalculateVarRow(pixg, j, left+width20, right-width20);
+        
+        double diff = fabs(var - prevVar);
+        printf("var=%f avg=%f diff=%f\n", var, avg, diff);
+
+        if (diff > thresh) {
+            textrow   = j;
+            textrow_var = var; //rename this
+            break;
+        }
+
+        prevVar = var;
+        
+    }
+
+    *retj = textrow;
+    *retVar = textrow_var;
+    return (-1 != textrow);
+}
+
+/// FindTextBlockRow_B()
+/// find text block using difference of line variances
+///____________________________________________________________________________
+l_uint32 FindTextBlockRow_B(PIX        *pixg,
+                         l_uint32   left,
+                         l_uint32   right,
+                         l_uint32   top,
+                         l_uint32   bottom,
+                         double     thresh,
+                         l_int32    *retj,
+                         double     *retVar
+                        )
+{
+
+    l_uint32 i, j;
+    l_uint32 a;
+    double textrow_var=DBL_MAX;
+    l_int32 textrow=-1;
+    
+    l_uint32 w = pixGetWidth( pixg );
+    l_uint32 h = pixGetHeight( pixg );
+    assert(left>=0);
+    assert(left<right);
+    assert(right<w);
+    assert(top>=0);
+    assert(top<bottom);
+    assert(bottom<h);
+    double var;
+    l_uint32 width20 = (l_uint32)(w * 0.20);
+    
+    double prevAvg, prevVar;
+    l_int32 jStart, jEnd;
+    
+    prevAvg = CalculateAvgRow(pixg, bottom, left+width20, right-width20);
+    prevVar = CalculateVarRow(pixg, bottom, left+width20, right-width20);
+    jStart  = bottom-1;
+    jEnd    = top;
+        
+    for (j=jStart; j>=jEnd; j--) {
+        printf("%d: ", j);
+        
+        double avg = CalculateAvgRow(pixg, j, left+width20, right-width20);
+        //if (avg<thresh) {
+        //    printf("avg too low, continuing! (%f)\n", avg);
+        //    continue;
+        //}
+        var = CalculateVarRow(pixg, j, left+width20, right-width20);
+        
+        double diff = fabs(var - prevVar);
+        printf("var=%f avg=%f diff=%f\n", var, avg, diff);
+
+        if (diff > thresh) {
+            textrow   = j;
+            textrow_var = var; //rename this
+            break;
+        }
+
+        prevVar = var;
+        
+    }
+
+    *retj = textrow;
+    *retVar = textrow_var;
+    return (-1 != textrow);
+}
+
+/// CountBlackPelsCol()
+///____________________________________________________________________________
+l_uint32 CountBlackPelsCol(PIX *pixg, l_uint32 i, l_uint32 top, l_uint32 bottom, l_uint32 bindingThresh)
+{
+    l_uint32 numBlackPels = 0;
+    l_uint32 a;
+    l_int32 j;
+
+    for (j=top; j<=bottom; j++) {
+        l_int32 retval = pixGetPixel(pixg, i, j, &a);
+        //printf("     (%d, %d) %d %d\n", i, j, a, bindingThresh);
+        assert(0 == retval);
+        if (a<bindingThresh) {
+            numBlackPels++;
+        }
+    }
+    return numBlackPels;
+}
+
+/// FindTextBlockCol_L()
+/// find text block using difference of line variances
+///____________________________________________________________________________
+l_uint32 FindTextBlockCol_L(PIX        *pixg,
+                         l_uint32   left,
+                         l_uint32   right,
+                         l_uint32   top,
+                         l_uint32   bottom,
+                         double     thresh,
+                         l_uint32   threshBinding,
+                         l_int32    *retj,
+                         double     *retVar
+                        )
+{
+
+    l_uint32 i, j;
+    l_uint32 a;
+    double textcol_var=DBL_MAX;
+    l_int32 textcol=-1;
+    
+    l_uint32 w = pixGetWidth( pixg );
+    l_uint32 h = pixGetHeight( pixg );
+    assert(left>=0);
+    assert(left<right);
+    assert(right<w);
+    assert(top>=0);
+    assert(top<bottom);
+    assert(bottom<h);
+    double var;
+    l_uint32 height10 = (l_uint32)(h * 0.10);
+    debugstr("FindTextBlockCol_L reducing j range to %d - %d\n", top+height10, bottom-height10);
+    
+    double prevAvg, prevVar;
+    l_int32 iStart, iEnd;
+    
+    prevAvg = CalculateAvgCol(pixg, left, top+height10, bottom-height10);
+    prevVar = CalculateVarCol(pixg, left, top+height10, bottom-height10);
+    iStart  = left+1;
+    iEnd    = right;
+        
+    for (i=iStart; i<=iEnd; i++) {
+        printf("%d: ", i);
+        
+        double avg = CalculateAvgCol(pixg, i, top+height10, bottom-height10);
+        //if (avg<thresh) {
+        //    printf("avg too low, continuing! (%f)\n", avg);
+        //    continue;
+        //}
+        var = CalculateVarCol(pixg, i, top+height10, bottom-height10);
+                
+        double diff = fabs(var - prevVar);
+
+        l_int32 numBlackPels = CountBlackPelsCol(pixg, i, top+height10, bottom-height10, threshBinding);
+
+        printf("var=%f avg=%f diff=%f black=%d\n", var, avg, diff, numBlackPels);
+
+        if (diff > thresh) {
+            textcol   = i;
+            textcol_var = var; //rename this
+            break;
+        }
+
+        prevVar = var;
+        
+    }
+
+    *retj = textcol;
+    *retVar = textcol_var;
+    return (-1 != textcol);
+}
+
+/// FindTextBlockCol_R()
+/// find text block using difference of line variances
+///____________________________________________________________________________
+l_uint32 FindTextBlockCol_R(PIX        *pixg,
+                         l_uint32   left,
+                         l_uint32   right,
+                         l_uint32   top,
+                         l_uint32   bottom,
+                         double     thresh,
+                         l_uint32   threshBinding,
+                         l_int32    *retj,
+                         double     *retVar
+                        )
+{
+
+    l_uint32 i, j;
+    l_uint32 a;
+    double textcol_var=DBL_MAX;
+    l_int32 textcol=-1;
+    
+    l_uint32 w = pixGetWidth( pixg );
+    l_uint32 h = pixGetHeight( pixg );
+    assert(left>=0);
+    assert(left<right);
+    assert(right<w);
+    assert(top>=0);
+    assert(top<bottom);
+    assert(bottom<h);
+    double var;
+    l_uint32 height10 = (l_uint32)(h * 0.10);
+    debugstr("FindTextBlockCol_R reducing j range to %d - %d\n", top+height10, bottom-height10);
+    
+    double prevAvg, prevVar;
+    l_int32 iStart, iEnd;
+    
+    prevAvg = CalculateAvgCol(pixg, right, top+height10, bottom-height10);
+    prevVar = CalculateVarCol(pixg, right, top+height10, bottom-height10);
+    iStart  = right-1;
+    iEnd    = left;
+        
+    for (i=iStart; i>=iEnd; i--) {
+        printf("%d: ", i);
+        
+        double avg = CalculateAvgCol(pixg, i, top+height10, bottom-height10);
+        //if (avg<thresh) {
+        //    printf("avg too low, continuing! (%f)\n", avg);
+        //    continue;
+        //}
+        var = CalculateVarCol(pixg, i, top+height10, bottom-height10);
+                
+        double diff = fabs(var - prevVar);
+
+        l_int32 numBlackPels = CountBlackPelsCol(pixg, i, top+height10, bottom-height10, threshBinding);
+
+        printf("var=%f avg=%f diff=%f black=%d\n", var, avg, diff, numBlackPels);
+
+        if (diff > thresh) {
+            textcol   = i;
+            textcol_var = var; //rename this
+            break;
+        }
+
+        prevVar = var;
+        
+    }
+
+    *retj = textcol;
+    *retVar = textcol_var;
+    return (-1 != textcol);
 }
 
 /// FindBestVarCol()
@@ -2190,6 +2483,13 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
                     L_BRING_IN_BLACK,0,0);
     //pixWrite("/home/rkumar/public_html/outBigR2.jpg", pixBigR2, IFF_JFIF_JPEG); 
     //pixWrite("/home/rkumar/public_html/outBigT.jpg", pixBigT, IFF_JFIF_JPEG); 
+    #if WRITE_DEBUG_IMAGES
+    {        
+        PIX *p = pixThresholdToBinary (pixBigT, threshBinding);    
+        pixWrite("/tmp/home/rkumar/outbinbig.png", p, IFF_PNG); 
+        pixDestroy(&p);
+    }
+    #endif //WRITE_DEBUG_IMAGES
 
 
 #if 0
@@ -2282,6 +2582,7 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
 
         if (-1 != darkThresh) {
             //l_int32 outerEdge2 = FindOuterEdgeUsingCleanLines(pixt, rotDir, bindingEdge, outerEdge, topEdge, bottomEdge, darkThresh);
+            //using the large image works better
             l_int32 outerEdge2 = FindOuterEdgeUsingCleanLines(pixBigT, rotDir, bindingEdge*8, outerEdge*8, topEdge*8, bottomEdge*8, darkThresh);
             outerEdge2/=8;
             debugstr("outerEdge = %d, outerEdge2 = %d\n", outerEdge, outerEdge2);            
@@ -2302,7 +2603,16 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
         assert(0);
     }
 
-    debugstr("after stage one: cL=%d, cR=%d, cT=%d, cB=%d\n", cropL, cropR, cropT, cropB);
+    l_int32 outerCropL = cropL;
+    l_int32 outerCropR = cropR;
+    l_int32 outerCropT = cropT;
+    l_int32 outerCropB = cropB;
+    
+    PrintKeyValue_int32("OuterCropL", cropL);
+    PrintKeyValue_int32("OuterCropR", cropR);
+    PrintKeyValue_int32("OuterCropT", cropT);
+    PrintKeyValue_int32("OuterCropB", cropB);
+
 
     #if WRITE_DEBUG_IMAGES
     {
@@ -2320,6 +2630,54 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
     }
     #endif //WRITE_DEBUG_IMAGES
 
+l_int32 textCropT, textCropB, textCropL, textCropR;
+double textCrop_val;
+FindTextBlockRow_T(              pixBigT,
+                            outerCropL,
+                            outerCropR,
+                            outerCropT,
+                            (outerCropB-outerCropT)/2,
+                            50000,
+                            &textCropT,
+                            &textCrop_val
+                        );
+printf("textCropT = %d\n", textCropT);                        
+
+FindTextBlockRow_B(              pixBigT,
+                            outerCropL,
+                            outerCropR,
+                            (outerCropB-outerCropT)/2,
+                            outerCropB,
+                            50000,
+                            &textCropB,
+                            &textCrop_val
+                        );
+printf("textCropB = %d\n", textCropB); 
+
+FindTextBlockCol_L(              pixBigT,
+                            outerCropL,
+                            (outerCropR-outerCropL)/2,
+                            outerCropT,
+                            outerCropB,
+                            50000,
+                            threshBinding,
+                            &textCropL,
+                            &textCrop_val
+                        );
+printf("textCropL = %d\n", textCropL); 
+
+FindTextBlockCol_R(              pixBigT,
+                            (outerCropR-outerCropL)/2,
+                            outerCropR,
+                            outerCropT,
+                            outerCropB,
+                            50000,
+                            threshBinding,
+                            &textCropR,
+                            &textCrop_val
+                        );
+printf("textCropR = %d\n", textCropR); 
+                        
     debugstr("finding clean lines...\n");
     //AdjustCropBox(pixBigT, &cropL, &cropR, &cropT, &cropB, 8*5);
     //AdjustCropBoxByVariance(pixBigT, &cropL, &cropR, &cropT, &cropB, 3, angle);
@@ -2388,7 +2746,15 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
                     L_ROTATE_AREA_MAP,
                     L_BRING_IN_BLACK,0,0);
 
-    pixRenderBoxArb(pixFinalR, boxCrop, 1, 255, 0, 0);
+    
+    pixRenderBoxArb(pixFinalR, boxCrop, 1, 255, 0, 0);        
+    
+    Box *boxOuterCrop = boxCreate(outerCropL/8, outerCropT/8, (outerCropR-outerCropL)/8, (outerCropB-outerCropT)/8);
+    pixRenderBoxArb(pixFinalR, boxOuterCrop, 1, 0, 0, 255);    
+
+    BOX *boxCropVar = boxCreate(textCropL/8, textCropT/8, (textCropR-textCropL)/8, (textCropB-textCropT)/8);
+    pixRenderBoxArb(pixFinalR, boxCropVar, 1, 0, 255, 0);    
+    
     pixWrite("/tmp/home/rkumar/outbox.jpg", pixFinalR, IFF_JFIF_JPEG); 
 
     PIX *pixFinalR2 = pixRotate(pixd,
@@ -2398,6 +2764,10 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
 
     PIX *pixFinalC = pixClipRectangle(pixFinalR2, boxCrop, NULL);
     pixWrite("/tmp/home/rkumar/outcrop.jpg", pixFinalC, IFF_JFIF_JPEG); 
+    
+    boxDestroy(&boxCrop);    
+    boxDestroy(&boxOuterCrop);
+    boxDestroy(&boxCropVar);
     #endif
     
     /// cleanup

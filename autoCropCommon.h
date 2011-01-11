@@ -25,7 +25,16 @@ double CalculateAvgRow(PIX      *pixg,
                        l_uint32 j,
                        l_uint32 iLeft,
                        l_uint32 iRight);
-                       
+
+double CalculateVarRow(PIX      *pixg,
+                       l_uint32 j,
+                       l_uint32 iLeft,
+                       l_uint32 iRight);                       
+
+double CalculateVarCol(PIX      *pixg,
+                       l_uint32 i,
+                       l_uint32 jTop,
+                       l_uint32 jBot);
 
 l_uint32 CalculateSADcol(PIX        *pixg,
                          l_uint32   left,

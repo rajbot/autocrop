@@ -106,6 +106,61 @@ double CalculateAvgRow(PIX      *pixg,
     return avg;
 }
 
+/// CalculateVarRow()
+/// calculate luma variance of a row
+///____________________________________________________________________________
+double CalculateVarRow(PIX      *pixg,
+                       l_uint32 j,
+                       l_uint32 iLeft,
+                       l_uint32 iRight)
+{
+
+    l_uint32 a, i;
+    l_uint32 h = pixGetHeight( pixg );
+    assert(j>=0);
+    assert(j<h);
+
+    double avg = CalculateAvgRow(pixg, j, iLeft, iRight);
+    double var = 0;
+    
+    for (i=iLeft; i<iRight; i++) {
+        l_int32 retval = pixGetPixel(pixg, i, j, &a);
+        assert(0 == retval);
+        double diff = avg-a;
+        var += (diff * diff);
+    }
+
+    return var;
+}
+
+/// CalculateVarCol()
+/// calculate luma variance of a column
+///____________________________________________________________________________
+double CalculateVarCol(PIX      *pixg,
+                       l_uint32 i,
+                       l_uint32 jTop,
+                       l_uint32 jBot)
+{
+
+    l_uint32 a, j;
+    l_uint32 w = pixGetWidth( pixg );
+    l_uint32 h = pixGetHeight( pixg );
+    assert(i>=0);
+    assert(i<w);
+
+    double avg = CalculateAvgCol(pixg, i, jTop, jBot);
+    double var = 0;
+
+    for (j=jTop; j<jBot; j++) {
+        l_int32 retval = pixGetPixel(pixg, i, j, &a);
+        assert(0 == retval);
+        double diff = avg-a;
+        var += (diff * diff);
+    }
+    
+    return var;
+}
+
 /// CalculateSADcol()
 /// calculate sum of absolute differences of two rows of adjacent columns
 /// last SAD calculation is for row i=right and i=right+1.
