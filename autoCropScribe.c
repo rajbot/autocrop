@@ -948,7 +948,7 @@ l_int32 FindBindingEdge2(PIX      *pixg,
     
     if (bindingLumaA > bindingLumaB) { //found left edge
         l_int32 i;
-        l_int32 rightLimit = bindingEdge+width3p;
+        l_int32 rightLimit = min(bindingEdge+width3p, w);
         rightEdge = bindingEdge; //init this something, in case we never break;
         leftEdge  = bindingEdge;
         for (i=bindingEdge+1; i<rightLimit; i++) {
@@ -2690,8 +2690,8 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
     #if WRITE_DEBUG_IMAGES
     {
         BOX *b = boxCreate(cropL/8, cropT/8, (cropR-cropL)/8, (cropB-cropT)/8);
-    
-        PIX *p = pixRotate(pixd,
+        PIX *p = pixCopy(NULL, pixd);        
+        PIX *p2 = pixRotate(p,
                         deg2rad*angle,
                         L_ROTATE_AREA_MAP,
                         L_BRING_IN_BLACK,0,0);
@@ -2699,6 +2699,7 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
         pixRenderBoxArb(p, b, 1, 255, 0, 0);
         pixWrite("/home/rkumar/public_html/outs1.jpg", p, IFF_JFIF_JPEG); 
         pixDestroy(&p);
+        pixDestroy(&p2);
         boxDestroy(&b);
     }
     #endif //WRITE_DEBUG_IMAGES
@@ -2769,37 +2770,46 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
 
     
     #if WRITE_DEBUG_IMAGES
-    BOX *boxCrop = boxCreate(cropL/8, cropT/8, (cropR-cropL)/8, (cropB-cropT)/8);
-
-    PIX *pixFinalR = pixRotate(pixd,
-                    deg2rad*angle,
-                    L_ROTATE_AREA_MAP,
-                    L_BRING_IN_BLACK,0,0);
-
+    {
+        BOX *boxCrop = boxCreate(cropL/8, cropT/8, (cropR-cropL)/8, (cropB-cropT)/8);
     
-    pixRenderBoxArb(pixFinalR, boxCrop, 1, 255, 0, 0);        
+        PIX *p = pixCopy(NULL, pixd);
     
-    Box *boxOuterCrop = boxCreate(outerCropL/8, outerCropT/8, (outerCropR-outerCropL)/8, (outerCropB-outerCropT)/8);
-    pixRenderBoxArb(pixFinalR, boxOuterCrop, 1, 0, 0, 255);    
+        PIX *pixFinalR = pixRotate(p,
+                        deg2rad*angle,
+                        L_ROTATE_AREA_MAP,
+                        L_BRING_IN_BLACK,0,0);
     
-    if ((-1 != innerCropL) & (-1 != innerCropR) & (-1 != innerCropT) & (-1 != innerCropB)) {
-        BOX *boxCropVar = boxCreate(innerCropL/8, innerCropT/8, (innerCropR-innerCropL)/8, (innerCropB-innerCropT)/8);
-        pixRenderBoxArb(pixFinalR, boxCropVar, 1, 0, 255, 0);    
-        boxDestroy(&boxCropVar);
+        
+        pixRenderBoxArb(pixFinalR, boxCrop, 1, 255, 0, 0);        
+        
+        Box *boxOuterCrop = boxCreate(outerCropL/8, outerCropT/8, (outerCropR-outerCropL)/8, (outerCropB-outerCropT)/8);
+        pixRenderBoxArb(pixFinalR, boxOuterCrop, 1, 0, 0, 255);    
+        
+        if ((-1 != innerCropL) & (-1 != innerCropR) & (-1 != innerCropT) & (-1 != innerCropB)) {
+            BOX *boxCropVar = boxCreate(innerCropL/8, innerCropT/8, (innerCropR-innerCropL)/8, (innerCropB-innerCropT)/8);
+            pixRenderBoxArb(pixFinalR, boxCropVar, 1, 0, 255, 0);    
+            boxDestroy(&boxCropVar);
+        }
+        
+        pixWrite("/home/rkumar/public_html/outbox.jpg", pixFinalR, IFF_JFIF_JPEG); 
+        pixDestroy(&pixFinalR);
+        pixDestroy(&p);
+    
+        p = pixCopy(NULL, pixd);
+        PIX *pixFinalR2 = pixRotate(p,
+                        deg2rad*angle,
+                        L_ROTATE_AREA_MAP,
+                        L_BRING_IN_BLACK,0,0);
+    
+        PIX *pixFinalC = pixClipRectangle(pixFinalR2, boxCrop, NULL);
+        pixWrite("/home/rkumar/public_html/outcrop.jpg", pixFinalC, IFF_JFIF_JPEG);        
+        pixDestroy(&p);
+        pixDestroy(&pixFinalC);
+        
+        boxDestroy(&boxCrop);    
+        boxDestroy(&boxOuterCrop);
     }
-    
-    pixWrite("/home/rkumar/public_html/outbox.jpg", pixFinalR, IFF_JFIF_JPEG); 
-
-    PIX *pixFinalR2 = pixRotate(pixd,
-                    deg2rad*angle,
-                    L_ROTATE_AREA_MAP,
-                    L_BRING_IN_BLACK,0,0);
-
-    PIX *pixFinalC = pixClipRectangle(pixFinalR2, boxCrop, NULL);
-    pixWrite("/home/rkumar/public_html/outcrop.jpg", pixFinalC, IFF_JFIF_JPEG);        
-    
-    boxDestroy(&boxCrop);    
-    boxDestroy(&boxOuterCrop);
     #endif
     
     /// cleanup

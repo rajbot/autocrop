@@ -54,7 +54,16 @@ for file in sorted(files):
     print "Processing %s"%(file)
     base_file = os.path.basename(file)
     
-    cmd = "/home/rkumar/gnubook/autoCropScribe %s %d" % (file, 1)
+    m = re.search('(\d{4})\.(jpg|JPG)$', file)
+    leafnum = int(m.group(1))
+    print 'leafNum is %d' % leafnum
+    
+    if (1 == (leafnum & 0x1)):
+        rotate_direction = 1
+    else:
+        rotate_direction = -1
+    
+    cmd = "/home/rkumar/gnubook/autoCropScribe %s %d" % (file, rotate_direction)
     print cmd
     retval,output = commands.getstatusoutput(cmd)
     assert (0 == retval)

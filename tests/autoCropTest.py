@@ -10,7 +10,7 @@ import os
 import re
 import xml.etree.ElementTree as ET
 
-files = glob.glob("*.jpg")
+files = glob.glob("*.jpg") + glob.glob("*.JPG")
 assert len(files) > 0
 
 #outDir      = '/var/www/autocrop/' + os.path.basename(os.getcwd()).split('_')[0]
@@ -82,13 +82,13 @@ for file in sorted(files):
     print "grayMode is " + grayMode
 
     
-    retval = commands.getstatusoutput('cp /tmp/home/rkumar/out.jpg "%s/%s/%d.jpg"'%(outDir, proxyDir,leafNum))[0]
+    retval = commands.getstatusoutput('cp /home/rkumar/public_html/out.jpg "%s/%s/%d.jpg"'%(outDir, proxyDir,leafNum))[0]
     assert (0 == retval)    
 
-    retval = commands.getstatusoutput('cp /tmp/home/rkumar/outbox.jpg "%s/%s/%d.jpg"'%(outDir, skewedDir,leafNum))[0]
+    retval = commands.getstatusoutput('cp /home/rkumar/public_html/outbox.jpg "%s/%s/%d.jpg"'%(outDir, skewedDir,leafNum))[0]
     assert (0 == retval)    
 
-    retval = commands.getstatusoutput('cp /tmp/home/rkumar/outcrop.jpg "%s/%s/%d.jpg"'%(outDir, croppedDir,leafNum))[0]
+    retval = commands.getstatusoutput('cp /home/rkumar/public_html/outcrop.jpg "%s/%s/%d.jpg"'%(outDir, croppedDir,leafNum))[0]
     assert (0 == retval)    
     
     leaf=leafs[leafNum]
