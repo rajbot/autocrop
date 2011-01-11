@@ -196,7 +196,7 @@ l_uint32 FindTextBlockRow_T(PIX        *pixg,
     jEnd    = bottom;
         
     for (j=jStart; j<=jEnd; j++) {
-        printf("%d: ", j);
+        //printf("%d: ", j);
         
         double avg = CalculateAvgRow(pixg, j, left+width20, right-width20);
         //if (avg<thresh) {
@@ -206,7 +206,7 @@ l_uint32 FindTextBlockRow_T(PIX        *pixg,
         var = CalculateVarRow(pixg, j, left+width20, right-width20);
         
         double diff = fabs(var - prevVar);
-        printf("var=%f avg=%f diff=%f\n", var, avg, diff);
+        //printf("var=%f avg=%f diff=%f\n", var, avg, diff);
 
         if (diff > thresh) {
             textrow   = j;
@@ -262,7 +262,7 @@ l_uint32 FindTextBlockRow_B(PIX        *pixg,
     jEnd    = top;
         
     for (j=jStart; j>=jEnd; j--) {
-        printf("%d: ", j);
+        //printf("%d: ", j);
         
         double avg = CalculateAvgRow(pixg, j, left+width20, right-width20);
         //if (avg<thresh) {
@@ -272,7 +272,7 @@ l_uint32 FindTextBlockRow_B(PIX        *pixg,
         var = CalculateVarRow(pixg, j, left+width20, right-width20);
         
         double diff = fabs(var - prevVar);
-        printf("var=%f avg=%f diff=%f\n", var, avg, diff);
+        //printf("var=%f avg=%f diff=%f\n", var, avg, diff);
 
         if (diff > thresh) {
             textrow   = j;
@@ -349,7 +349,7 @@ l_uint32 FindTextBlockCol_L(PIX        *pixg,
     iEnd    = right;
         
     for (i=iStart; i<=iEnd; i++) {
-        printf("%d: ", i);
+        //printf("%d: ", i);
         
         double avg = CalculateAvgCol(pixg, i, top+height10, bottom-height10);
         //if (avg<thresh) {
@@ -362,7 +362,7 @@ l_uint32 FindTextBlockCol_L(PIX        *pixg,
 
         l_int32 numBlackPels = CountBlackPelsCol(pixg, i, top+height10, bottom-height10, threshBinding);
 
-        printf("var=%f avg=%f diff=%f black=%d\n", var, avg, diff, numBlackPels);
+        //printf("var=%f avg=%f diff=%f black=%d\n", var, avg, diff, numBlackPels);
 
         if (diff > thresh) {
             textcol   = i;
@@ -420,7 +420,7 @@ l_uint32 FindTextBlockCol_R(PIX        *pixg,
     iEnd    = left;
         
     for (i=iStart; i>=iEnd; i--) {
-        printf("%d: ", i);
+        //printf("%d: ", i);
         
         double avg = CalculateAvgCol(pixg, i, top+height10, bottom-height10);
         //if (avg<thresh) {
@@ -433,7 +433,7 @@ l_uint32 FindTextBlockCol_R(PIX        *pixg,
 
         l_int32 numBlackPels = CountBlackPelsCol(pixg, i, top+height10, bottom-height10, threshBinding);
 
-        printf("var=%f avg=%f diff=%f black=%d\n", var, avg, diff, numBlackPels);
+        //printf("var=%f avg=%f diff=%f black=%d\n", var, avg, diff, numBlackPels);
 
         if (diff > thresh) {
             textcol   = i;
@@ -2271,6 +2271,69 @@ l_int32 FindOuterEdgeUsingCleanLines(PIX     *pixg,
     return newEdgeOuter;
 }
 
+/// FindInnerCrop()
+///____________________________________________________________________________
+int FindInnerCrop(PIX *pixBigT, 
+    l_uint32 threshBinding, 
+    l_int32 outerCropL, 
+    l_int32 outerCropR, 
+    l_int32 outerCropT, 
+    l_int32 outerCropB, 
+    l_int32 *innerCropL, 
+    l_int32 *innerCropR, 
+    l_int32 *innerCropT, 
+    l_int32 *innerCropB)
+{
+    double innerCrop_val;
+    FindTextBlockRow_T(              pixBigT,
+                                outerCropL,
+                                outerCropR,
+                                outerCropT,
+                                (outerCropB-outerCropT)/2,
+                                50000,
+                                innerCropT,
+                                &innerCrop_val
+                            );
+    printf("innerCropT = %d\n", *innerCropT);                        
+    
+    FindTextBlockRow_B(              pixBigT,
+                                outerCropL,
+                                outerCropR,
+                                (outerCropB-outerCropT)/2,
+                                outerCropB,
+                                50000,
+                                innerCropB,
+                                &innerCrop_val
+                            );
+    printf("innerCropB = %d\n", *innerCropB); 
+    
+    FindTextBlockCol_L(              pixBigT,
+                                outerCropL,
+                                (outerCropR-outerCropL)/2,
+                                outerCropT,
+                                outerCropB,
+                                50000,
+                                threshBinding,
+                                innerCropL,
+                                &innerCrop_val
+                            );
+    printf("innerCropL = %d\n", *innerCropL); 
+    
+    FindTextBlockCol_R(              pixBigT,
+                                (outerCropR-outerCropL)/2,
+                                outerCropR,
+                                outerCropT,
+                                outerCropB,
+                                50000,
+                                threshBinding,
+                                innerCropR,
+                                &innerCrop_val
+                            );
+    printf("innerCropR = %d\n", *innerCropR); 
+
+    return 0;
+}
+
 /// main()
 ///____________________________________________________________________________
 int main(int argc, char **argv) {
@@ -2306,14 +2369,16 @@ int main(int argc, char **argv) {
     }
 
     #if WRITE_DEBUG_IMAGES
-    pixWrite("/tmp/home/rkumar/out.jpg", pixd, IFF_JFIF_JPEG);     
+    pixWrite("/home/rkumar/public_html/out.jpg", pixd, IFF_JFIF_JPEG);     
     #endif
     
     l_int32 grayChannel;
     pixg = ConvertToGray(pixd, &grayChannel);
     debugstr("Converted to gray\n");
-    //pixWrite("/home/rkumar/public_html/outgray.jpg", pixg, IFF_JFIF_JPEG); 
-
+    #if WRITE_DEBUG_IMAGES
+    pixWrite("/home/rkumar/public_html/outgray.jpg", pixg, IFF_JFIF_JPEG); 
+    #endif
+    
     l_int32 histmax;
     l_int32 threshInitial = CalculateTreshInitial(pixg, &histmax);
 
@@ -2443,8 +2508,10 @@ debugstr("binding edge threshold is %d\n", threshBinding);
     PIX *pixBigC = pixClipRectangle(pixBigR, box, NULL);
 debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeight(pixBigC));
     PIX *pixBigB = pixThresholdToBinary (pixBigC, threshBinding);    
-    //pixWrite("/home/rkumar/public_html/outbin.png", pixBigB, IFF_PNG); 
-
+    #if WRITE_DEBUG_IMAGES
+    pixWrite("/home/rkumar/public_html/outbin.png", pixBigB, IFF_PNG); 
+    #endif
+    
     l_float32    angle, conf, textAngle;
 
     debugstr("calling pixFindSkew\n");
@@ -2486,7 +2553,7 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
     #if WRITE_DEBUG_IMAGES
     {        
         PIX *p = pixThresholdToBinary (pixBigT, threshBinding);    
-        pixWrite("/tmp/home/rkumar/outbinbig.png", p, IFF_PNG); 
+        pixWrite("/home/rkumar/public_html/outbinbig.png", p, IFF_PNG); 
         pixDestroy(&p);
     }
     #endif //WRITE_DEBUG_IMAGES
@@ -2575,7 +2642,7 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
         #if WRITE_DEBUG_IMAGES
         {        
             PIX *p = pixThresholdToBinary (pixt, darkThresh);    
-            pixWrite("/tmp/home/rkumar/outDark.png", p, IFF_PNG); 
+            pixWrite("/home/rkumar/public_html/outDark.png", p, IFF_PNG); 
             pixDestroy(&p);
         }
         #endif //WRITE_DEBUG_IMAGES
@@ -2624,59 +2691,15 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
                         L_BRING_IN_BLACK,0,0);
     
         pixRenderBoxArb(p, b, 1, 255, 0, 0);
-        pixWrite("/tmp/home/rkumar/outs1.jpg", p, IFF_JFIF_JPEG); 
+        pixWrite("/home/rkumar/public_html/outs1.jpg", p, IFF_JFIF_JPEG); 
         pixDestroy(&p);
         boxDestroy(&b);
     }
     #endif //WRITE_DEBUG_IMAGES
 
-l_int32 textCropT, textCropB, textCropL, textCropR;
-double textCrop_val;
-FindTextBlockRow_T(              pixBigT,
-                            outerCropL,
-                            outerCropR,
-                            outerCropT,
-                            (outerCropB-outerCropT)/2,
-                            50000,
-                            &textCropT,
-                            &textCrop_val
-                        );
-printf("textCropT = %d\n", textCropT);                        
-
-FindTextBlockRow_B(              pixBigT,
-                            outerCropL,
-                            outerCropR,
-                            (outerCropB-outerCropT)/2,
-                            outerCropB,
-                            50000,
-                            &textCropB,
-                            &textCrop_val
-                        );
-printf("textCropB = %d\n", textCropB); 
-
-FindTextBlockCol_L(              pixBigT,
-                            outerCropL,
-                            (outerCropR-outerCropL)/2,
-                            outerCropT,
-                            outerCropB,
-                            50000,
-                            threshBinding,
-                            &textCropL,
-                            &textCrop_val
-                        );
-printf("textCropL = %d\n", textCropL); 
-
-FindTextBlockCol_R(              pixBigT,
-                            (outerCropR-outerCropL)/2,
-                            outerCropR,
-                            outerCropT,
-                            outerCropB,
-                            50000,
-                            threshBinding,
-                            &textCropR,
-                            &textCrop_val
-                        );
-printf("textCropR = %d\n", textCropR); 
+    debugstr("finding inner crop box (text block)...\n");
+    l_int32 innerCropT, innerCropB, innerCropL, innerCropR;
+    FindInnerCrop(pixBigT, threshBinding, outerCropL, outerCropR, outerCropT, outerCropB, &innerCropL, &innerCropR, &innerCropT, &innerCropB);
                         
     debugstr("finding clean lines...\n");
     //AdjustCropBox(pixBigT, &cropL, &cropR, &cropT, &cropB, 8*5);
@@ -2752,10 +2775,10 @@ printf("textCropR = %d\n", textCropR);
     Box *boxOuterCrop = boxCreate(outerCropL/8, outerCropT/8, (outerCropR-outerCropL)/8, (outerCropB-outerCropT)/8);
     pixRenderBoxArb(pixFinalR, boxOuterCrop, 1, 0, 0, 255);    
 
-    BOX *boxCropVar = boxCreate(textCropL/8, textCropT/8, (textCropR-textCropL)/8, (textCropB-textCropT)/8);
+    BOX *boxCropVar = boxCreate(innerCropL/8, innerCropT/8, (innerCropR-innerCropL)/8, (innerCropB-innerCropT)/8);
     pixRenderBoxArb(pixFinalR, boxCropVar, 1, 0, 255, 0);    
     
-    pixWrite("/tmp/home/rkumar/outbox.jpg", pixFinalR, IFF_JFIF_JPEG); 
+    pixWrite("/home/rkumar/public_html/outbox.jpg", pixFinalR, IFF_JFIF_JPEG); 
 
     PIX *pixFinalR2 = pixRotate(pixd,
                     deg2rad*angle,
@@ -2763,7 +2786,7 @@ printf("textCropR = %d\n", textCropR);
                     L_BRING_IN_BLACK,0,0);
 
     PIX *pixFinalC = pixClipRectangle(pixFinalR2, boxCrop, NULL);
-    pixWrite("/tmp/home/rkumar/outcrop.jpg", pixFinalC, IFF_JFIF_JPEG); 
+    pixWrite("/home/rkumar/public_html/outcrop.jpg", pixFinalC, IFF_JFIF_JPEG); 
     
     boxDestroy(&boxCrop);    
     boxDestroy(&boxOuterCrop);
