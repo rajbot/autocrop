@@ -38,6 +38,10 @@ os.mkdir(out_dir + '/' + proxy_dir)
 os.mkdir(out_dir + '/' + box_dir)
 os.mkdir(out_dir + '/' + cropped_dir)
 
+latest_link = testrun_dir + '/latest'
+if os.path.exists(latest_link):
+    os.unlink(latest_link)
+os.symlink(out_dir, latest_link)    
 
 
 print "Creating test output in " + out_dir
@@ -88,4 +92,3 @@ for file in sorted(files):
 
 f.writelines(['</table>\n', '</html>\n'])
 f.close()
-    

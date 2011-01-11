@@ -2287,7 +2287,9 @@ int FindInnerCrop(PIX *pixBigT,
     double innerCrop_val;
 
     l_int32 h2 = (outerCropB-outerCropT)/2;
+    l_int32 w2 = (outerCropR-outerCropL)/2;
     l_int32 bottom = pixGetHeight(pixBigT) - 1;
+    l_int32 right  = pixGetWidth(pixBigT) - 1;
     
     FindTextBlockRow_T(              pixBigT,
                                 outerCropL,
@@ -2303,7 +2305,7 @@ int FindInnerCrop(PIX *pixBigT,
     FindTextBlockRow_B(              pixBigT,
                                 outerCropL,
                                 outerCropR,
-                                (outerCropB-outerCropT)/2,
+                                max( outerCropB - h2, 0),
                                 outerCropB,
                                 50000,
                                 innerCropB,
@@ -2313,7 +2315,7 @@ int FindInnerCrop(PIX *pixBigT,
     
     FindTextBlockCol_L(              pixBigT,
                                 outerCropL,
-                                (outerCropR-outerCropL)/2,
+                                min(outerCropL + w2, right),
                                 outerCropT,
                                 outerCropB,
                                 50000,
@@ -2324,7 +2326,7 @@ int FindInnerCrop(PIX *pixBigT,
     printf("innerCropL = %d\n", *innerCropL); 
     
     FindTextBlockCol_R(              pixBigT,
-                                (outerCropR-outerCropL)/2,
+                                max(outerCropR - w2, 0),
                                 outerCropR,
                                 outerCropT,
                                 outerCropB,
