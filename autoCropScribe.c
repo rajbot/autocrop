@@ -2097,9 +2097,10 @@ l_int32 FindOuterEdgeUsingCleanLines_R(PIX     *pixg,
 
     l_uint32 w = pixGetWidth( pixg );
     l_uint32 h = pixGetHeight( pixg );
-    l_int32  box10 = (l_int32)((edgeOuter-edgeBinding) * 0.20);
+    l_int32  box20 = (l_int32)((edgeOuter-edgeBinding) * 0.20);
 
-    l_int32 limitL = edgeBinding + box10;
+    //l_int32 limitL = edgeBinding + box20; //large search range was causing problems on pages with graphics
+l_int32 limitL = edgeOuter - box20;    
     l_int32 limitR = min(edgeOuter+10, w-1);
 
     l_int32 *storage = (l_int32 *)calloc((limitR-limitL+1), sizeof (l_int32));
@@ -2182,7 +2183,8 @@ l_int32 FindOuterEdgeUsingCleanLines_L(PIX     *pixg,
     l_int32  box20 = (l_int32)((edgeBinding-edgeOuter) * 0.20);
 
     l_int32 limitL = max(0, edgeOuter-10);
-    l_int32 limitR = edgeBinding - box20;
+    //l_int32 limitR = edgeBinding - box20;  //large search range was causing problems on pages with graphics
+l_int32 limitR = edgeOuter + box20;
 
     l_int32 *storage = (l_int32 *)calloc((limitR-limitL+1), sizeof (l_int32));
 
@@ -2208,12 +2210,12 @@ l_int32 FindOuterEdgeUsingCleanLines_L(PIX     *pixg,
         }
 
         storage[i-limitL]++;
-        debugstr("j=%d, numWhitePels = %d, i=%d, limitL=%d, limitR=%d\n", j, numWhitePels, i, limitL, limitR);
+        //debugstr("j=%d, numWhitePels = %d, i=%d, limitL=%d, limitR=%d\n", j, numWhitePels, i, limitL, limitR);
     }
 
-    for (i=limitL; i<=limitR; i++) {
-        debugstr("storage %d: %d\n", i, storage[i-limitL]);
-    }
+    //for (i=limitL; i<=limitR; i++) {
+    //    debugstr("storage %d: %d\n", i, storage[i-limitL]);
+    //}
 
 
     l_int32 longestLine = 0;
@@ -2387,7 +2389,17 @@ int main(int argc, char **argv) {
     
     l_int32 histmax;
     l_int32 threshInitial = CalculateTreshInitial(pixg, &histmax);
+    debugstr("threshInitial is %d\n", threshInitial);
 
+    #if WRITE_DEBUG_IMAGES
+    {
+        PIX *p = pixCopy(NULL, pixg);        
+        PIX *p2 = pixThresholdToBinary(p, threshInitial);
+        pixWrite("/home/rkumar/public_html/outbininit.png", p2, IFF_PNG); 
+        pixDestroy(&p);
+        pixDestroy(&p2);
+    }
+    #endif
 
     #if DEBUGMOV
     {
@@ -2461,7 +2473,7 @@ debugstr("binding edge threshold is %d\n", threshBinding);
     /// find the outer vertical edge
 //    l_int32 outerEdge = FindOuterEdge(pixg, rotDir, &deltaV2, &threshOuter);
 //debugstr("outer thresh is %d\n", threshOuter);
-    l_int32 outerEdge = RemoveBackgroundOuter(pixg, rotDir, topEdge, bottomEdge, threshInitial);
+    l_int32 outerEdge = RemoveBackgroundOuter(pixg, rotDir, topEdge, bottomEdge, threshInitial); //TODO: why not use threshBinding here?
    
     //l_int32 outerEdge2 = FindOuterEdgeUsingCleanLines(pixg, rotDir, bindingEdge, outerEdge, topEdge, bottomEdge, threshBinding);
 
@@ -2557,10 +2569,12 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
     //pixWrite("/home/rkumar/public_html/outBigR2.jpg", pixBigR2, IFF_JFIF_JPEG); 
     //pixWrite("/home/rkumar/public_html/outBigT.jpg", pixBigT, IFF_JFIF_JPEG); 
     #if WRITE_DEBUG_IMAGES
-    {        
-        PIX *p = pixThresholdToBinary (pixBigT, threshBinding);    
+    {   
+        PIX *p = pixCopy(NULL, pixBigT);
+        PIX *p2 = pixThresholdToBinary (p, threshBinding);    
         pixWrite("/home/rkumar/public_html/outbinbig.png", p, IFF_PNG); 
         pixDestroy(&p);
+        pixDestroy(&p2);
     }
     #endif //WRITE_DEBUG_IMAGES
 
@@ -2647,7 +2661,7 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
 
         #if WRITE_DEBUG_IMAGES
         {        
-            PIX *p = pixThresholdToBinary (pixt, darkThresh);    
+            PIX *p = pixThresholdToBinary (pixBigT, darkThresh);    
             pixWrite("/home/rkumar/public_html/outDark.png", p, IFF_PNG); 
             pixDestroy(&p);
         }
