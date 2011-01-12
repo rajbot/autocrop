@@ -67,6 +67,26 @@ for file in sorted(files):
     print cmd
     retval,output = commands.getstatusoutput(cmd)
     assert (0 == retval)
+
+    m=re.search('skewMode: (\w+)', output)
+    skewMode = m.group(1)
+    print "skewMode is " + skewMode
+    
+    m=re.search('angle: ([-.\d]+)', output)
+    assert(None != m)
+    textSkew = float(m.group(1))
+
+    m=re.search('conf: ([-.\d]+)', output)
+    assert(None != m)
+    textScore = float(m.group(1))
+    
+    m=re.search('bindingAngle: ([-.\d]+)', output)
+    assert(None != m)
+    bindingSkew = float(m.group(1))
+
+    m=re.search('grayMode: ([\w-]+)', output)
+    grayMode = m.group(1)
+    print "grayMode is " + grayMode    
     
     retval = commands.getstatusoutput('cp /home/rkumar/public_html/out.jpg "%s/%s/%s"'%(out_dir, proxy_dir, base_file))[0]
     assert (0 == retval)    
@@ -80,6 +100,11 @@ for file in sorted(files):
     f.write('<tr>\n')
     f.write('<td valign=top>'),
     f.write('<img src="%s/%s"/>'%(proxy_dir, base_file))
+    f.write("<br>leaf %s"%(base_file))
+    f.write("<br>skewMode: %s"%(skewMode))
+    f.write("<br>textSkew: %0.2f, textScore: %0.2f"%(textSkew, textScore))
+    f.write("<br>bindingSkew: %0.2f"%(bindingSkew))
+    f.write("<br>grayMode: %s"%(grayMode))
     f.write('</td>\n')
 
     f.write('<td valign=top>'),
@@ -89,11 +114,6 @@ for file in sorted(files):
 
     f.write('<td valign=top>'),
     f.write('<img src="%s/%s"/>'%(cropped_dir,base_file))
-    #     f.write("<br>leaf %d"%(leafNum))
-    #     f.write("<br>skewMode: %s"%(skewMode))
-    #     f.write("<br>textSkew: %0.2f, textScore: %0.2f"%(textSkew, textScore))
-    #     f.write("<br>bindingSkew: %0.2f"%(bindingSkew))
-    #     f.write("<br>grayMode: %s"%(grayMode))
     f.write('</td>\n')
 
     f.write('</tr>\n')

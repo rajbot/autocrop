@@ -59,6 +59,10 @@ for file in sorted(files):
     cmd = "/home/rkumar/gnubook/autoCropScribe %s %d" % (file, rotateDir)
     print cmd
     retval,output = commands.getstatusoutput(cmd)
+    if 0 != retval:
+        print "retval is %d" % (retval)
+        print output
+        
     assert (0 == retval)
 
     m=re.search('skewMode: (\w+)', output)
