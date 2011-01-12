@@ -817,9 +817,9 @@ l_uint32 FindBindingEdge(PIX      *pixg,
 }
 
 
-/// FindBindingEdge2()
+/// FindBindingEdge3()
 ///____________________________________________________________________________
-l_int32 FindBindingEdge2(PIX      *pixg,
+l_int32 FindBindingEdge3(PIX      *pixg,
                          l_int32  rotDir,
                          l_uint32 topEdge,
                          l_uint32 bottomEdge,
@@ -839,8 +839,12 @@ l_int32 FindBindingEdge2(PIX      *pixg,
     l_uint32 kernelHeight10 = (l_uint32)(0.10*(bottomEdge-topEdge));
     //l_uint32 jTop = (l_uint32)((1-kKernelHeight)*0.5*h);
     //l_uint32 jBot = (l_uint32)((1+kKernelHeight)*0.5*h);    
-    l_uint32 jTop = topEdge+kernelHeight10;
-    l_uint32 jBot = bottomEdge-kernelHeight10;
+    //l_uint32 jTop = topEdge+kernelHeight10;
+    //l_uint32 jBot = bottomEdge-kernelHeight10;
+//we sometimes pick up an picture edge on teh opposing page..
+//extending jTop and jBot allows us to hopefully get some page margin in the calculation
+l_uint32 jTop = 0;
+l_uint32 jBot = h-1;
 
     // Find the strong edge, which should be one of the two sides of the binding
     // Rotate the image to maximize SAD
@@ -953,7 +957,7 @@ l_int32 FindBindingEdge2(PIX      *pixg,
         leftEdge  = bindingEdge;
         for (i=bindingEdge+1; i<rightLimit; i++) {
             double lumaAvg = CalculateAvgCol(pixt, i, jTop, jBot);
-            printf("i=%d, avg=%f\n", i, lumaAvg);
+            debugstr("i=%d, avg=%f\n", i, lumaAvg);
             if (lumaAvg<threshold) {
                 numBlackLines++;
             } else {
@@ -2462,7 +2466,7 @@ int main(int argc, char **argv) {
 
     assert(bottomEdge>topEdge);
 
-l_int32 bindingEdge = FindBindingEdge2(pixg, rotDir, topEdge, bottomEdge, &deltaBinding, &threshBinding);
+l_int32 bindingEdge = FindBindingEdge3(pixg, rotDir, topEdge, bottomEdge, &deltaBinding, &threshBinding);
 if (-1 == bindingEdge) {
     debugstr("COULD NOT FIND BINDING!");
 } else {
