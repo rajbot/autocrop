@@ -2306,7 +2306,7 @@ int FindInnerCrop(PIX *pixBigT,
                                 innerCropT,
                                 &innerCrop_val
                             );
-    printf("innerCropT = %d\n", *innerCropT);                        
+    PrintKeyValue_int32("InnerCropT", *innerCropT);                        
     
     FindTextBlockRow_B(              pixBigT,
                                 outerCropL,
@@ -2317,7 +2317,7 @@ int FindInnerCrop(PIX *pixBigT,
                                 innerCropB,
                                 &innerCrop_val
                             );
-    printf("innerCropB = %d\n", *innerCropB); 
+    PrintKeyValue_int32("InnerCropB", *innerCropB); 
     
     FindTextBlockCol_L(              pixBigT,
                                 outerCropL,
@@ -2329,7 +2329,7 @@ int FindInnerCrop(PIX *pixBigT,
                                 innerCropL,
                                 &innerCrop_val
                             );
-    printf("innerCropL = %d\n", *innerCropL); 
+    PrintKeyValue_int32("InnerCropL", *innerCropL); 
     
     FindTextBlockCol_R(              pixBigT,
                                 max(outerCropR - w2, 0),
@@ -2341,7 +2341,7 @@ int FindInnerCrop(PIX *pixBigT,
                                 innerCropR,
                                 &innerCrop_val
                             );
-    printf("innerCropR = %d\n", *innerCropR); 
+    PrintKeyValue_int32("InnerCropR", *innerCropR); 
 
     return 0;
 }
@@ -2777,10 +2777,10 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
 
     printf("angle: %.2f\n", angle);
     printf("conf: %.2f\n", conf); //TODO: this is the text deskew angle, but what if we are deskewing using the binding mode?
-    printf("cropX: %d\n", cropL);
-    printf("cropY: %d\n", cropT);
-    printf("cropW: %d\n", cropR-cropL);
-    printf("cropH: %d\n", cropB-cropT);
+    PrintKeyValue_int32("CleanCropL", cropL);
+    PrintKeyValue_int32("CleanCropR", cropR);
+    PrintKeyValue_int32("CleanCropT", cropT);
+    PrintKeyValue_int32("CleanCropB", cropB);
     
     debugstr("finding inner crop box (text block)...\n");
     l_int32 innerCropT, innerCropB, innerCropL, innerCropR;
