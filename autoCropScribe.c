@@ -31,9 +31,9 @@ which do not need to be rotated.
 #include <limits.h> //for INT_MAX
 #include "autoCropCommon.h"
 
-#define debugstr printf
-//#define debugstr
-#define WRITE_DEBUG_IMAGES 1
+//#define debugstr printf
+#define debugstr
+//#define WRITE_DEBUG_IMAGES 1
 
 static const l_float32  deg2rad            = 3.1415926535 / 180.;
 
