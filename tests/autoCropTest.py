@@ -17,10 +17,6 @@ assert len(files) > 0
 #outDir      = '/var/www/autocrop/' + os.path.basename(os.getcwd()).split('_')[0]
 outDir      = '/home/rkumar/public_html/autocrop/' + os.path.basename(os.getcwd()).split('_')[0]
 
-#outDir     = '/home/rkumar/public_html/autocrop/picturesquenewen00swee'
-#outDir     = '/home/rkumar/public_html/autocrop/nouveautraitde00bout'
-#outDir     = '/home/rkumar/public_html/autocrop/morritosentrem00alva'
-#outDir     = '/home/rkumar/public_html/autocrop/appendixtotheolo00painrich'
 proxyDir   = 'proxy'
 skewedDir  = 'skewed'
 croppedDir = 'cropped'
@@ -79,6 +75,38 @@ def calc_mean_var(crops, keyA, keyB):
     print 'mean = %f' % mean
     print 'var = %f' % var
     return mean, var     
+
+# calc_mean_var_xo()
+# exclude outliers that are more than one std dev from mean, and
+# recalculate mean/var
+#_______________________________________________________________________________
+def calc_mean_var_xo(crops, keyA, keyB, mean_full, std_dev_full):
+    mean_xo = 0.0;
+    num_leafs = 0;
+    for leafnum,c in crops.items():
+        w = float(c[keyB] - c[keyA] + 1)
+        print "w = %f, mean_full=%f, std_dev_full=%f abs_diff=%f" % (w, mean_full, std_dev_full, abs(w-mean_full)),
+        if abs(w-mean_full) <= std_dev_full:
+            mean_xo += w
+            num_leafs+=1
+            print "accepting"
+        else:
+            print "rejecting"
+
+    mean_xo /= num_leafs
+    
+    var_xo = 0;
+
+    for leafnum,c in crops.items():
+        w = float(c[keyB] - c[keyA] + 1)
+        if abs(w-mean_full) <= std_dev_full:
+            var_xo += ( (w-mean_xo)*(w-mean_xo) )
+
+    var_xo /= num_leafs
+    
+    print 'mean_xo = %f' % mean_xo
+    print 'var_xo = %f' % var_xo
+    return mean_xo, var_xo
 
 
 # fit_crop_width_simple()
@@ -140,17 +168,22 @@ def fit_crop_height_simple(c, mean_height, height_std_dev, img_height):
         cropy = c['CleanCropT']
         croph = clean_height
     else:
-        print "clean_height within one std dev from mean, attempting to use mean_height to crop this page"
-        cropy = int(clean_mid - (mean_height*0.5))
-        croph = int(mean_height)
-        normalize_height = True
-        
-        if cropy < 0:
-            cropy = 0
-        elif (cropy + croph - 1) >= img_height: #H = T-B+1, B = H+T-1
-            #we want to set B = img_width - 1
-            cropy = img_height - croph
-        
+        if (mean_height <= clean_height):
+            print "clean_height within one std dev from mean, attempting to use mean_height to crop this page"
+            cropy = int(clean_mid - (mean_height_D2)) #center inside clean crop box
+            croph = int(mean_height)
+            normalize_height = True
+            
+            if cropy < 0:
+                cropy = 0
+            elif (cropy + croph - 1) >= img_height: #H = T-B+1, B = H+T-1
+                #we want to set B = img_width - 1
+                cropy = img_height - croph
+        else:
+            print "mean_height > clean_height, using clean_height"
+            cropy = c['CleanCropT']
+            croph = clean_height
+            
     return cropy, croph, normalize_height
     
 # fit_crop_width()
@@ -317,6 +350,13 @@ height_mean, height_var = calc_mean_var(crops, 'CleanCropT', 'CleanCropB')
 width_std_dev = math.sqrt(width_var)
 height_std_dev = math.sqrt(height_var)
 
+#recalculate, excluding outliers
+width_mean_xo, width_var_xo = calc_mean_var_xo(crops, 'CleanCropL', 'CleanCropR', width_mean, width_std_dev)
+height_mean_xo, height_var_xo = calc_mean_var_xo(crops, 'CleanCropT', 'CleanCropB', height_mean, height_std_dev)
+width_std_dev_xo = math.sqrt(width_var_xo)
+height_std_dev_xo = math.sqrt(height_var_xo)
+
+
 #pass 2
 f = open(outHtml, 'w')
 f.writelines(['<html>\n', '<head><title>skew test for %s</title></head>\n'%os.path.basename(os.getcwd()), '<body>\n', '<table border=2>\n']);
@@ -357,8 +397,8 @@ for file in sorted(files):
     print "Pass 1 crop x,y = (%d, %d) w,h = (%d, %d)" % (cropx, cropy, cropw, croph)
     
     hand_side = leaf.findtext('handSide') 
-    cropx, cropw, normalize_width  = fit_crop_width_simple(c, width_mean, width_std_dev, img_width, hand_side)
-    cropy, croph, normalize_height = fit_crop_height_simple(c, height_mean, height_std_dev, img_height)
+    cropx, cropw, normalize_width  = fit_crop_width_simple(c, width_mean_xo, width_std_dev_xo, img_width, hand_side)
+    cropy, croph, normalize_height = fit_crop_height_simple(c, height_mean_xo, height_std_dev_xo, img_height)
     print "Pass 2 crop x,y = (%d, %d) w,h = (%d, %d)" % (cropx, cropy, cropw, croph)
     
     ### don't compare to human crop/skew    
