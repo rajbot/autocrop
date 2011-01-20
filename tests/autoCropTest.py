@@ -9,7 +9,10 @@ import glob
 import os
 import re
 import math
+import datetime
 import xml.etree.ElementTree as ET
+
+AUTOCROP_VERSION = 0.1
 
 files = glob.glob("*.jpg") + glob.glob("*.JPG")
 assert len(files) > 0
@@ -240,7 +243,7 @@ def fit_crop_width(c, mean_width, width_std_dev):
 
 scandata = ET.parse('scandata.xml').getroot()
 leafs = scandata.findall('.//page')
-
+id = scandata.findtext('bookData/bookId')
 
 crops = {}
 
@@ -359,7 +362,15 @@ height_std_dev_xo = math.sqrt(height_var_xo)
 
 #pass 2
 f = open(outHtml, 'w')
-f.writelines(['<html>\n', '<head><title>skew test for %s</title></head>\n'%os.path.basename(os.getcwd()), '<body>\n', '<table border=2>\n']);
+f.writelines(['<html>\n', '<head><title>autocrop test for %s</title></head>\n'%id, '<body>\n', 'autocrop test for <a href="http://www.archive.org/details/%s">%s</a><br>\n'%(id, id), 'autocrop version = %f, run on %s\n'%(AUTOCROP_VERSION, datetime.datetime.now().isoformat())]);
+
+f.write('<table border=2>\n')
+f.write('<tr>')
+f.write('<th>Original Image</th>')
+f.write('<th>Pass 1 Autocrop and deskew results</th>')
+f.write('<th>Pass 1 Autocropped image</th>')
+f.write('<th>Pass 2 Autocropped image</th>')
+f.write('</tr>\n')
 
 for file in sorted(files):
     m = re.search('(\d{4})\.(jpg|JPG)$', file)
@@ -427,6 +438,7 @@ for file in sorted(files):
 
 
     f.write('<td valign=top>'),
+    f.write("pass1 crop and skew:<br>")
     f.write('<img src="%s/%d.jpg"/>'%(croppedDir,leafNum))
     f.write("<br>CleanCrop x,y = (%d, %d)" % (c['CleanCropL'], c['CleanCropT']))
     f.write("<br>CleanCrop w,h = (%d, %d)" % (c['CleanCropR'] - c['CleanCropL'] + 1, c['CleanCropB'] - c['CleanCropT'] + 1))
