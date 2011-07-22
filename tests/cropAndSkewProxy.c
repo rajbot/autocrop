@@ -1,18 +1,6 @@
 /*
 Copyright(c)2008 Internet Archive. Software license GPL version 2.
 
-build leptonica first:
-cd leptonlib-1.56/
-./configure
-make
-cd src/
-make
-cd ../prog/
-make
-
-compile with:
-g++ -ansi -Werror -D_BSD_SOURCE -DANSI -fPIC -O3  -I../leptonlib-1.56/src -I/usr/X11R6/include  -DL_LITTLE_ENDIAN -o cropAndSkewProxy cropAndSkewProxy.c ../leptonlib-1.56/lib/nodebug/liblept.a -ltiff -ljpeg -lpng -lz -lm
-
 run with:
 autoCrop filein.jpg rotateDirection
 */

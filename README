@@ -20,6 +20,8 @@ autoCropScribe depends on the Leptonica image processing library. This
 tool has been compiled against Leptonica 1.56 and has not been tested
 with more modern versions of Leptionica.
 
-To compile autocrop scribe, first download leptonlib-1.56 from
-http://code.google.com/p/leptonica/downloads/list and build that first.
-Then follow the compile instructions at the top of autoCropScribe.c
+To compile autocrop scribe simply run:
+
+$ make
+
+
