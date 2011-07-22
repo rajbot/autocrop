@@ -1,3 +1,6 @@
+#ifndef AUTOCROP_AUTOCROPCOMMON_H
+#define AUTOCROP_AUTOCROPCOMMON_H
+
 #define kGrayModeSingleChannel 1
 #define kGrayModeThreeChannel  3
 
@@ -89,3 +92,5 @@ l_int32 FindBindingUsingBlackBar(PIX      *pixg,
                                  l_int32 bottomEdge,
                                  l_int32 textBlockL,
                                  l_int32 textBlockR);
+
+#endif
