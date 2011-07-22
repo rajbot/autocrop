@@ -1235,13 +1235,13 @@ l_int32 FindWhiteColRight(PIX *pixg, l_int32 limitL, l_int32 limitT, l_int32 lim
 
 /// PrintKeyValue_int32
 ///____________________________________________________________________________
-void PrintKeyValue_int32(char *key, l_int32 val) {
+void PrintKeyValue_int32(const char *key, l_int32 val) {
     printf("%s: %d\n", key, val);
 }
 
 /// DebugKeyValue_int32
 ///____________________________________________________________________________
-void DebugKeyValue_int32(char *key, l_int32 val) {
+void DebugKeyValue_int32(const char *key, l_int32 val) {
     #if 1
         PrintKeyValue_int32(key, val);
     #endif
@@ -1249,13 +1249,13 @@ void DebugKeyValue_int32(char *key, l_int32 val) {
 
 /// PrintKeyValue_float
 ///____________________________________________________________________________
-void PrintKeyValue_float(char *key, l_float32 val) {
+void PrintKeyValue_float(const char *key, l_float32 val) {
     printf("%s: %.2f\n", key, val);
 }
 
 /// PrintKeyValue_str
 ///____________________________________________________________________________
-void PrintKeyValue_str(char *key, char *val) {
+void PrintKeyValue_str(const char *key, char *val) {
     printf("%s: %s\n", key, val);
 }
 

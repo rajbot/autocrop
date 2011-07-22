@@ -73,10 +73,10 @@ l_int32 FindWhiteRowDown(PIX *pixg, l_int32 limitB, l_int32 limitL, l_int32 limi
 l_int32 FindWhiteColLeft(PIX *pixg, l_int32 limitR, l_int32 limitT, l_int32 limitB, l_uint32 blackThresh, l_int32 blackLimit);
 l_int32 FindWhiteColRight(PIX *pixg, l_int32 limitL, l_int32 limitT, l_int32 limitB, l_uint32 blackThresh, l_int32 blackLimit);
 
-void PrintKeyValue_int32(char *key, l_int32 val);
-void DebugKeyValue_int32(char *key, l_int32 val);
-void PrintKeyValue_float(char *key, l_float32 val);
-void PrintKeyValue_str(char *key, char *val);
+void PrintKeyValue_int32(const char *key, l_int32 val);
+void DebugKeyValue_int32(const char *key, l_int32 val);
+void PrintKeyValue_float(const char *key, l_float32 val);
+void PrintKeyValue_str(const char *key, char *val);
 
 l_int32 min_int32(l_int32 a, l_int32 b);
 l_int32 max_int32(l_int32 a, l_int32 b);

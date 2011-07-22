@@ -1,6 +1,5 @@
 CXX=g++
-#CXXFLAGS=-ansi -Werror -D_BSD_SOURCE -DANSI -fPIC -O3 -DL_LITTLE_ENDIAN -Ileptonlib-1.56/src
-CXXFLAGS=-ansi -D_BSD_SOURCE -DANSI -fPIC -O3 -DL_LITTLE_ENDIAN -Ileptonlib-1.56/src
+CXXFLAGS=-ansi -Werror -D_BSD_SOURCE -DANSI -fPIC -O3 -DL_LITTLE_ENDIAN -Ileptonlib-1.56/src
 LDFLAGS=-ltiff -ljpeg -lpng -lz -lm
 .PHONY=all clean leptonlib utils
 OBJ=autoCropScribe.o autoCropCommon.o

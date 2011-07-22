@@ -1,6 +1,5 @@
 CXX=g++
-CXXFLAGS=-ansi -D_BSD_SOURCE -DANSI -fPIC -O3 -DL_LITTLE_ENDIAN -I../leptonlib-1.56/src
-#CXXFLAGS=-ansi -Werror -D_BSD_SOURCE -DANSI -fPIC -O3 -DL_LITTLE_ENDIAN
+CXXFLAGS=-ansi -Werror -D_BSD_SOURCE -DANSI -fPIC -O3 -DL_LITTLE_ENDIAN -I../leptonlib-1.56/src
 LDFLAGS=-ltiff -ljpeg -lpng -lz -lm
 .PHONY=all clean
 OBJ=cropAndSkewProxy.o cropAndSkewTwo.o
