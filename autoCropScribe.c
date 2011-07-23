@@ -21,7 +21,7 @@ which do not need to be rotated.
 
 //#define debugstr printf
 #define debugstr
-#define WRITE_DEBUG_IMAGES 1
+//#define WRITE_DEBUG_IMAGES 1
 
 static const l_float32  deg2rad            = 3.1415926535 / 180.;
 
