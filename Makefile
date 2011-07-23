@@ -1,7 +1,7 @@
 CXX=g++
 CXXFLAGS=-ansi -Werror -D_BSD_SOURCE -DANSI -fPIC -O3 -DL_LITTLE_ENDIAN -Ileptonlib-1.56/src
 LDFLAGS=-ltiff -ljpeg -lpng -lz -lm
-.PHONY=all clean leptonlib utils
+.PHONY=all clean leptonlib utils test
 OBJ=autoCropScribe.o autoCropCommon.o
 LIB=leptonlib-1.56/lib/nodebug/liblept.a
 BIN=autoCropScribe
@@ -36,3 +36,6 @@ clean :
 	-(cd leptonlib-1.56 && $(MAKE) clean)
 	-(cd tests && $(MAKE) clean)
 
+
+test :
+	-(cd tests && $(MAKE) test)

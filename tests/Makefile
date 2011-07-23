@@ -1,7 +1,7 @@
 CXX=g++
 CXXFLAGS=-ansi -Werror -D_BSD_SOURCE -DANSI -fPIC -O3 -DL_LITTLE_ENDIAN -I../leptonlib-1.56/src
 LDFLAGS=-ltiff -ljpeg -lpng -lz -lm
-.PHONY=all clean
+.PHONY=all clean test
 OBJ=cropAndSkewProxy.o cropAndSkewTwo.o
 LIB=../leptonlib-1.56/lib/nodebug/liblept.a
 BIN=cropAndSkewProxy cropAndSkewTwo
@@ -23,3 +23,7 @@ cropAndSkewTwo : $(LIB) cropAndSkewTwo.o
 clean :
 	rm -vf *.o $(BIN)
 
+test : all
+	mkdir -p debug-images/
+	mkdir -p testrun/`date  '+%Y-%m-%d'`
+	./processTestImages.py
