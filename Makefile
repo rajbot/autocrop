@@ -1,9 +1,9 @@
 CXX=g++
-CXXFLAGS=-ansi -Werror -D_BSD_SOURCE -DANSI -fPIC -O3 -DL_LITTLE_ENDIAN -Ileptonlib-1.56/src
+CXXFLAGS=-ansi -Werror -D_BSD_SOURCE -DANSI -fPIC -O3 -DL_LITTLE_ENDIAN -Ileptonica-1.68/src
 LDFLAGS=-ltiff -ljpeg -lpng -lz -lm
-.PHONY=all clean leptonlib utils test
+.PHONY=all clean utils test
 OBJ=autoCropScribe.o autoCropCommon.o
-LIB=leptonlib-1.56/lib/nodebug/liblept.a
+LIB=leptonica-1.68/src/.libs/liblept.a
 BIN=autoCropScribe
 
 all : $(BIN) utils
@@ -13,8 +13,8 @@ autoCropScribe : $(LIB) $(OBJ)
 	$(CXX) $(CXXFLAGS) -I/usr/X11R6/include $(OBJ) $(LIB) $(LDFLAGS) -o $@
 
 
-leptonlib-1.56/lib/nodebug/liblept.a : 
-	-(cd leptonlib-1.56/ && \
+leptonica-1.68/src/.libs/liblept.a : 
+	-(cd leptonica-1.68/ && \
 	  ./configure && \
 	  $(MAKE) && \
 	  cd src/ && \
@@ -33,7 +33,7 @@ utils :
 
 clean :
 	rm -vf *.o $(BIN) $(LIB) \ 
-	-(cd leptonlib-1.56 && $(MAKE) clean)
+	-(cd leptonica-1.56 && $(MAKE) clean)
 	-(cd tests && $(MAKE) clean)
 
 
