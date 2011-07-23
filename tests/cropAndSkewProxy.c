@@ -97,7 +97,7 @@ int main(int    argc,
     pixWrite(fileout, pixCrop, IFF_JFIF_JPEG); 
     
     if (1 == outputOrig) {
-        pixWrite("/tmp/home/rkumar/out.jpg", pixd, IFF_JFIF_JPEG); 
+        pixWrite("out.jpg", pixd, IFF_JFIF_JPEG); 
     }
     
     return 0;

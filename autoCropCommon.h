@@ -1,6 +1,10 @@
 #ifndef AUTOCROP_AUTOCROPCOMMON_H
 #define AUTOCROP_AUTOCROPCOMMON_H
 
+//#define DEBUG_IMAGE_DIR "/home/rkumar/public_html"
+#define DEBUG_IMAGE_DIR "./debug-images/"
+
+
 #define kGrayModeSingleChannel 1
 #define kGrayModeThreeChannel  3
 

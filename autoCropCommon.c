@@ -214,7 +214,7 @@ l_uint32 CalculateSADcol(PIX        *pixg,
         {
             debugmov.framenum++;
             char cmd[512];
-            int ret = snprintf(cmd, 512, "convert /home/rkumar/public_html/debugmov/smallgray.jpg -background black -rotate %f -pointsize 18 -fill yellow -annotate 0x0+10+20 '%s' -fill red -annotate 0x0+10+40 'angle = %0.2f' -draw 'line %d,%d %d,%d' -fill green -draw 'line %d,%d %d,%d' -draw 'line %d,%d %d,%d' \"%s/frames/%06d.jpg\"", debugmov.angle, debugmov.filename, debugmov.angle, i, jTop, i, jBot, debugmov.edgeBinding, jTop, debugmov.edgeBinding, jBot, debugmov.edgeOuter, jTop, debugmov.edgeOuter, jBot, debugmov.outDir, debugmov.framenum);
+            int ret = snprintf(cmd, 512, "convert " DEBUG_IMAGE_DIR "debugmov/smallgray.jpg -background black -rotate %f -pointsize 18 -fill yellow -annotate 0x0+10+20 '%s' -fill red -annotate 0x0+10+40 'angle = %0.2f' -draw 'line %d,%d %d,%d' -fill green -draw 'line %d,%d %d,%d' -draw 'line %d,%d %d,%d' \"%s/frames/%06d.jpg\"", debugmov.angle, debugmov.filename, debugmov.angle, i, jTop, i, jBot, debugmov.edgeBinding, jTop, debugmov.edgeBinding, jBot, debugmov.edgeOuter, jTop, debugmov.edgeOuter, jBot, debugmov.outDir, debugmov.framenum);
             assert(ret);
             printf(cmd);
             printf("\n");
@@ -675,7 +675,7 @@ l_int32 FindBindingEdge2(PIX      *pixg,
                     deg2rad*bindingDelta,
                     L_ROTATE_AREA_MAP,
                     L_BRING_IN_BLACK,0,0);
-    //pixWrite("/home/rkumar/public_html/outgray.jpg", pixt, IFF_JFIF_JPEG);
+    //pixWrite(DEBUG_IMAGE_DIR "outgray.jpg", pixt, IFF_JFIF_JPEG);
     
     double bindingLumaA = CalculateAvgCol(pixt, bindingEdge, jTop, jBot);
     printf("lumaA = %f\n", bindingLumaA);

@@ -21,7 +21,7 @@ which do not need to be rotated.
 
 //#define debugstr printf
 #define debugstr
-//#define WRITE_DEBUG_IMAGES 1
+#define WRITE_DEBUG_IMAGES 1
 
 static const l_float32  deg2rad            = 3.1415926535 / 180.;
 
@@ -704,7 +704,7 @@ l_uint32 FindBindingEdge(PIX      *pixg,
                     deg2rad*bindingDelta,
                     L_ROTATE_AREA_MAP,
                     L_BRING_IN_BLACK,0,0);
-    //pixWrite("/home/rkumar/public_html/outgray.jpg", pixt, IFF_JFIF_JPEG);
+    //pixWrite(DEBUG_IMAGE_DIR "outgray.jpg", pixt, IFF_JFIF_JPEG);
     
     double bindingLumaA = CalculateAvgCol(pixt, bindingEdge, jTop, jBot);
     printf("lumaA = %f\n", bindingLumaA);
@@ -909,7 +909,7 @@ l_uint32 jBot = h-1;
                     deg2rad*bindingDelta,
                     L_ROTATE_AREA_MAP,
                     L_BRING_IN_BLACK,0,0);
-    //pixWrite("/home/rkumar/public_html/outgray.jpg", pixt, IFF_JFIF_JPEG);
+    //pixWrite(DEBUG_IMAGE_DIR "outgray.jpg", pixt, IFF_JFIF_JPEG);
     
     double bindingLumaA = CalculateAvgCol(pixt, bindingEdge, jTop, jBot);
     printf("lumaA = %f\n", bindingLumaA);
@@ -2369,14 +2369,14 @@ int main(int argc, char **argv) {
     }
 
     #if WRITE_DEBUG_IMAGES
-    pixWrite("/home/rkumar/public_html/out.jpg", pixd, IFF_JFIF_JPEG);     
+    pixWrite(DEBUG_IMAGE_DIR "out.jpg", pixd, IFF_JFIF_JPEG);     
     #endif
     
     l_int32 grayChannel;
     pixg = ConvertToGray(pixd, &grayChannel);
     debugstr("Converted to gray\n");
     #if WRITE_DEBUG_IMAGES
-    pixWrite("/home/rkumar/public_html/outgray.jpg", pixg, IFF_JFIF_JPEG); 
+    pixWrite(DEBUG_IMAGE_DIR "outgray.jpg", pixg, IFF_JFIF_JPEG); 
     #endif
     
     l_int32 histmax;
@@ -2387,7 +2387,7 @@ int main(int argc, char **argv) {
     {
         PIX *p = pixCopy(NULL, pixg);        
         PIX *p2 = pixThresholdToBinary(p, threshInitial);
-        pixWrite("/home/rkumar/public_html/outbininit.png", p2, IFF_PNG); 
+        pixWrite(DEBUG_IMAGE_DIR "outbininit.png", p2, IFF_PNG); 
         pixDestroy(&p);
         pixDestroy(&p2);
     }
@@ -2396,10 +2396,10 @@ int main(int argc, char **argv) {
     #if DEBUGMOV
     {
         char cmd[512];
-        debugmov.outDir = "/home/rkumar/public_html/debugmov";
+        debugmov.outDir = DEBUG_IMAGE_DIR "debugmov";
         debugmov.framenum =-1;
         debugmov.filename = basename(filein);
-        pixWrite("/home/rkumar/public_html/debugmov/smallgray.jpg", pixg, IFF_JFIF_JPEG); 
+        pixWrite(DEBUG_IMAGE_DIR "debugmov/smallgray.jpg", pixg, IFF_JFIF_JPEG); 
         int ret = snprintf(cmd, 512, "rm -rf %s/frames", debugmov.outDir);
         assert(ret);
         ret = system(cmd);
@@ -2519,7 +2519,7 @@ debugstr("binding edge threshold is %d\n", threshBinding);
 debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeight(pixBigC));
     PIX *pixBigB = pixThresholdToBinary (pixBigC, threshBinding);    
     #if WRITE_DEBUG_IMAGES
-    pixWrite("/home/rkumar/public_html/outbin.png", pixBigB, IFF_PNG); 
+    pixWrite(DEBUG_IMAGE_DIR "outbin.png", pixBigB, IFF_PNG); 
     #endif
     
     l_float32    angle, conf, textAngle;
@@ -2558,13 +2558,13 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
                     deg2rad*angle,
                     L_ROTATE_AREA_MAP,
                     L_BRING_IN_BLACK,0,0);
-    //pixWrite("/home/rkumar/public_html/outBigR2.jpg", pixBigR2, IFF_JFIF_JPEG); 
-    //pixWrite("/home/rkumar/public_html/outBigT.jpg", pixBigT, IFF_JFIF_JPEG); 
+    //pixWrite(DEBUG_IMAGE_DIR "outBigR2.jpg", pixBigR2, IFF_JFIF_JPEG); 
+    //pixWrite(DEBUG_IMAGE_DIR "outBigT.jpg", pixBigT, IFF_JFIF_JPEG); 
     #if WRITE_DEBUG_IMAGES
     {   
         PIX *p = pixCopy(NULL, pixBigT);
         PIX *p2 = pixThresholdToBinary (p, threshBinding);    
-        pixWrite("/home/rkumar/public_html/outbinbig.png", p, IFF_PNG); 
+        pixWrite(DEBUG_IMAGE_DIR "outbinbig.png", p, IFF_PNG); 
         pixDestroy(&p);
         pixDestroy(&p2);
     }
@@ -2604,7 +2604,7 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
                         deg2rad*angle,
                         L_ROTATE_AREA_MAP,
                         L_BRING_IN_BLACK,0,0);
-        //pixWrite("/home/rkumar/public_html/outtmp.jpg", pixt, IFF_JFIF_JPEG); 
+        //pixWrite(DEBUG_IMAGE_DIR "outtmp.jpg", pixt, IFF_JFIF_JPEG); 
 
         //NUMA *hist = pixGetGrayHistogram(pixt, 1);
         NUMA *hist = pixGetGrayHistogram(pixBigC, 1);
@@ -2654,7 +2654,7 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
         #if WRITE_DEBUG_IMAGES
         {        
             PIX *p = pixThresholdToBinary (pixBigT, darkThresh);    
-            pixWrite("/home/rkumar/public_html/outDark.png", p, IFF_PNG); 
+            pixWrite(DEBUG_IMAGE_DIR "outDark.png", p, IFF_PNG); 
             pixDestroy(&p);
         }
         #endif //WRITE_DEBUG_IMAGES
@@ -2703,7 +2703,7 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
                         L_BRING_IN_BLACK,0,0);
     
         pixRenderBoxArb(p, b, 1, 255, 0, 0);
-        pixWrite("/home/rkumar/public_html/outs1.jpg", p, IFF_JFIF_JPEG); 
+        pixWrite(DEBUG_IMAGE_DIR "outs1.jpg", p, IFF_JFIF_JPEG); 
         pixDestroy(&p);
         pixDestroy(&p2);
         boxDestroy(&b);
@@ -2757,9 +2757,9 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
     cropT = RemoveBlackPelsBlockRowTop(pixBigT, cropT, cropT+(l_uint32)(h*0.05), cropL, cropR, 3, threshBinding); //we no longer calculate threshT
     cropB = RemoveBlackPelsBlockRowBot(pixBigT, cropB, cropB-(l_uint32)(h*0.05), cropL, cropR, 3, threshBinding); //we no longer calculate threshB
 
-    //pixWrite("/home/rkumar/public_html/outbig.jpg", pixBigT, IFF_JFIF_JPEG); 
+    //pixWrite(DEBUG_IMAGE_DIR "outbig.jpg", pixBigT, IFF_JFIF_JPEG); 
     //PIX *pixTmp = pixThresholdToBinary (pixBigT, threshBinding);    
-    //pixWrite("/home/rkumar/public_html/outbin.png", pixTmp, IFF_PNG); 
+    //pixWrite(DEBUG_IMAGE_DIR "outbin.png", pixTmp, IFF_PNG); 
 
     debugstr("adjusted: cL=%d, cR=%d, cT=%d, cB=%d\n", cropL, cropR, cropT, cropB);
 
@@ -2798,7 +2798,7 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
             boxDestroy(&boxCropVar);
         }
         
-        pixWrite("/home/rkumar/public_html/outbox.jpg", pixFinalR, IFF_JFIF_JPEG); 
+        pixWrite(DEBUG_IMAGE_DIR "outbox.jpg", pixFinalR, IFF_JFIF_JPEG); 
         pixDestroy(&pixFinalR);
         pixDestroy(&p);
     
@@ -2809,7 +2809,7 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
                         L_BRING_IN_BLACK,0,0);
     
         PIX *pixFinalC = pixClipRectangle(pixFinalR2, boxCrop, NULL);
-        pixWrite("/home/rkumar/public_html/outcrop.jpg", pixFinalC, IFF_JFIF_JPEG);        
+        pixWrite(DEBUG_IMAGE_DIR "outcrop.jpg", pixFinalC, IFF_JFIF_JPEG);        
         pixDestroy(&p);
         pixDestroy(&pixFinalC);
         
