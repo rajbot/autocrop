@@ -14,7 +14,7 @@ assert os.path.exists('testpages')
 files = glob.glob("testpages/*.jpg")
 assert len(files) > 0
 
-outDir     = '/home/rkumar/public_html/autocrop/singlepages'
+outDir     = 'singlepages'
 proxyDir   = 'proxy'
 skewedDir  = 'skewed'
 croppedDir = 'cropped'

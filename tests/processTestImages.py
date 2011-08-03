@@ -14,10 +14,10 @@ import glob
 import datetime
 
 testimg_dir = 'testimg'
-testrun_dir = '/home/rkumar/public_html/autocrop/testrun'
+testrun_dir = 'testrun'
 today_dir   = testrun_dir + '/' + datetime.date.today().isoformat()
 out_dir     = today_dir + '/' + datetime.datetime.now().isoformat()
-autocrop    = '/home/rkumar/gnubook/autoCropScribe'
+autocrop    = '../autoCropScribe'
 
 proxy_dir   = 'proxy'
 box_dir     = 'box'
@@ -63,7 +63,7 @@ for file in sorted(files):
     else:
         rotate_direction = -1
     
-    cmd = "/home/rkumar/gnubook/autoCropScribe %s %d" % (file, rotate_direction)
+    cmd = "../autoCropScribe %s %d" % (file, rotate_direction)
     print cmd
     retval,output = commands.getstatusoutput(cmd)
     assert (0 == retval)
@@ -88,13 +88,13 @@ for file in sorted(files):
     grayMode = m.group(1)
     print "grayMode is " + grayMode    
     
-    retval = commands.getstatusoutput('cp /home/rkumar/public_html/out.jpg "%s/%s/%s"'%(out_dir, proxy_dir, base_file))[0]
+    retval = commands.getstatusoutput('cp ./debug-images/out.jpg "%s/%s/%s"'%(out_dir, proxy_dir, base_file))[0]
     assert (0 == retval)    
 
-    retval = commands.getstatusoutput('cp /home/rkumar/public_html/outbox.jpg "%s/%s/%s"'%(out_dir, box_dir, base_file))[0]
+    retval = commands.getstatusoutput('cp ./debug-images/outbox.jpg "%s/%s/%s"'%(out_dir, box_dir, base_file))[0]
     assert (0 == retval)    
 
-    retval = commands.getstatusoutput('cp /home/rkumar/public_html/outcrop.jpg "%s/%s/%s"'%(out_dir, cropped_dir, base_file))[0]
+    retval = commands.getstatusoutput('cp ./debug-images/outcrop.jpg "%s/%s/%s"'%(out_dir, cropped_dir, base_file))[0]
     assert (0 == retval)    
 
     f.write('<tr>\n')
