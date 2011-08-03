@@ -273,7 +273,7 @@ def auto_crop_pass1(id, leafs, jpg_dir):
         print "rotateDir = %d" % rotateDir
         
         file = get_jpg(id, leafNum, jpg_dir)
-        cmd = "/home/rkumar/gnubook/autoCropScribe %s %d" % (file, rotateDir)
+        cmd = "./autoCropScribe %s %d" % (file, rotateDir)
         print cmd
         retval,output = commands.getstatusoutput(cmd)
         if 0 != retval:

@@ -55,10 +55,10 @@ files = glob.glob("*.jpg")
 assert len(files) > 0
 
 outDir      = '/var/www/humanassist/' + os.path.basename(os.getcwd()).split('_')[0]
-#outDir     = '/home/rkumar/public_html/autocrop/picturesquenewen00swee'
-#outDir     = '/home/rkumar/public_html/autocrop/nouveautraitde00bout'
-#outDir     = '/home/rkumar/public_html/autocrop/morritosentrem00alva'
-#outDir     = '/home/rkumar/public_html/autocrop/appendixtotheolo00painrich'
+#outDir     = '../picturesquenewen00swee'
+#outDir     = '../nouveautraitde00bout'
+#outDir     = '../morritosentrem00alva'
+#outDir     = '../appendixtotheolo00painrich'
 proxyDir   = 'proxy'
 skewedDir  = 'skewed'
 croppedDir = 'cropped'
@@ -182,14 +182,14 @@ for file in sorted(files):
         print "grayMode is " + grayMode
        
     
-        retval = commands.getstatusoutput('cp /tmp/home/rkumar/outbox.jpg "%s/%s/%d.jpg"'%(outDir, skewedDir,leafNum))[0]
+        retval = commands.getstatusoutput('cp outbox.jpg "%s/%s/%d.jpg"'%(outDir, skewedDir,leafNum))[0]
         assert (0 == retval)    
     
-        retval = commands.getstatusoutput('cp /tmp/home/rkumar/outcrop.jpg "%s/%s/%d.jpg"'%(outDir, croppedDir,leafNum))[0]
+        retval = commands.getstatusoutput('cp outcrop.jpg "%s/%s/%d.jpg"'%(outDir, croppedDir,leafNum))[0]
         assert (0 == retval)    
 
 
-    retval = commands.getstatusoutput('cp /tmp/home/rkumar/out.jpg "%s/%s/%d.jpg"'%(outDir, proxyDir,leafNum))[0]
+    retval = commands.getstatusoutput('cp out.jpg "%s/%s/%d.jpg"'%(outDir, proxyDir,leafNum))[0]
     assert (0 == retval)    
 
     f.write('<tr>\n')
