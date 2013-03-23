@@ -137,7 +137,7 @@ for file in sorted(files):
     retval = commands.getstatusoutput('/home/scribe/petamnt/gnubook/tests/cropAndSkewProxy tmp.tif "%s/%s/%d.jpg" %d %f %d %d %d %d 1'%(outDir, croppedDir,leafNum, rotateDir, skew, cropx/8, cropy/8, cropw/8, croph/8))[0]
     assert (0 == retval)    
 
-    retval = commands.getstatusoutput('cp /tmp/home/rkumar/out.jpg "%s/%s/%d.jpg"'%(outDir, proxyDir,leafNum))[0]
+    retval = commands.getstatusoutput('cp out.jpg "%s/%s/%d.jpg"'%(outDir, proxyDir,leafNum))[0]
     assert (0 == retval)    
 
     f.write('<tr>\n')

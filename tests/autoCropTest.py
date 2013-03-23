@@ -18,7 +18,7 @@ files = glob.glob("*.jpg") + glob.glob("*.JPG")
 assert len(files) > 0
 
 #outDir      = '/var/www/autocrop/' + os.path.basename(os.getcwd()).split('_')[0]
-outDir      = '/home/rkumar/public_html/autocrop/' + os.path.basename(os.getcwd()).split('_')[0]
+outDir      = '.' + os.path.basename(os.getcwd()).split('_')[0]
 
 proxyDir   = 'proxy'
 skewedDir  = 'skewed'
@@ -272,7 +272,7 @@ for file in sorted(files):
 
     print "rotateDir = %d" % rotateDir
         
-    cmd = "/home/rkumar/gnubook/autoCropScribe %s %d" % (file, rotateDir)
+    cmd = "../autoCropScribe %s %d" % (file, rotateDir)
     print cmd
     retval,output = commands.getstatusoutput(cmd)
     if 0 != retval:
@@ -318,13 +318,13 @@ for file in sorted(files):
     crops[leafNum]['skewMode'] = skewMode
     crops[leafNum]['grayMode'] = grayMode
         
-    retval = commands.getstatusoutput('cp /home/rkumar/public_html/out.jpg "%s/%s/%d.jpg"'%(outDir, proxyDir,leafNum))[0]
+    retval = commands.getstatusoutput('cp ../debug-images/out.jpg "%s/%s/%d.jpg"'%(outDir, proxyDir,leafNum))[0]
     assert (0 == retval)    
 
-    retval = commands.getstatusoutput('cp /home/rkumar/public_html/outbox.jpg "%s/%s/%d.jpg"'%(outDir, skewedDir,leafNum))[0]
+    retval = commands.getstatusoutput('cp ../debug-images/outbox.jpg "%s/%s/%d.jpg"'%(outDir, skewedDir,leafNum))[0]
     assert (0 == retval)    
 
-    retval = commands.getstatusoutput('cp /home/rkumar/public_html/outcrop.jpg "%s/%s/%d.jpg"'%(outDir, croppedDir,leafNum))[0]
+    retval = commands.getstatusoutput('cp ../debug-images/outcrop.jpg "%s/%s/%d.jpg"'%(outDir, croppedDir,leafNum))[0]
     assert (0 == retval)    
     
     ### don't compare to human crop/skew    
@@ -340,7 +340,7 @@ for file in sorted(files):
 
 
     ### don't compare to human crop/skew    
-    # retval = commands.getstatusoutput('/home/rkumar/gnubook/tests/cropAndSkewProxy %s "%s/%s/%d.jpg" %d %f %d %d %d %d'%(file, outDir, humanDir,leafNum, rotateDir, skew, cropx/8, cropy/8, cropw/8, croph/8))[0]
+    # retval = commands.getstatusoutput('./cropAndSkewProxy %s "%s/%s/%d.jpg" %d %f %d %d %d %d'%(file, outDir, humanDir,leafNum, rotateDir, skew, cropx/8, cropy/8, cropw/8, croph/8))[0]
     # assert (0 == retval)    
     
     #if (4==leafNum):
@@ -413,10 +413,10 @@ for file in sorted(files):
     print "Pass 2 crop x,y = (%d, %d) w,h = (%d, %d)" % (cropx, cropy, cropw, croph)
     
     ### don't compare to human crop/skew    
-    # retval = commands.getstatusoutput('/home/rkumar/gnubook/tests/cropAndSkewProxy %s "%s/%s/%d.jpg" %d %f %d %d %d %d'%(file, outDir, humanDir,leafNum, rotateDir, skew, cropx/8, cropy/8, cropw/8, croph/8))[0]
+    # retval = commands.getstatusoutput('./cropAndSkewProxy %s "%s/%s/%d.jpg" %d %f %d %d %d %d'%(file, outDir, humanDir,leafNum, rotateDir, skew, cropx/8, cropy/8, cropw/8, croph/8))[0]
     # assert (0 == retval)    
 
-    cmd = '/home/rkumar/gnubook/tests/cropAndSkewProxy %s "%s/%s/%d.jpg" %d %f %d %d %d %d'%(file, outDir, pass2Dir,leafNum, rotateDir, c['angle'], cropx/8, cropy/8, cropw/8, croph/8)
+    cmd = './cropAndSkewProxy %s "%s/%s/%d.jpg" %d %f %d %d %d %d'%(file, outDir, pass2Dir,leafNum, rotateDir, c['angle'], cropx/8, cropy/8, cropw/8, croph/8)
     print cmd
     retval = commands.getstatusoutput(cmd)[0]
     assert (0 == retval)    
