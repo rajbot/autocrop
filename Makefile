@@ -3,7 +3,7 @@ CXXFLAGS=-ansi -Werror -D_BSD_SOURCE -DANSI -fPIC -O3 -DL_LITTLE_ENDIAN -Ilepton
 LDFLAGS=-ltiff -ljpeg -lpng -lz -lm
 .PHONY=all clean utils test
 OBJ=autoCropScribe.o autoCropCommon.o
-LIB=leptonica-1.68/src/.libs/liblept.a
+LIB=leptonica-1.68/lib/nodebug/liblept.a
 BIN=autoCropScribe
 
 all : $(BIN) utils
@@ -13,12 +13,13 @@ autoCropScribe : $(LIB) $(OBJ)
 	$(CXX) $(CXXFLAGS) -I/usr/X11R6/include $(OBJ) $(LIB) $(LDFLAGS) -o $@
 
 
-leptonica-1.68/src/.libs/liblept.a : 
+leptonica-1.68/lib/nodebug/liblept.a :
 	-(cd leptonica-1.68/ && \
 	  ./configure && \
 	  $(MAKE) && \
 	  cd src/ && \
 	  $(MAKE) && \
+	  $(MAKE) -f makefile.static && \
 	  cd ../prog/ && \
 	  $(MAKE) )
 
@@ -32,10 +33,9 @@ utils :
 
 
 clean :
-	rm -vf *.o $(BIN) $(LIB) \ 
-	-(cd leptonica-1.56 && $(MAKE) clean)
-	-(cd tests && $(MAKE) clean)
-
+	rm -vf *.o $(BIN) $(LIB)
+	-(cd leptonica-1.68 && $(MAKE) clean && \
+      cd ../tests && $(MAKE) clean)
 
 test :
 	-(cd tests && $(MAKE) test)
