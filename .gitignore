@@ -12,6 +12,7 @@ leptonica-1.68/Makefile
 leptonica-1.68/config.log
 leptonica-1.68/config.status
 leptonica-1.68/configure.lineno
+leptonica-1.68/config_auto.h
 leptonica-1.68/lib/
 leptonica-1.68/libtool
 leptonica-1.68/prog/.deps/

@@ -3,7 +3,7 @@ CXXFLAGS=-ansi -Werror -D_BSD_SOURCE -DANSI -fPIC -O3 -DL_LITTLE_ENDIAN -I../lep
 LDFLAGS=-ltiff -ljpeg -lpng -lz -lm
 .PHONY=all clean test
 OBJ=cropAndSkewProxy.o cropAndSkewTwo.o
-LIB=../leptonica-1.68/src/.libs/liblept.a
+LIB=../leptonica-1.68/lib/nodebug/liblept.a
 BIN=cropAndSkewProxy cropAndSkewTwo
 
 all : $(BIN)
