@@ -1,16 +1,20 @@
 CXX=g++
-CXXFLAGS=-ansi -Werror -D_BSD_SOURCE -DANSI -fPIC -O3 -DL_LITTLE_ENDIAN -Ileptonica-1.68/src
+CXXFLAGS=-ansi -Werror -D_BSD_SOURCE -DANSI -fPIC -O0 -g -DL_LITTLE_ENDIAN -Ileptonica-1.68/src
 LDFLAGS=-ltiff -ljpeg -lpng -lz -lm
 .PHONY=all clean utils test
-OBJ=autoCropScribe.o autoCropCommon.o
+COMMON=autoCropCommon.o
 LIB=leptonica-1.68/lib/nodebug/liblept.a
-BIN=autoCropScribe
+BIN=autoCropScribe autoCropFoldout
 
 all : $(BIN) utils
 
 
-autoCropScribe : $(LIB) $(OBJ)
-	$(CXX) $(CXXFLAGS) -I/usr/X11R6/include $(OBJ) $(LIB) $(LDFLAGS) -o $@
+autoCropScribe : autoCropScribe.o $(LIB) $(COMMON)
+	$(CXX) $(CXXFLAGS) -I/usr/X11R6/include $^ $(LDFLAGS) -o $@
+
+
+autoCropFoldout : autoCropFoldout.o $(LIB) $(COMMON)
+	$(CXX) $(CXXFLAGS) -I/usr/X11R6/include $^ $(LDFLAGS) -o $@
 
 
 leptonica-1.68/lib/nodebug/liblept.a :

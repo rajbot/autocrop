@@ -79,7 +79,7 @@ double CalculateAvgBlock(PIX      *pixg,
             acc += a;
         }
     }
-    //printf("%d \n", acc);        
+    //printf("%d \n", acc);
 
     double avg = acc;
     avg /= ((right-left+1)*(bottom-top+1));
@@ -106,7 +106,7 @@ l_uint32 FindMinVarRow(PIX        *pixg,
     l_uint32 a;
     double minVar=DBL_MAX;
     l_int32 minj=-1;
-    
+
     l_uint32 w = pixGetWidth( pixg );
     l_uint32 h = pixGetHeight( pixg );
     assert(left>=0);
@@ -135,9 +135,9 @@ l_uint32 FindMinVarRow(PIX        *pixg,
         printf("var=%f avg=%f\n", var, avg);
         if (var < minVar) {
             minVar = var;
-            minj   = j; 
+            minj   = j;
         }
-        
+
     }
 
     *retj = minj;
@@ -145,298 +145,7 @@ l_uint32 FindMinVarRow(PIX        *pixg,
     return (-1 != minj);
 }
 
-/// FindTextBlockRow_T()
-/// find text block using difference of line variances
-///____________________________________________________________________________
-l_uint32 FindTextBlockRow_T(PIX        *pixg,
-                         l_uint32   left,
-                         l_uint32   right,
-                         l_uint32   top,
-                         l_uint32   bottom,
-                         double     thresh,
-                         l_int32    *retj,
-                         double     *retVar
-                        )
-{
 
-    l_uint32 i, j;
-    l_uint32 a;
-    double textrow_var=DBL_MAX;
-    l_int32 textrow=-1;
-    
-    l_uint32 w = pixGetWidth( pixg );
-    l_uint32 h = pixGetHeight( pixg );
-    assert(left>=0);
-    assert(left<right);
-    assert(right<w);
-    assert(top>=0);
-    assert(top<bottom);
-    assert(bottom<h);
-    double var;
-    l_uint32 width20 = (l_uint32)(w * 0.20);
-    
-    double prevAvg, prevVar;
-    l_int32 jStart, jEnd;
-    
-    prevAvg = CalculateAvgRow(pixg, top, left+width20, right-width20);
-    prevVar = CalculateVarRow(pixg, top, left+width20, right-width20);
-    jStart  = top+1;
-    jEnd    = bottom;
-        
-    for (j=jStart; j<=jEnd; j++) {
-        //printf("%d: ", j);
-        
-        double avg = CalculateAvgRow(pixg, j, left+width20, right-width20);
-        //if (avg<thresh) {
-        //    printf("avg too low, continuing! (%f)\n", avg);
-        //    continue;
-        //}
-        var = CalculateVarRow(pixg, j, left+width20, right-width20);
-        
-        double diff = fabs(var - prevVar);
-        //printf("var=%f avg=%f diff=%f\n", var, avg, diff);
-
-        if (diff > thresh) {
-            textrow   = j;
-            textrow_var = var; //rename this
-            break;
-        }
-
-        prevVar = var;
-        
-    }
-
-    *retj = textrow;
-    *retVar = textrow_var;
-    return (-1 != textrow);
-}
-
-/// FindTextBlockRow_B()
-/// find text block using difference of line variances
-///____________________________________________________________________________
-l_uint32 FindTextBlockRow_B(PIX        *pixg,
-                         l_uint32   left,
-                         l_uint32   right,
-                         l_uint32   top,
-                         l_uint32   bottom,
-                         double     thresh,
-                         l_int32    *retj,
-                         double     *retVar
-                        )
-{
-
-    l_uint32 i, j;
-    l_uint32 a;
-    double textrow_var=DBL_MAX;
-    l_int32 textrow=-1;
-    
-    l_uint32 w = pixGetWidth( pixg );
-    l_uint32 h = pixGetHeight( pixg );
-    assert(left>=0);
-    assert(left<right);
-    assert(right<w);
-    assert(top>=0);
-    assert(top<bottom);
-    assert(bottom<h);
-    double var;
-    l_uint32 width20 = (l_uint32)(w * 0.20);
-    
-    double prevAvg, prevVar;
-    l_int32 jStart, jEnd;
-    
-    prevAvg = CalculateAvgRow(pixg, bottom, left+width20, right-width20);
-    prevVar = CalculateVarRow(pixg, bottom, left+width20, right-width20);
-    jStart  = bottom-1;
-    jEnd    = top;
-        
-    for (j=jStart; j>=jEnd; j--) {
-        //printf("%d: ", j);
-        
-        double avg = CalculateAvgRow(pixg, j, left+width20, right-width20);
-        //if (avg<thresh) {
-        //    printf("avg too low, continuing! (%f)\n", avg);
-        //    continue;
-        //}
-        var = CalculateVarRow(pixg, j, left+width20, right-width20);
-        
-        double diff = fabs(var - prevVar);
-        //printf("var=%f avg=%f diff=%f\n", var, avg, diff);
-
-        if (diff > thresh) {
-            textrow   = j;
-            textrow_var = var; //rename this
-            break;
-        }
-
-        prevVar = var;
-        
-    }
-
-    *retj = textrow;
-    *retVar = textrow_var;
-    return (-1 != textrow);
-}
-
-/// CountBlackPelsCol()
-///____________________________________________________________________________
-l_uint32 CountBlackPelsCol(PIX *pixg, l_uint32 i, l_uint32 top, l_uint32 bottom, l_uint32 bindingThresh)
-{
-    l_uint32 numBlackPels = 0;
-    l_uint32 a;
-    l_int32 j;
-
-    for (j=top; j<=bottom; j++) {
-        l_int32 retval = pixGetPixel(pixg, i, j, &a);
-        //printf("     (%d, %d) %d %d\n", i, j, a, bindingThresh);
-        assert(0 == retval);
-        if (a<bindingThresh) {
-            numBlackPels++;
-        }
-    }
-    return numBlackPels;
-}
-
-/// FindTextBlockCol_L()
-/// find text block using difference of line variances
-///____________________________________________________________________________
-l_uint32 FindTextBlockCol_L(PIX        *pixg,
-                         l_uint32   left,
-                         l_uint32   right,
-                         l_uint32   top,
-                         l_uint32   bottom,
-                         double     thresh,
-                         l_uint32   threshBinding,
-                         l_int32    *retj,
-                         double     *retVar
-                        )
-{
-
-    l_uint32 i, j;
-    l_uint32 a;
-    double textcol_var=DBL_MAX;
-    l_int32 textcol=-1;
-    
-    l_uint32 w = pixGetWidth( pixg );
-    l_uint32 h = pixGetHeight( pixg );
-    assert(left>=0);
-    assert(left<right);
-    assert(right<w);
-    assert(top>=0);
-    assert(top<bottom);
-    assert(bottom<h);
-    double var;
-    l_uint32 height10 = (l_uint32)(h * 0.10);
-    debugstr("FindTextBlockCol_L reducing j range to %d - %d\n", top+height10, bottom-height10);
-    
-    double prevAvg, prevVar;
-    l_int32 iStart, iEnd;
-    
-    prevAvg = CalculateAvgCol(pixg, left, top+height10, bottom-height10);
-    prevVar = CalculateVarCol(pixg, left, top+height10, bottom-height10);
-    iStart  = left+1;
-    iEnd    = right;
-        
-    for (i=iStart; i<=iEnd; i++) {
-        //printf("%d: ", i);
-        
-        double avg = CalculateAvgCol(pixg, i, top+height10, bottom-height10);
-        //if (avg<thresh) {
-        //    printf("avg too low, continuing! (%f)\n", avg);
-        //    continue;
-        //}
-        var = CalculateVarCol(pixg, i, top+height10, bottom-height10);
-                
-        double diff = fabs(var - prevVar);
-
-        l_int32 numBlackPels = CountBlackPelsCol(pixg, i, top+height10, bottom-height10, threshBinding);
-
-        //printf("var=%f avg=%f diff=%f black=%d\n", var, avg, diff, numBlackPels);
-
-        if (diff > thresh) {
-            textcol   = i;
-            textcol_var = var; //rename this
-            break;
-        }
-
-        prevVar = var;
-        
-    }
-
-    *retj = textcol;
-    *retVar = textcol_var;
-    return (-1 != textcol);
-}
-
-/// FindTextBlockCol_R()
-/// find text block using difference of line variances
-///____________________________________________________________________________
-l_uint32 FindTextBlockCol_R(PIX        *pixg,
-                         l_uint32   left,
-                         l_uint32   right,
-                         l_uint32   top,
-                         l_uint32   bottom,
-                         double     thresh,
-                         l_uint32   threshBinding,
-                         l_int32    *retj,
-                         double     *retVar
-                        )
-{
-
-    l_uint32 i, j;
-    l_uint32 a;
-    double textcol_var=DBL_MAX;
-    l_int32 textcol=-1;
-    
-    l_uint32 w = pixGetWidth( pixg );
-    l_uint32 h = pixGetHeight( pixg );
-    assert(left>=0);
-    assert(left<right);
-    assert(right<w);
-    assert(top>=0);
-    assert(top<bottom);
-    assert(bottom<h);
-    double var;
-    l_uint32 height10 = (l_uint32)(h * 0.10);
-    debugstr("FindTextBlockCol_R reducing j range to %d - %d\n", top+height10, bottom-height10);
-    
-    double prevAvg, prevVar;
-    l_int32 iStart, iEnd;
-    
-    prevAvg = CalculateAvgCol(pixg, right, top+height10, bottom-height10);
-    prevVar = CalculateVarCol(pixg, right, top+height10, bottom-height10);
-    iStart  = right-1;
-    iEnd    = left;
-        
-    for (i=iStart; i>=iEnd; i--) {
-        //printf("%d: ", i);
-        
-        double avg = CalculateAvgCol(pixg, i, top+height10, bottom-height10);
-        //if (avg<thresh) {
-        //    printf("avg too low, continuing! (%f)\n", avg);
-        //    continue;
-        //}
-        var = CalculateVarCol(pixg, i, top+height10, bottom-height10);
-                
-        double diff = fabs(var - prevVar);
-
-        l_int32 numBlackPels = CountBlackPelsCol(pixg, i, top+height10, bottom-height10, threshBinding);
-
-        //printf("var=%f avg=%f diff=%f black=%d\n", var, avg, diff, numBlackPels);
-
-        if (diff > thresh) {
-            textcol   = i;
-            textcol_var = var; //rename this
-            break;
-        }
-
-        prevVar = var;
-        
-    }
-
-    *retj = textcol;
-    *retVar = textcol_var;
-    return (-1 != textcol);
-}
 
 /// FindBestVarCol()
 /// find col with least variance
@@ -456,7 +165,7 @@ l_uint32 FindMinVarCol(PIX        *pixg,
     l_uint32 a;
     double minVar=DBL_MAX;
     l_int32 mini=-1;
-    
+
     l_uint32 w = pixGetWidth( pixg );
     l_uint32 h = pixGetHeight( pixg );
     assert(left>=0);
@@ -485,9 +194,9 @@ l_uint32 FindMinVarCol(PIX        *pixg,
         //printf("var=%f avg=%f\n", var, avg);
         if (var < minVar) {
             minVar = var;
-            mini   = i; 
+            mini   = i;
         }
-        
+
     }
 
     *reti = mini;
@@ -512,7 +221,7 @@ double CalculateFullPageSADrow(PIX        *pixg,
     l_uint32 a,b;
     l_uint32 maxDiff=0;
     l_int32 maxj=-1;
-    
+
     l_uint32 w = pixGetWidth( pixg );
     l_uint32 h = pixGetHeight( pixg );
     assert(left>=0);
@@ -522,7 +231,7 @@ double CalculateFullPageSADrow(PIX        *pixg,
     assert(top<bottom);
     assert(bottom<h);
 
-    
+
     for (j=top; j<bottom; j++) {
         //printf("%d: ", i);
         for (i=left; i<right; i++) {
@@ -533,7 +242,7 @@ double CalculateFullPageSADrow(PIX        *pixg,
             //printf("%d ", val);
             acc += (abs(a-b));
         }
- 
+
     }
 
     double sum = (double)acc;
@@ -602,7 +311,7 @@ l_uint32 FindGutterCrop(PIX *pixg, l_int32 rotDir) {
 
     l_int32  secondEdge;
     l_uint32 secondEdgeDiff;
-    
+
     if (secondEdgeDiffR > secondEdgeDiffL) {
         secondEdge = secondEdgeR;
         secondEdgeDiff = secondEdgeDiffR;
@@ -641,7 +350,7 @@ l_uint32 FindBindingEdge(PIX      *pixg,
 
     //kernel has height of (h/2 +/- h*hPercent/2)
     l_uint32 jTop = (l_uint32)((1-kKernelHeight)*0.5*h);
-    l_uint32 jBot = (l_uint32)((1+kKernelHeight)*0.5*h);    
+    l_uint32 jBot = (l_uint32)((1+kKernelHeight)*0.5*h);
 
     // Find the strong edge, which should be one of the two sides of the binding
     // Rotate the image to maximize SAD
@@ -651,7 +360,7 @@ l_uint32 FindBindingEdge(PIX      *pixg,
     float      bindingDelta;
     float delta;
     //0.05 degrees is a good increment for the final search
-    for (delta=-1.0; delta<=1.0; delta+=0.2) {    
+    for (delta=-1.0; delta<=1.0; delta+=0.2) {
         PIX *pixt = pixRotate(pixg,
                         deg2rad*delta,
                         L_ROTATE_AREA_MAP,
@@ -685,11 +394,11 @@ l_uint32 FindBindingEdge(PIX      *pixg,
             debugmov.edgeBinding = bindingEdge;
             #endif //DEBUGMOV
         }
-        
 
-        pixDestroy(&pixt);    
+
+        pixDestroy(&pixt);
     }
-    
+
     assert(-1 != bindingEdge); //TODO: handle error
     printf("BEST: delta=%f, strongest edge of gutter is at i=%d with diff=%d\n", bindingDelta, bindingEdge, bindingEdgeDiff);
     *skew = bindingDelta;
@@ -705,7 +414,7 @@ l_uint32 FindBindingEdge(PIX      *pixg,
                     L_ROTATE_AREA_MAP,
                     L_BRING_IN_BLACK,0,0);
     //pixWrite(DEBUG_IMAGE_DIR "outgray.jpg", pixt, IFF_JFIF_JPEG);
-    
+
     double bindingLumaA = CalculateAvgCol(pixt, bindingEdge, jTop, jBot);
     printf("lumaA = %f\n", bindingLumaA);
 
@@ -726,13 +435,13 @@ l_uint32 FindBindingEdge(PIX      *pixg,
     double threshold = (l_uint32)((bindingLumaA + bindingLumaB) / 2);
     //TODO: ensure this threshold is reasonable
     printf("thesh = %f\n", threshold);
-    
+
     *thesh = (l_uint32)threshold;
 
     l_uint32 width3p = (l_uint32)(w * 0.03);
     l_uint32 rightEdge;
     l_uint32 numBlackLines = 0;
-    
+
     if (bindingLumaA > bindingLumaB) { //found left edge
         l_uint32 i;
         l_uint32 rightLimit = bindingEdge+width3p;
@@ -747,7 +456,7 @@ l_uint32 FindBindingEdge(PIX      *pixg,
             }
         }
         printf("numBlackLines = %d\n", numBlackLines);
-    
+
     } else if (bindingLumaA < bindingLumaB) { //found right edge
         l_uint32 i;
         l_uint32 leftLimit = bindingEdge-width3p;
@@ -764,11 +473,11 @@ l_uint32 FindBindingEdge(PIX      *pixg,
             }
         }
         printf("numBlackLines = %d\n", numBlackLines);
-    
+
     } else {
         return -1; //TODO: handle error
     }
-    
+
     ///temp code to calculate some thesholds..
     /*
     l_uint32 a, j, i = rightEdge;
@@ -799,8 +508,8 @@ l_uint32 FindBindingEdge(PIX      *pixg,
     } else {
         debugstr("COULD NOT FIND BINDING, using strongest edge!\n");
         return bindingEdge;
-    }    
-    
+    }
+
     return 1; //TODO: return error code on failure
 }
 
@@ -826,7 +535,7 @@ l_int32 FindBindingEdge3(PIX      *pixg,
     //kernel has height of (h/2 +/- h*hPercent/2)
     l_uint32 kernelHeight10 = (l_uint32)(0.10*(bottomEdge-topEdge));
     //l_uint32 jTop = (l_uint32)((1-kKernelHeight)*0.5*h);
-    //l_uint32 jBot = (l_uint32)((1+kKernelHeight)*0.5*h);    
+    //l_uint32 jBot = (l_uint32)((1+kKernelHeight)*0.5*h);
     //l_uint32 jTop = topEdge+kernelHeight10;
     //l_uint32 jBot = bottomEdge-kernelHeight10;
 //we sometimes pick up an picture edge on teh opposing page..
@@ -845,18 +554,18 @@ l_uint32 jBot = h-1;
         left  = w - width10;
         right = w - 1;
     }
-    
+
     l_int32    bindingEdge;// = -1;
     l_uint32   bindingEdgeDiff;// = 0;
     float      bindingDelta = 0.0;
     CalculateSADcol(pixg, left, right, jTop, jBot, &bindingEdge, &bindingEdgeDiff);
-    
+
     float delta;
     //0.05 degrees is a good increment for the final search
     for (delta=-1.0; delta<=1.0; delta+=0.05) {
-    
+
         if ((delta>-0.01) && (delta<0.01)) { continue;}
-        
+
         PIX *pixt = pixRotate(pixg,
                         deg2rad*delta,
                         L_ROTATE_AREA_MAP,
@@ -890,11 +599,11 @@ l_uint32 jBot = h-1;
             debugmov.edgeBinding = bindingEdge;
             #endif //DEBUGMOV
         }
-        
 
-        pixDestroy(&pixt);    
+
+        pixDestroy(&pixt);
     }
-    
+
     assert(-1 != bindingEdge); //TODO: handle error
     printf("BEST: delta=%f, strongest edge of gutter is at i=%d with diff=%d\n", bindingDelta, bindingEdge, bindingEdgeDiff);
     *skew = bindingDelta;
@@ -910,7 +619,7 @@ l_uint32 jBot = h-1;
                     L_ROTATE_AREA_MAP,
                     L_BRING_IN_BLACK,0,0);
     //pixWrite(DEBUG_IMAGE_DIR "outgray.jpg", pixt, IFF_JFIF_JPEG);
-    
+
     double bindingLumaA = CalculateAvgCol(pixt, bindingEdge, jTop, jBot);
     printf("lumaA = %f\n", bindingLumaA);
 
@@ -931,13 +640,13 @@ l_uint32 jBot = h-1;
     double threshold = (l_uint32)((bindingLumaA + bindingLumaB) / 2);
     //TODO: ensure this threshold is reasonable
     printf("thesh = %f\n", threshold);
-    
+
     *thesh = (l_uint32)threshold;
 
     l_int32 width3p = (l_int32)(w * 0.03);
     l_int32 rightEdge, leftEdge;
     l_uint32 numBlackLines = 0;
-    
+
     if (bindingLumaA > bindingLumaB) { //found left edge
         l_int32 i;
         l_int32 rightLimit = min(bindingEdge+width3p, w);
@@ -953,16 +662,16 @@ l_uint32 jBot = h-1;
                 break;
             }
         }
-        
-        
+
+
         printf("numBlackLines = %d\n", numBlackLines);
-    
+
     } else if (bindingLumaA < bindingLumaB) { //found right edge
         l_int32 i;
         l_int32 leftLimit = bindingEdge-width3p;
         rightEdge = bindingEdge;
         leftEdge  = bindingEdge; //init this something, in case we never break;
-        
+
         if (leftLimit<0) leftLimit = 0;
         printf("found right edge of gutter, leftLimit=%d, rightLimit=%d\n", leftLimit, bindingEdge-1);
         for (i=bindingEdge-1; i>leftLimit; i--) {
@@ -976,11 +685,11 @@ l_uint32 jBot = h-1;
             }
         }
         printf("numBlackLines = %d\n", numBlackLines);
-    
+
     } else {
         return -1; //TODO: handle error
     }
-    
+
     ///temp code to calculate some thesholds..
     /*
     l_uint32 a, j, i = rightEdge;
@@ -1017,8 +726,8 @@ printf("rightEdge = %d, bindingEdge = %d\n", rightEdge, bindingEdge);
     } else {
         debugstr("COULD NOT FIND BINDING, using strongest edge!\n");
         return bindingEdge;
-    }    
-    
+    }
+
     return 1; //TODO: return error code on failure
 }
 
@@ -1038,11 +747,11 @@ l_int32 FindOuterEdge(PIX     *pixg,
 
     l_uint32 width75 = (l_uint32)(w * 0.75);
     l_uint32 width25 = (l_uint32)(w * 0.25);
-    
+
     //kernel has height of (h/2 +/- h*hPercent/2)
     l_uint32 jTop = (l_uint32)((1-kKernelHeight)*0.5*h);
     l_uint32 jBot = (l_uint32)((1+kKernelHeight)*0.5*h);
-    
+
 
 
     l_int32    outerEdge = -1;
@@ -1086,16 +795,16 @@ l_int32 FindOuterEdge(PIX     *pixg,
             debugmov.edgeOuter = outerEdge;
             #endif //DEBUGMOV
         }
-        pixDestroy(&pixt);    
+        pixDestroy(&pixt);
     }
-    
+
     assert(-1 != outerEdge); //TODO: handle error
     printf("BEST: delta=%f, outer edge is at i=%d with diff=%d\n", outerDelta, outerEdge, outerEdgeDiff);
-    
-    
+
+
     //calculate threshold
     //l_uint32 jTop = (l_uint32)((1-kKernelHeight)*0.5*h);
-    //l_uint32 jBot = (l_uint32)((1+kKernelHeight)*0.5*h);    
+    //l_uint32 jBot = (l_uint32)((1+kKernelHeight)*0.5*h);
 
     PIX *pixt = pixRotate(pixg,
                     deg2rad*outerDelta,
@@ -1111,11 +820,11 @@ l_int32 FindOuterEdge(PIX     *pixg,
 
     double threshold = (l_uint32)((bindingLumaA + bindingLumaB) / 2);
     //TODO: ensure this threshold is reasonable
-    printf("outer thesh = %f\n", threshold);    
+    printf("outer thesh = %f\n", threshold);
     *threshOuter = (l_uint32)threshold;
-    pixDestroy(&pixt);    
-    
-    
+    pixDestroy(&pixt);
+
+
     *skew = outerDelta;
     return outerEdge;
 }
@@ -1130,14 +839,14 @@ l_uint32 FindHorizontalEdge(PIX      *pixg,
                      l_uint32 *threshOut)
 {
     //Although we assume the page is centered vertically, we can't assume that
-    //the page is centered horizontally. 
+    //the page is centered horizontally.
 
     //Currently, we can only do right-hand leafs
     assert((1 == rotDir) || (-1 == rotDir));
 
     //start at bindingEdge, and go 25% into the image.
     //TODO: generalize this to support both left and right hand leafs
-    
+
     l_uint32 w = pixGetWidth( pixg );
     l_uint32 h = pixGetHeight( pixg );
 
@@ -1163,7 +872,7 @@ l_uint32 FindHorizontalEdge(PIX      *pixg,
     l_uint32   topEdgeDiff = 0;
     float      topDelta;
     float delta;
-    for (delta=-1.0; delta<=1.0; delta+=0.05) {    
+    for (delta=-1.0; delta<=1.0; delta+=0.05) {
         PIX *pixt = pixRotate(pixg,
                         deg2rad*delta,
                         L_ROTATE_AREA_MAP,
@@ -1171,7 +880,7 @@ l_uint32 FindHorizontalEdge(PIX      *pixg,
         l_int32    strongEdge;
         l_uint32   strongEdgeDiff;
         l_uint32   topLimit = calcLimitTop(w,h,delta);
-        
+
 
         l_uint32   top, bottom;
         if (0 == whichEdge) { //top Edge
@@ -1191,16 +900,16 @@ l_uint32 FindHorizontalEdge(PIX      *pixg,
             topEdgeDiff = strongEdgeDiff;
             topDelta = delta;
         }
-        pixDestroy(&pixt);    
+        pixDestroy(&pixt);
     }
 
-    
+
     //calculate threshold
     PIX *pixt = pixRotate(pixg,
                     deg2rad*topDelta,
                     L_ROTATE_AREA_MAP,
                     L_BRING_IN_BLACK,0,0);
-                    
+
     double bindingLumaA = CalculateAvgRow(pixt, topEdge, left, right);
     printf("horiz%d lumaA = %f\n", whichEdge, bindingLumaA);
 
@@ -1211,24 +920,24 @@ l_uint32 FindHorizontalEdge(PIX      *pixg,
     *threshOut = (l_uint32)((bindingLumaA + bindingLumaB) / 2);
     //TODO: ensure this threshold is reasonable
     printf("horiz%d thesh = %d\n", whichEdge, *threshOut);
-    pixDestroy(&pixt);    
+    pixDestroy(&pixt);
 
     assert(-1 != topEdge); //TODO: handle error
     printf("BEST Horiz: delta=%f at j=%d with diff=%d\n", topDelta, topEdge, topEdgeDiff);
-    
-    
-    
+
+
+
     *skew = topDelta;
     return topEdge;
 }
 
 /// CalculateDifferentialSquareSum()
 ///____________________________________________________________________________
-double CalculateDifferentialSquareSum(PIX *pixg, 
+double CalculateDifferentialSquareSum(PIX *pixg,
                                       l_uint32 cL,
-                                      l_uint32 cR, 
-                                      l_uint32 cT, 
-                                      l_uint32 cB) 
+                                      l_uint32 cR,
+                                      l_uint32 cT,
+                                      l_uint32 cB)
 {
     l_uint32 i, j;
     l_uint32 a, b;
@@ -1262,12 +971,12 @@ double CalculateDifferentialSquareSum(PIX *pixg,
 /// Deskew()
 /// This works if you pass in a bitonal image, but doesn't work well with grayscale
 ///____________________________________________________________________________
-int Deskew(PIX      *pixg, 
-           l_int32 cropL, 
-           l_int32 cropR, 
-           l_int32 cropT, 
-           l_int32 cropB, 
-           double *skew, 
+int Deskew(PIX      *pixg,
+           l_int32 cropL,
+           l_int32 cropR,
+           l_int32 cropT,
+           l_int32 cropB,
+           double *skew,
            double *skewConf)
 {
     assert(cropR>cropL);
@@ -1278,7 +987,7 @@ int Deskew(PIX      *pixg,
 
     l_uint32 width10  = (l_uint32)(w * 0.10);
     l_uint32 height10 = (l_uint32)(h * 0.10);
-    
+
 
 
     //first, reduce cropbox by 10% to get rid of non-page pixels
@@ -1346,16 +1055,16 @@ int AdjustCropBox(PIX     *pixg,
     l_int32 newR = *cropR;
     l_int32 newT = *cropT;
     l_int32 newB = *cropB;
-    
+
     l_uint32 w = pixGetWidth( pixg );
     l_uint32 h = pixGetHeight( pixg );
 
     l_int32 limitLeft  = newL-delta;
     l_int32 limitRight = newL+delta;
-    
+
     limitLeft  = max(0, limitLeft);
     limitRight = min(w-1, limitRight);
-    
+
     l_int32  strongEdge;
     l_uint32 strongEdgeDiff;
 
@@ -1372,7 +1081,7 @@ int AdjustCropBox(PIX     *pixg,
 
     limitLeft  = newR-delta;
     limitRight = newR+delta;
-    
+
     limitLeft  = max(0, limitLeft);
     limitRight = min(w-1, limitRight);
 
@@ -1387,7 +1096,7 @@ int AdjustCropBox(PIX     *pixg,
 
     l_int32 limitTop  = newT-delta;
     l_int32 limitBot  = newT+delta;
-    
+
     limitTop  = max(0, limitTop);
     limitBot  = min(h-1, limitBot);
 
@@ -1395,14 +1104,14 @@ int AdjustCropBox(PIX     *pixg,
     //printf("AdjustCropBox Top j=%d with diff=%d\n", strongEdge, strongEdgeDiff);
     //assert(-1 != strongEdge);
     //newT = strongEdge;
-    l_int32 varj; 
+    l_int32 varj;
     FindMinVarRow(pixg, newL, newR, limitTop, limitBot, 140, &varj, &var);
     debugstr("TOP: min var found at j=%d, var=%f\n", varj, var);
     newT = varj;
 
     limitTop  = newB-delta;
     limitBot  = newB+delta;
-    
+
     limitTop  = max(0, limitTop);
     limitBot  = min(h-1, limitBot);
 
@@ -1425,7 +1134,7 @@ l_int32 FindMinBlockVarCol(PIX     *pixg,
                            l_int32 left,
                            l_int32 right,
                            l_int32 top,
-                           l_int32 bottom, 
+                           l_int32 bottom,
                            l_int32 kernelWidth,
                            l_int32 *reti,
                            double  *retVar)
@@ -1436,7 +1145,7 @@ l_int32 FindMinBlockVarCol(PIX     *pixg,
     l_uint32 a;
     double minVar=DBL_MAX;
     l_int32 mini=-1;
-    
+
     l_uint32 w = pixGetWidth( pixg );
     l_uint32 h = pixGetHeight( pixg );
     assert(left>=0);
@@ -1469,9 +1178,9 @@ l_int32 FindMinBlockVarCol(PIX     *pixg,
         printf("var=%f avg=%f\n", var, avg);
         if (var < minVar) {
             minVar = var;
-            mini   = i; 
+            mini   = i;
         }
-        
+
     }
 
     *reti = mini;
@@ -1501,17 +1210,17 @@ int AdjustCropBoxByVariance(PIX     *pixg,
     l_int32  limitL = calcLimitLeft(w,h,angle);
     l_int32  left   = max(limitL, newL - 5);
     l_int32  right  = max(left+3, newL+w10);
- 
+
    l_int32 varL;
     double var;
-    FindMinBlockVarCol(pixg, left, right, newT, newB, 10, &varL, &var); 
+    FindMinBlockVarCol(pixg, left, right, newT, newB, 10, &varL, &var);
     debugstr("VARBLOCKLEFT: %d\n", varL);
     newL = varL;
 
     left  = (l_int32)(0.75*w);
     right = (l_int32)(w-limitL);
 
-    FindMinBlockVarCol(pixg, left, right, newT, newB, 10, &varL, &var); 
+    FindMinBlockVarCol(pixg, left, right, newT, newB, 10, &varL, &var);
     debugstr("VARBLOCKRIGHT: %d\n", varL);
     newR = varL;
 
@@ -1562,304 +1271,11 @@ l_uint32 removeBlackPelsColRight(PIX *pixg, l_uint32 starti, l_uint32 endi, l_ui
             }
         }
     }
-    
-    return starti;
-    
-}
-
-/// RemoveBlackPelsBlockColRight()
-///____________________________________________________________________________
-
-l_uint32 RemoveBlackPelsBlockColRight(PIX *pixg, l_uint32 starti, l_uint32 endi, l_uint32 top, l_uint32 bottom, l_uint32 kernelWidth, l_uint32 blackThresh) {
-    l_uint32 i;
-    l_uint32 a;
-
-    l_uint32 numBlackPels=0;
-
-    numBlackPels = 0;
-    l_uint32 x, y;
-
-    l_uint32 kernelHeight05 = (l_uint32)((bottom-top)*0.05);
-    top += kernelHeight05;
-    bottom -= kernelHeight05;
-
-    debugstr("RIGHT: starti = %d, endi=%d, thresh=%d\n", starti, endi, blackThresh);
-
-    for (i=starti-kernelWidth; i>=endi; i--) {
-        numBlackPels = 0;
-        for(x=i; x<i+kernelWidth; x++) {
-            for(y=top; y<=bottom; y++) {
-                l_int32 retval = pixGetPixel(pixg, x, y, &a);
-                assert(0 == retval);
-                if (a<blackThresh) {
-                    numBlackPels++;
-                }
-            }
-        }
-        //debugstr("R %d: numBlack=%d\n", i, numBlackPels);
-        if (numBlackPels<5) {
-            //debugstr("break!\n");
-            return i;
-        }
-
-    }
 
     return starti;
-    
-}
-
-/// RemoveBlackPelsBlockColLeft()
-///____________________________________________________________________________
-
-l_uint32 RemoveBlackPelsBlockColLeft(PIX *pixg, l_uint32 starti, l_uint32 endi, l_uint32 top, l_uint32 bottom, l_uint32 kernelWidth, l_uint32 blackThresh) {
-    l_uint32 i;
-    l_uint32 a;
-
-    l_uint32 numBlackPels=0;
-
-    numBlackPels = 0;
-    l_uint32 x, y;
-
-    l_uint32 kernelHeight05 = (l_uint32)((bottom-top)*0.05);
-    top += kernelHeight05;
-    bottom -= kernelHeight05;
-
-    //debugstr("LEFT: starti = %d, endi=%d, thresh=%d\n", starti, endi, blackThresh);
-
-    for (i=starti+1; i<=endi; i++) {
-        numBlackPels = 0;
-        for(x=i; x<i+kernelWidth; x++) {
-            for(y=top; y<=bottom; y++) {
-                l_int32 retval = pixGetPixel(pixg, x, y, &a);
-                assert(0 == retval);
-                if (a<blackThresh) {
-                    numBlackPels++;
-                }
-            }
-        }
-        //debugstr("L %d: numBlack=%d\n", i, numBlackPels);
-        if (numBlackPels<5) {
-            //debugstr("break!\n");
-            return i;
-        }
-
-    }
-
-    return starti;
-    
-}
-
-/// RemoveBlackPelsBlockRowTop()
-///____________________________________________________________________________
-
-l_uint32 RemoveBlackPelsBlockRowTop(PIX *pixg, l_uint32 startj, l_uint32 endj, l_uint32 left, l_uint32 right, l_uint32 kernelWidth, l_uint32 blackThresh) {
-    l_uint32 j;
-    l_uint32 a;
-
-    l_uint32 numBlackPels=0;
-
-    numBlackPels = 0;
-    l_uint32 x, y;
-    
-    //debugstr("TOP: startj= %d, endj=%d, thresh=%d, left=%d, right=%d\n", startj, endj, blackThresh, left, right);
-
-    //reduce kernel width by 20%
-    l_uint32 kernelWidth10 = (l_uint32)(0.10*(right-left));
-    left  += kernelWidth10;
-    right -= kernelWidth10;
-
-    for (j=startj+1; j<=endj; j++) {
-        numBlackPels = 0;
-        for(x=left; x<=right; x++) {
-            for(y=j; y<=j+kernelWidth; y++) {
-                l_int32 retval = pixGetPixel(pixg, x, y, &a);
-                assert(0 == retval);
-                if (a<blackThresh) {
-                    numBlackPels++;
-                }
-            }
-        }
-        //debugstr("T %d: numBlack=%d\n", j, numBlackPels);
-        if (numBlackPels<5) {
-            //debugstr("break!\n");
-            return j;
-        }
-
-    }
-
-    return startj;
-    
-}
-
-/// RemoveBlackPelsBlockRowBot()
-///____________________________________________________________________________
-
-l_uint32 RemoveBlackPelsBlockRowBot(PIX *pixg, l_uint32 startj, l_uint32 endj, l_uint32 left, l_uint32 right, l_uint32 kernelWidth, l_uint32 blackThresh) {
-    l_uint32 j;
-    l_uint32 a;
-
-    l_uint32 numBlackPels=0;
-
-    numBlackPels = 0;
-    l_uint32 x, y;
-
-    //debugstr("BOTTOM: startj= %d, endj=%d, thresh=%d, left=%d, right=%d\n", startj, endj, blackThresh, left, right);
-
-    //reduce kernel width by 20%
-    l_uint32 kernelWidth10 = (l_uint32)(0.10*(right-left));
-    left  += kernelWidth10;
-    right -= kernelWidth10;
-
-    for (j=startj+1; j>=endj; j--) {
-        numBlackPels = 0;
-        for(x=left; x<=right; x++) {
-            for(y=j; y<=j+kernelWidth; y++) {
-                l_int32 retval = pixGetPixel(pixg, x, y, &a);
-                assert(0 == retval);
-                if (a<blackThresh) {
-                    numBlackPels++;
-                }
-            }
-        }
-        //debugstr("B %d: numBlack=%d\n", j, numBlackPels);
-        if (numBlackPels<5) {
-            //debugstr("break!\n");
-            return j;
-        }
-
-    }
-
-    return startj;
-    
-}
-
-/// RemoveBackgroundOuter_L()
-///____________________________________________________________________________
-l_int32 RemoveBackgroundOuter_L(PIX *pixg, l_int32 iStart, l_int32 iEnd, l_int32 limitT, l_int32 limitB, l_int32 blackThresh, l_uint32 numBlackRequired) {
-    
-
-    l_uint32 a;
-
-
-    l_int32 i, j;
-
-    for(i=iStart; i<=iEnd; i++) {
-    
-        l_uint32 numBlackPels = 0;
-        for (j=limitT; j<=limitB; j++) {
-            l_int32 retval = pixGetPixel(pixg, i, j, &a);
-            assert(0 == retval);
-            if (a<blackThresh) {
-                numBlackPels++;
-            }
-        }
-        //debugstr("O %d: numBlack=%d\n", i, numBlackPels);
-        if (numBlackPels<numBlackRequired) {
-            debugstr("RemoveBackgroundOuter_L break! (thresh=%d)\n", numBlackRequired);
-            return i;
-        }
-    }
-
-    return iStart;
-
-}
-/// RemoveBackgroundOuter_R()
-///____________________________________________________________________________
-l_int32 RemoveBackgroundOuter_R(PIX *pixg, l_int32 iStart, l_int32 iEnd, l_int32 limitT, l_int32 limitB, l_int32 blackThresh, l_uint32 numBlackRequired) {
-    
-
-    l_uint32 a;
-
-
-    l_int32 i, j;
-
-    for(i=iStart; i>=iEnd; i--) {
-    
-        l_uint32 numBlackPels = 0;
-        for (j=limitT; j<=limitB; j++) {
-            l_int32 retval = pixGetPixel(pixg, i, j, &a);
-            assert(0 == retval);
-            if (a<blackThresh) {
-                numBlackPels++;
-            }
-        }
-        //debugstr("O %d: numBlack=%d\n", i, numBlackPels);
-        if (numBlackPels<numBlackRequired) {
-            debugstr("RemoveBackgroundOuter_R break! (thresh=%d)\n", numBlackRequired);
-            return i;
-        }
-    }
-
-    return iStart;
 
 }
 
-/// RemoveBackgroundOuter()
-///____________________________________________________________________________
-l_int32 RemoveBackgroundOuter(PIX *pixg, l_int32 rotDir, l_uint32 topEdge, l_uint32 bottomEdge, l_int32 initialBlackThresh) {
-    
-
-    l_uint32 w = pixGetWidth(pixg);
-    l_uint32 h = pixGetHeight(pixg);
-    l_uint32 a;
-
-    l_uint32 kernelHeight10 = (l_uint32)(0.10*(bottomEdge-topEdge));
-
-    l_int32 limitT, limitB;
-    limitT = topEdge+kernelHeight10;
-    limitB = bottomEdge-kernelHeight10;
-    l_int32 step;
-
-    l_int32 iStart, iEnd;
-
-
-    //l_int32 initialBlackThresh = 140;
-    l_uint32 numBlackRequired   = (l_uint32)(0.90*(limitB-limitT));
-
-
-    if (1 == rotDir) {
-        iStart = w-1;
-        iEnd   = (l_int32)(w*0.20);
-
-        debugstr("O: iStart=%d, iEnd=%d, limitT=%d, limitB=%d\n", iStart, iEnd, limitT, limitB);
-
-        return RemoveBackgroundOuter_R(pixg, iStart, iEnd, limitT, limitB, initialBlackThresh, numBlackRequired);
-
-    } else if (-1 == rotDir) {
-        iStart = 0;
-        iEnd   = (l_uint32)(w*0.80);
-
-        debugstr("O: iStart=%d, iEnd=%d, limitT=%d, limitB=%d\n", iStart, iEnd, limitT, limitB);
-
-        return RemoveBackgroundOuter_L(pixg, iStart, iEnd, limitT, limitB, initialBlackThresh, numBlackRequired);
-
-    } else {
-        assert(0);
-    }
-
-    /*
-    l_int32 i, j;
-
-    for(i=iStart; i>=iEnd; i+=step) {
-    
-        l_uint32 numBlackPels = 0;
-        for (j=limitT; j<=limitB; j++) {
-            l_int32 retval = pixGetPixel(pixg, i, j, &a);
-            assert(0 == retval);
-            if (a<initialBlackThresh) {
-                numBlackPels++;
-            }
-        }
-        debugstr("O %d: numBlack=%d\n", i, numBlackPels);
-        if (numBlackPels<numBlackRequired) {
-            debugstr("break! (thresh=%d)\n", numBlackRequired);
-            return i;
-        }
-    }
-
-    return iStart;
-    */
-}
 
 /// EdgeDetectOuter()
 ///____________________________________________________________________________
@@ -1871,7 +1287,7 @@ l_int32 EdgeDetectOuter(PIX       *pixg,
                      l_int32   cropT,
                      l_int32   cropB)
 {
-    
+
     //Currently, we can only do right-hand leafs
     assert((1 == rotDir) || (-1 == rotDir));
 
@@ -1879,7 +1295,7 @@ l_int32 EdgeDetectOuter(PIX       *pixg,
     l_uint32 h = pixGetHeight( pixg );
 
     l_uint32 width10 = (l_uint32)(w * 0.10);
-    
+
     l_uint32 kernelHeight10 = (l_uint32)((cropB-cropT)*0.10);
     cropT += kernelHeight10;
     cropB -= kernelHeight10;
@@ -1906,11 +1322,11 @@ l_int32 EdgeDetectOuter(PIX       *pixg,
         outerEdge     = strongEdge;
         outerEdgeDiff = strongEdgeDiff;
     }
-    
-    
+
+
     assert(-1 != outerEdge); //TODO: handle error
     debugstr("CLEANUP OUTER: outer edge is at i=%d with diff=%d\n", outerEdge, outerEdgeDiff);
-    
+
 
     if (outerEdgeDiff > ((cropB-cropT)*3)) {
         debugstr("CLEANUP OUTER: diff greater than threshold (%d), adjusting!\n", (cropB-cropT)*3);
@@ -1936,7 +1352,7 @@ l_int32 EdgeDetectBottom(PIX       *pixg,
                      l_int32   right,
                      l_int32   *bottom)
 {
-    
+
     //Currently, we can only do right-hand leafs
     assert((1 == rotDir) || (-1 == rotDir));
 
@@ -1944,7 +1360,7 @@ l_int32 EdgeDetectBottom(PIX       *pixg,
     l_uint32 h = pixGetHeight( pixg );
 
     l_uint32 height05 = (l_uint32)(w * 0.05);
-    
+
     l_uint32 cropWidth10  = (l_uint32)((right-left)*0.10);
 
     left  += cropWidth10;
@@ -1957,9 +1373,9 @@ l_int32 EdgeDetectBottom(PIX       *pixg,
     l_int32    strongEdge;
     l_uint32   strongEdgeDiff;
     CalculateSADrow(pixg, left, right, top, limitBottom, &strongEdge, &strongEdgeDiff);
- 
+
     debugstr("CLEANUP BOTTOM:  edge is at j=%d with diff=%d\n", strongEdge, strongEdgeDiff);
-    
+
 
     if (strongEdgeDiff > ((right-left)*3)) {
         debugstr("CLEANUP BOTTOM: diff greater than threshold (%d), adjusting!\n", (right-left)*3);
@@ -1974,15 +1390,15 @@ l_int32 EdgeDetectBottom(PIX       *pixg,
 ///____________________________________________________________________________
 
 l_int32 FindCleanestLineHoriz(PIX     *pixg,
-                              l_int32 left, 
-                              l_int32 right, 
-                              l_int32 top, 
-                              l_int32 bottom, 
+                              l_int32 left,
+                              l_int32 right,
+                              l_int32 top,
+                              l_int32 bottom,
                               l_int32 thresh)
 {
     l_int32 i, j;
     l_uint32 a;
-    
+
     l_int32 *storage = (l_int32 *)malloc((bottom-top+1) * sizeof (l_int32));
 
     l_int32 lowestBlackPels = INT_MAX;
@@ -2001,7 +1417,7 @@ l_int32 FindCleanestLineHoriz(PIX     *pixg,
         storage[j-top] = numBlackPels;
         //debugstr("j=%d, numBlackPels = %d\n", j, numBlackPels);
     }
-    
+
     //debugstr("lowestBlackPels = %d\n", lowestBlackPels);
     free(storage);
     return lowestBlackPels;
@@ -2010,20 +1426,20 @@ l_int32 FindCleanestLineHoriz(PIX     *pixg,
 /// FindCleanLinesBottom()
 ///____________________________________________________________________________
 
-l_int32 FindCleanLinesBottom(PIX     *pixg, 
-                             l_int32 cropL, 
-                             l_int32 cropR, 
-                             l_int32 cropT, 
-                             l_int32 cropB, 
+l_int32 FindCleanLinesBottom(PIX     *pixg,
+                             l_int32 cropL,
+                             l_int32 cropR,
+                             l_int32 cropT,
+                             l_int32 cropB,
                              l_int32 thresh)
 {
-    
+
     l_int32 width10 = (l_int32)((cropR-cropL)*0.10);
     l_int32 left    = cropL + width10;
     l_int32 right   = cropR - width10;
     l_int32 top     = (cropB-cropT)/2;
     l_int32 bottom  = cropB;
-    
+
     //l_int32 blackLimit = FindCleanestLineHoriz(pixg, left, right, top, bottom, thresh);
     l_int32 *storage = (l_int32 *)malloc((bottom-top+1) * sizeof (l_int32));
 
@@ -2047,9 +1463,9 @@ l_int32 FindCleanLinesBottom(PIX     *pixg,
         storage[j-top] = numBlackPels;
         //debugstr("j=%d, numBlackPels = %d\n", j, numBlackPels);
     }
-    
+
     //debugstr("lowestBlackPels = %d\n", lowestBlackPels);
-    
+
     l_int32 largestBlockJ;
     l_int32 largestBlock = 0;
     for(j=bottom; j>=top; j--) {
@@ -2071,7 +1487,7 @@ l_int32 FindCleanLinesBottom(PIX     *pixg,
     }
     //debugstr("largestBlock at j=%d with %d lines\n", largestBlockJ, largestBlock);
     free(storage);
-    
+
     return largestBlockJ;
 }
 
@@ -2092,7 +1508,7 @@ l_int32 FindOuterEdgeUsingCleanLines_R(PIX     *pixg,
     l_int32  box20 = (l_int32)((edgeOuter-edgeBinding) * 0.20);
 
     //l_int32 limitL = edgeBinding + box20; //large search range was causing problems on pages with graphics
-l_int32 limitL = edgeOuter - box20;    
+l_int32 limitL = edgeOuter - box20;
     l_int32 limitR = min(edgeOuter+10, w-1);
 
     l_int32 *storage = (l_int32 *)calloc((limitR-limitL+1), sizeof (l_int32));
@@ -2105,19 +1521,19 @@ l_int32 limitL = edgeOuter - box20;
         for (i=limitL; i<=limitR; i++) {
             l_int32 retval = pixGetPixel(pixg, i, j, &a);
             assert(0 == retval);
-            //if (i == limitL) debugstr("j=%d, i=%d, a=%d\n", j, i, a);    
+            //if (i == limitL) debugstr("j=%d, i=%d, a=%d\n", j, i, a);
             if (a>thresh) {
                 numWhitePels++;
             } else {
                 break;
             }
         }
-        
+
         if (i>limitR) {
             //we never hit the break above.
             i = limitR;
         }
-        
+
 
         storage[i-limitL]++;
         //debugstr("j=%d, numWhitePels = %d\n", j, numWhitePels);
@@ -2135,7 +1551,7 @@ l_int32 limitL = edgeOuter - box20;
         }
     }
     debugstr("longest clean line is %d with count=%d\n", longestLine, storage[longestLine-limitL]);
-    
+
     l_int32 peak = storage[longestLine-limitL];
     l_int32 peaki = longestLine;
     for (i=(l_int32)(longestLine*0.95); i<longestLine; i++) {
@@ -2144,14 +1560,14 @@ l_int32 limitL = edgeOuter - box20;
             peak = storage[i-limitL];
         }
     }
-    
+
     debugstr("peak i within 5%% of longest line at %d with peak=%d\n", peaki, peak);
 
     free(storage);
 
     if (0 == (limitL-peaki)) {
         debugstr("couldn't find a clean line with length > 0. fail!\n");
-        return edgeOuter;           
+        return edgeOuter;
     } else {
         return peaki;
     }
@@ -2188,7 +1604,7 @@ l_int32 limitR = edgeOuter + box20;
         for (i=limitR; i>=limitL; i--) {
             l_int32 retval = pixGetPixel(pixg, i, j, &a);
             assert(0 == retval);
-            //if (i == limitR) debugstr("j=%d, i=%d, a=%d\n", j, i, a);    
+            //if (i == limitR) debugstr("j=%d, i=%d, a=%d\n", j, i, a);
             if (a>thresh) {
                 numWhitePels++;
             } else {
@@ -2217,7 +1633,7 @@ l_int32 limitR = edgeOuter + box20;
         }
     }
     debugstr("longest clean line is %d with count=%d\n", longestLine, storage[longestLine-limitL]);
-    
+
     l_int32 peak = storage[longestLine-limitL];
     l_int32 peaki = longestLine;
 
@@ -2228,14 +1644,14 @@ l_int32 limitR = edgeOuter + box20;
             peak = storage[i-limitL];
         }
     }
-    
+
     debugstr("peak i within 5%% of longest line at %d with peak=%d\n", peaki, peak);
 
     free(storage);
 
     if (0 == (limitR-peaki)) {
         debugstr("couldn't find a clean line with length > 0. fail!\n");
-        return edgeOuter;           
+        return edgeOuter;
     } else {
         return peaki;
     }
@@ -2265,74 +1681,6 @@ l_int32 FindOuterEdgeUsingCleanLines(PIX     *pixg,
     return newEdgeOuter;
 }
 
-/// FindInnerCrop()
-///____________________________________________________________________________
-int FindInnerCrop(PIX *pixBigT, 
-    l_uint32 threshBinding, 
-    l_int32 outerCropL, 
-    l_int32 outerCropR, 
-    l_int32 outerCropT, 
-    l_int32 outerCropB, 
-    l_int32 *innerCropL, 
-    l_int32 *innerCropR, 
-    l_int32 *innerCropT, 
-    l_int32 *innerCropB)
-{
-    double innerCrop_val;
-
-    l_int32 h2 = (outerCropB-outerCropT)/2;
-    l_int32 w2 = (outerCropR-outerCropL)/2;
-    l_int32 bottom = pixGetHeight(pixBigT) - 1;
-    l_int32 right  = pixGetWidth(pixBigT) - 1;
-    
-    FindTextBlockRow_T(              pixBigT,
-                                outerCropL,
-                                outerCropR,
-                                outerCropT,
-                                min(outerCropT + h2, bottom),
-                                50000,
-                                innerCropT,
-                                &innerCrop_val
-                            );
-    PrintKeyValue_int32("InnerCropT", *innerCropT);                        
-    
-    FindTextBlockRow_B(              pixBigT,
-                                outerCropL,
-                                outerCropR,
-                                max( outerCropB - h2, 0),
-                                outerCropB,
-                                50000,
-                                innerCropB,
-                                &innerCrop_val
-                            );
-    PrintKeyValue_int32("InnerCropB", *innerCropB); 
-    
-    FindTextBlockCol_L(              pixBigT,
-                                outerCropL,
-                                min(outerCropL + w2, right),
-                                outerCropT,
-                                outerCropB,
-                                50000,
-                                threshBinding,
-                                innerCropL,
-                                &innerCrop_val
-                            );
-    PrintKeyValue_int32("InnerCropL", *innerCropL); 
-    
-    FindTextBlockCol_R(              pixBigT,
-                                max(outerCropR - w2, 0),
-                                outerCropR,
-                                outerCropT,
-                                outerCropB,
-                                50000,
-                                threshBinding,
-                                innerCropR,
-                                &innerCrop_val
-                            );
-    PrintKeyValue_int32("InnerCropR", *innerCropR); 
-
-    return 0;
-}
 
 /// main()
 ///____________________________________________________________________________
@@ -2347,15 +1695,15 @@ int main(int argc, char **argv) {
         exit(ERROR_INT(" Syntax:  autoCrop filein.jpg rotateDirection",
                          mainName, 1));
     }
-    
+
     filein  = argv[1];
     rotDir  = atoi(argv[2]);
-    
+
     if ((fp = fopenReadStream(filein)) == NULL) {
         exit(ERROR_INT("image file not found", mainName, 1));
     }
     debugstr("Opened file handle\n");
-    
+
     if ((pixs = pixReadStreamJpeg(fp, 0, 8, NULL, 0)) == NULL) {
        exit(ERROR_INT("pixs not made", mainName, 1));
     }
@@ -2369,25 +1717,25 @@ int main(int argc, char **argv) {
     }
 
     #if WRITE_DEBUG_IMAGES
-    pixWrite(DEBUG_IMAGE_DIR "out.jpg", pixd, IFF_JFIF_JPEG);     
+    pixWrite(DEBUG_IMAGE_DIR "out.jpg", pixd, IFF_JFIF_JPEG);
     #endif
-    
+
     l_int32 grayChannel;
     pixg = ConvertToGray(pixd, &grayChannel);
     debugstr("Converted to gray\n");
     #if WRITE_DEBUG_IMAGES
-    pixWrite(DEBUG_IMAGE_DIR "outgray.jpg", pixg, IFF_JFIF_JPEG); 
+    pixWrite(DEBUG_IMAGE_DIR "outgray.jpg", pixg, IFF_JFIF_JPEG);
     #endif
-    
+
     l_int32 histmax;
     l_int32 threshInitial = CalculateTreshInitial(pixg, &histmax);
     debugstr("threshInitial is %d\n", threshInitial);
 
     #if WRITE_DEBUG_IMAGES
     {
-        PIX *p = pixCopy(NULL, pixg);        
+        PIX *p = pixCopy(NULL, pixg);
         PIX *p2 = pixThresholdToBinary(p, threshInitial);
-        pixWrite(DEBUG_IMAGE_DIR "outbininit.png", p2, IFF_PNG); 
+        pixWrite(DEBUG_IMAGE_DIR "outbininit.png", p2, IFF_PNG);
         pixDestroy(&p);
         pixDestroy(&p2);
     }
@@ -2399,7 +1747,7 @@ int main(int argc, char **argv) {
         debugmov.outDir = DEBUG_IMAGE_DIR "debugmov";
         debugmov.framenum =-1;
         debugmov.filename = basename(filein);
-        pixWrite(DEBUG_IMAGE_DIR "debugmov/smallgray.jpg", pixg, IFF_JFIF_JPEG); 
+        pixWrite(DEBUG_IMAGE_DIR "debugmov/smallgray.jpg", pixg, IFF_JFIF_JPEG);
         int ret = snprintf(cmd, 512, "rm -rf %s/frames", debugmov.outDir);
         assert(ret);
         ret = system(cmd);
@@ -2419,24 +1767,24 @@ int main(int argc, char **argv) {
         } else {
             assert(0);
         }
-        
+
     }
     #endif //DEBUGMOV
 
     float delta;
 
-    
+
     l_int32 cropT=-1, cropB=-1, cropR=-1, cropL=-1;
     float deltaT, deltaB, deltaV1, deltaV2, deltaBinding, deltaOuter;
     l_uint32 threshBinding, threshOuter, threshT, threshB;
 
     /// Do a quick search to find book boundry
-    
+
 
     /// find binding side edge
 /*
     l_int32 bindingEdge = FindBindingEdge(pixg, rotDir, &deltaV1, &threshBinding);
-    
+
     if (-1 == bindingEdge) {
         printf("COULD NOT FIND BINDING!");
     } else {
@@ -2466,7 +1814,7 @@ debugstr("binding edge threshold is %d\n", threshBinding);
 //    l_int32 outerEdge = FindOuterEdge(pixg, rotDir, &deltaV2, &threshOuter);
 //debugstr("outer thresh is %d\n", threshOuter);
     l_int32 outerEdge = RemoveBackgroundOuter(pixg, rotDir, topEdge, bottomEdge, threshInitial); //TODO: why not use threshBinding here?
-   
+
     //l_int32 outerEdge2 = FindOuterEdgeUsingCleanLines(pixg, rotDir, bindingEdge, outerEdge, topEdge, bottomEdge, threshBinding);
 
 
@@ -2517,11 +1865,11 @@ debugstr("binding edge threshold is %d\n", threshBinding);
     //BOX *box     = boxCreate(cropL, cropT, cropR-cropL, cropB-cropT);
     PIX *pixBigC = pixClipRectangle(pixBigR, box, NULL);
 debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeight(pixBigC));
-    PIX *pixBigB = pixThresholdToBinary (pixBigC, threshBinding);    
+    PIX *pixBigB = pixThresholdToBinary (pixBigC, threshBinding);
     #if WRITE_DEBUG_IMAGES
-    pixWrite(DEBUG_IMAGE_DIR "outbin.png", pixBigB, IFF_PNG); 
+    pixWrite(DEBUG_IMAGE_DIR "outbin.png", pixBigB, IFF_PNG);
     #endif
-    
+
     l_float32    angle, conf, textAngle;
 
     debugstr("calling pixFindSkew\n");
@@ -2530,7 +1878,7 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
         debugstr("textAngle=%.2f\ntextConf=%.2f\n", 0.0, -1.0);
      } else {
         debugstr("textAngle=%.2f\ntextConf=%.2f\n", textAngle, conf);
-    }   
+    }
 
     printf("bindingAngle: %.2f\n", deltaBinding);
 
@@ -2549,7 +1897,7 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
         angle = deltaBinding; //TODO: calculate average of four edge deltas.
         skewMode = kSkewModeEdge;
     }
-    
+
     debugstr("rotating bigR by %f\n", angle);
 
     PIX *pixBigR2 = pixRotate90(pixBigG, rotDir);
@@ -2558,13 +1906,13 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
                     deg2rad*angle,
                     L_ROTATE_AREA_MAP,
                     L_BRING_IN_BLACK,0,0);
-    //pixWrite(DEBUG_IMAGE_DIR "outBigR2.jpg", pixBigR2, IFF_JFIF_JPEG); 
-    //pixWrite(DEBUG_IMAGE_DIR "outBigT.jpg", pixBigT, IFF_JFIF_JPEG); 
+    //pixWrite(DEBUG_IMAGE_DIR "outBigR2.jpg", pixBigR2, IFF_JFIF_JPEG);
+    //pixWrite(DEBUG_IMAGE_DIR "outBigT.jpg", pixBigT, IFF_JFIF_JPEG);
     #if WRITE_DEBUG_IMAGES
-    {   
+    {
         PIX *p = pixCopy(NULL, pixBigT);
-        PIX *p2 = pixThresholdToBinary (p, threshBinding);    
-        pixWrite(DEBUG_IMAGE_DIR "outbinbig.png", p, IFF_PNG); 
+        PIX *p2 = pixThresholdToBinary (p, threshBinding);
+        pixWrite(DEBUG_IMAGE_DIR "outbinbig.png", p, IFF_PNG);
         pixDestroy(&p);
         pixDestroy(&p2);
     }
@@ -2597,14 +1945,14 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
 
         pixDestroy(&pixt);
     }
-#endif 
+#endif
 
     {
         PIX *pixt = pixRotate(pixg,
                         deg2rad*angle,
                         L_ROTATE_AREA_MAP,
                         L_BRING_IN_BLACK,0,0);
-        //pixWrite(DEBUG_IMAGE_DIR "outtmp.jpg", pixt, IFF_JFIF_JPEG); 
+        //pixWrite(DEBUG_IMAGE_DIR "outtmp.jpg", pixt, IFF_JFIF_JPEG);
 
         //NUMA *hist = pixGetGrayHistogram(pixt, 1);
         NUMA *hist = pixGetGrayHistogram(pixBigC, 1);
@@ -2612,11 +1960,11 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
         assert(256 == numaGetCount(hist));
         int numPels = pixGetWidth(pixt)*pixGetHeight(pixt);
         debugstr("numPels = %d\n", numPels);
-        
-        
+
+
         float acc=0;
         int i;
-    
+
         //for (i=0; i<255; i++) {
         //    int dummy;
         //    numaGetIValue(hist, i, &dummy);
@@ -2636,7 +1984,7 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
             }
         }
         debugstr("hist peak at i=%d with val=%f\n", peaki, peak);
-        
+
         l_int32 darkThresh = -1;
         float threshLimit = peak * 0.1;
         debugstr("thresh limit = %f\n", threshLimit);
@@ -2652,9 +2000,9 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
         debugstr("darkThresh at i=%d\n", darkThresh);
 
         #if WRITE_DEBUG_IMAGES
-        {        
-            PIX *p = pixThresholdToBinary (pixBigT, darkThresh);    
-            pixWrite(DEBUG_IMAGE_DIR "outDark.png", p, IFF_PNG); 
+        {
+            PIX *p = pixThresholdToBinary (pixBigT, darkThresh);
+            pixWrite(DEBUG_IMAGE_DIR "outDark.png", p, IFF_PNG);
             pixDestroy(&p);
         }
         #endif //WRITE_DEBUG_IMAGES
@@ -2664,7 +2012,7 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
             //using the large image works better
             l_int32 outerEdge2 = FindOuterEdgeUsingCleanLines(pixBigT, rotDir, bindingEdge*8, outerEdge*8, topEdge*8, bottomEdge*8, darkThresh);
             outerEdge2/=8;
-            debugstr("outerEdge = %d, outerEdge2 = %d\n", outerEdge, outerEdge2);            
+            debugstr("outerEdge = %d, outerEdge2 = %d\n", outerEdge, outerEdge2);
             outerEdge = outerEdge2;
         }
     }
@@ -2686,7 +2034,7 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
     l_int32 outerCropR = cropR;
     l_int32 outerCropT = cropT;
     l_int32 outerCropB = cropB;
-    
+
     PrintKeyValue_int32("OuterCropL", cropL);
     PrintKeyValue_int32("OuterCropR", cropR);
     PrintKeyValue_int32("OuterCropT", cropT);
@@ -2696,20 +2044,20 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
     #if WRITE_DEBUG_IMAGES
     {
         BOX *b = boxCreate(cropL/8, cropT/8, (cropR-cropL)/8, (cropB-cropT)/8);
-        PIX *p = pixCopy(NULL, pixd);        
+        PIX *p = pixCopy(NULL, pixd);
         PIX *p2 = pixRotate(p,
                         deg2rad*angle,
                         L_ROTATE_AREA_MAP,
                         L_BRING_IN_BLACK,0,0);
-    
+
         pixRenderBoxArb(p, b, 1, 255, 0, 0);
-        pixWrite(DEBUG_IMAGE_DIR "outs1.jpg", p, IFF_JFIF_JPEG); 
+        pixWrite(DEBUG_IMAGE_DIR "outs1.jpg", p, IFF_JFIF_JPEG);
         pixDestroy(&p);
         pixDestroy(&p2);
         boxDestroy(&b);
     }
     #endif //WRITE_DEBUG_IMAGES
-                        
+
     debugstr("finding clean lines...\n");
     //AdjustCropBox(pixBigT, &cropL, &cropR, &cropT, &cropB, 8*5);
     //AdjustCropBoxByVariance(pixBigT, &cropL, &cropR, &cropT, &cropB, 3, angle);
@@ -2757,9 +2105,9 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
     cropT = RemoveBlackPelsBlockRowTop(pixBigT, cropT, cropT+(l_uint32)(h*0.05), cropL, cropR, 3, threshBinding); //we no longer calculate threshT
     cropB = RemoveBlackPelsBlockRowBot(pixBigT, cropB, cropB-(l_uint32)(h*0.05), cropL, cropR, 3, threshBinding); //we no longer calculate threshB
 
-    //pixWrite(DEBUG_IMAGE_DIR "outbig.jpg", pixBigT, IFF_JFIF_JPEG); 
-    //PIX *pixTmp = pixThresholdToBinary (pixBigT, threshBinding);    
-    //pixWrite(DEBUG_IMAGE_DIR "outbin.png", pixTmp, IFF_PNG); 
+    //pixWrite(DEBUG_IMAGE_DIR "outbig.jpg", pixBigT, IFF_JFIF_JPEG);
+    //PIX *pixTmp = pixThresholdToBinary (pixBigT, threshBinding);
+    //pixWrite(DEBUG_IMAGE_DIR "outbin.png", pixTmp, IFF_PNG);
 
     debugstr("adjusted: cL=%d, cR=%d, cT=%d, cB=%d\n", cropL, cropR, cropT, cropB);
 
@@ -2769,55 +2117,55 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
     PrintKeyValue_int32("CleanCropR", cropR);
     PrintKeyValue_int32("CleanCropT", cropT);
     PrintKeyValue_int32("CleanCropB", cropB);
-    
+
     debugstr("finding inner crop box (text block)...\n");
     l_int32 innerCropT, innerCropB, innerCropL, innerCropR;
     FindInnerCrop(pixBigT, threshBinding, cropL, cropR, cropT, cropB, &innerCropL, &innerCropR, &innerCropT, &innerCropB);
 
-    
+
     #if WRITE_DEBUG_IMAGES
     {
         BOX *boxCrop = boxCreate(cropL/8, cropT/8, (cropR-cropL)/8, (cropB-cropT)/8);
-    
+
         PIX *p = pixCopy(NULL, pixd);
-    
+
         PIX *pixFinalR = pixRotate(p,
                         deg2rad*angle,
                         L_ROTATE_AREA_MAP,
                         L_BRING_IN_BLACK,0,0);
-    
-        
-        pixRenderBoxArb(pixFinalR, boxCrop, 1, 255, 0, 0);        
-        
+
+
+        pixRenderBoxArb(pixFinalR, boxCrop, 1, 255, 0, 0);
+
         Box *boxOuterCrop = boxCreate(outerCropL/8, outerCropT/8, (outerCropR-outerCropL)/8, (outerCropB-outerCropT)/8);
-        pixRenderBoxArb(pixFinalR, boxOuterCrop, 1, 0, 0, 255);    
-        
+        pixRenderBoxArb(pixFinalR, boxOuterCrop, 1, 0, 0, 255);
+
         if ((-1 != innerCropL) & (-1 != innerCropR) & (-1 != innerCropT) & (-1 != innerCropB)) {
             BOX *boxCropVar = boxCreate(innerCropL/8, innerCropT/8, (innerCropR-innerCropL)/8, (innerCropB-innerCropT)/8);
-            pixRenderBoxArb(pixFinalR, boxCropVar, 1, 0, 255, 0);    
+            pixRenderBoxArb(pixFinalR, boxCropVar, 1, 0, 255, 0);
             boxDestroy(&boxCropVar);
         }
-        
-        pixWrite(DEBUG_IMAGE_DIR "outbox.jpg", pixFinalR, IFF_JFIF_JPEG); 
+
+        pixWrite(DEBUG_IMAGE_DIR "outbox.jpg", pixFinalR, IFF_JFIF_JPEG);
         pixDestroy(&pixFinalR);
         pixDestroy(&p);
-    
+
         p = pixCopy(NULL, pixd);
         PIX *pixFinalR2 = pixRotate(p,
                         deg2rad*angle,
                         L_ROTATE_AREA_MAP,
                         L_BRING_IN_BLACK,0,0);
-    
+
         PIX *pixFinalC = pixClipRectangle(pixFinalR2, boxCrop, NULL);
-        pixWrite(DEBUG_IMAGE_DIR "outcrop.jpg", pixFinalC, IFF_JFIF_JPEG);        
+        pixWrite(DEBUG_IMAGE_DIR "outcrop.jpg", pixFinalC, IFF_JFIF_JPEG);
         pixDestroy(&p);
         pixDestroy(&pixFinalC);
-        
-        boxDestroy(&boxCrop);    
+
+        boxDestroy(&boxCrop);
         boxDestroy(&boxOuterCrop);
     }
     #endif
-    
+
     /// cleanup
     pixDestroy(&pixg);
     pixDestroy(&pixs);

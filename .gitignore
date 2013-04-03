@@ -5,6 +5,7 @@
 
 autoCrop
 autoCropScribe
+autoCropFoldout
 tests/cropAndSkewProxy
 tests/cropAndSkewTwo
 
