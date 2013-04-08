@@ -21,7 +21,7 @@ which do not need to be rotated.
 
 #define debugstr printf
 //#define debugstr
-#define WRITE_DEBUG_IMAGES 1
+//#define WRITE_DEBUG_IMAGES 1
 
 static const l_float32  deg2rad            = 3.1415926535 / 180.;
 
@@ -1716,14 +1716,14 @@ int main(int argc, char **argv) {
         pixd = pixs;
     }
 
-    #if WRITE_DEBUG_IMAGES
+    #ifdef WRITE_DEBUG_IMAGES
     pixWrite(DEBUG_IMAGE_DIR "out.jpg", pixd, IFF_JFIF_JPEG);
     #endif
 
     l_int32 grayChannel;
     pixg = ConvertToGray(pixd, &grayChannel);
     debugstr("Converted to gray\n");
-    #if WRITE_DEBUG_IMAGES
+    #ifdef WRITE_DEBUG_IMAGES
     pixWrite(DEBUG_IMAGE_DIR "outgray.jpg", pixg, IFF_JFIF_JPEG);
     #endif
 
@@ -1731,7 +1731,7 @@ int main(int argc, char **argv) {
     l_int32 threshInitial = CalculateTreshInitial(pixg, &histmax);
     debugstr("threshInitial is %d\n", threshInitial);
 
-    #if WRITE_DEBUG_IMAGES
+    #ifdef WRITE_DEBUG_IMAGES
     {
         PIX *p = pixCopy(NULL, pixg);
         PIX *p2 = pixThresholdToBinary(p, threshInitial);
@@ -1866,7 +1866,7 @@ debugstr("binding edge threshold is %d\n", threshBinding);
     PIX *pixBigC = pixClipRectangle(pixBigR, box, NULL);
 debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeight(pixBigC));
     PIX *pixBigB = pixThresholdToBinary (pixBigC, threshBinding);
-    #if WRITE_DEBUG_IMAGES
+    #ifdef WRITE_DEBUG_IMAGES
     pixWrite(DEBUG_IMAGE_DIR "outbin.png", pixBigB, IFF_PNG);
     #endif
 
@@ -1883,8 +1883,7 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
     printf("bindingAngle: %.2f\n", deltaBinding);
 
     //Deskew(pixbBig, cropL*8, cropR*8, cropT*8, cropB*8, &skewScore, &skewConf);
-    #define kSkewModeText 0
-    #define kSkewModeEdge 1
+
     l_int32 skewMode;
     if (conf >= 2.0) {
         printf("skewMode: text\n");
@@ -1908,7 +1907,7 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
                     L_BRING_IN_BLACK,0,0);
     //pixWrite(DEBUG_IMAGE_DIR "outBigR2.jpg", pixBigR2, IFF_JFIF_JPEG);
     //pixWrite(DEBUG_IMAGE_DIR "outBigT.jpg", pixBigT, IFF_JFIF_JPEG);
-    #if WRITE_DEBUG_IMAGES
+    #ifdef WRITE_DEBUG_IMAGES
     {
         PIX *p = pixCopy(NULL, pixBigT);
         PIX *p2 = pixThresholdToBinary (p, threshBinding);
@@ -1999,7 +1998,7 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
         //assert(-1 != darkThresh); //this is -1 on all-black pages
         debugstr("darkThresh at i=%d\n", darkThresh);
 
-        #if WRITE_DEBUG_IMAGES
+        #ifdef WRITE_DEBUG_IMAGES
         {
             PIX *p = pixThresholdToBinary (pixBigT, darkThresh);
             pixWrite(DEBUG_IMAGE_DIR "outDark.png", p, IFF_PNG);
@@ -2041,7 +2040,7 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
     PrintKeyValue_int32("OuterCropB", cropB);
 
 
-    #if WRITE_DEBUG_IMAGES
+    #ifdef WRITE_DEBUG_IMAGES
     {
         BOX *b = boxCreate(cropL/8, cropT/8, (cropR-cropL)/8, (cropB-cropT)/8);
         PIX *p = pixCopy(NULL, pixd);
@@ -2123,7 +2122,7 @@ debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHe
     FindInnerCrop(pixBigT, threshBinding, cropL, cropR, cropT, cropB, &innerCropL, &innerCropR, &innerCropT, &innerCropB);
 
 
-    #if WRITE_DEBUG_IMAGES
+    #ifdef WRITE_DEBUG_IMAGES
     {
         BOX *boxCrop = boxCreate(cropL/8, cropT/8, (cropR-cropL)/8, (cropB-cropT)/8);
 

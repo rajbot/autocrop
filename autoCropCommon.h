@@ -13,6 +13,11 @@
 #define kGrayModeSingleChannel 1
 #define kGrayModeThreeChannel  3
 
+#define kSkewModeText 0
+#define kSkewModeEdge 1
+#define kSkewModeNone 2
+
+
 l_uint32 calcLimitLeft(l_uint32 w, l_uint32 h, l_float32 angle);
 l_uint32 calcLimitTop(l_uint32 w, l_uint32 h, l_float32 angle);
 

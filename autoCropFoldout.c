@@ -18,7 +18,7 @@ autoCropFoldout filein.jpg
 
 #define debugstr printf
 //#define debugstr
-#define WRITE_DEBUG_IMAGES 1
+//#define WRITE_DEBUG_IMAGES 1
 
 static const l_float32  deg2rad            = 3.1415926535 / 180.;
 
@@ -59,7 +59,7 @@ int main(int argc, char **argv) {
     //we don't rotate foldouts
     pixd = pixs;
 
-    #if WRITE_DEBUG_IMAGES
+    #ifdef WRITE_DEBUG_IMAGES
     pixWrite(DEBUG_IMAGE_DIR "out.jpg", pixd, IFF_JFIF_JPEG);
     #endif
 
@@ -94,7 +94,7 @@ int main(int argc, char **argv) {
                              NULL,
                              &pixb);
 
-    #if WRITE_DEBUG_IMAGES
+    #ifdef WRITE_DEBUG_IMAGES
     {
         pixWrite(DEBUG_IMAGE_DIR "outbininit.png", pixb, IFF_PNG);
     }
@@ -155,7 +155,7 @@ int main(int argc, char **argv) {
     PIX *pixBigB = pixClipRectangle(pixBigBFull, box, NULL);
     debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigB), pixGetHeight(pixBigB));
 
-    #if WRITE_DEBUG_IMAGES
+    #ifdef WRITE_DEBUG_IMAGES
     {
         pixWrite(DEBUG_IMAGE_DIR "outbinfull.png", pixBigBFull, IFF_PNG);
         pixWrite(DEBUG_IMAGE_DIR "outbinbig.png", pixBigB, IFF_PNG);
@@ -175,11 +175,18 @@ int main(int argc, char **argv) {
 
 
     //Deskew(pixbBig, cropL*8, cropR*8, cropT*8, cropB*8, &skewScore, &skewConf);
-    #define kSkewModeText 0
+
     l_int32 skewMode;
-    printf("skewMode: text\n");
-    angle = textAngle;
-    skewMode = kSkewModeText;
+
+    if (conf >= 2.0) {
+        printf("skewMode: text\n");
+        angle = textAngle;
+        skewMode = kSkewModeText;
+    } else {
+        printf("skewMode: none\n");
+        angle = 0.0;
+        skewMode = kSkewModeNone;
+    }
 
     debugstr("rotating by %f\n", angle);
 
@@ -218,7 +225,7 @@ int main(int argc, char **argv) {
                              NULL,
                              &pixBigTbin);
 
-    #if WRITE_DEBUG_IMAGES
+    #ifdef WRITE_DEBUG_IMAGES
     {
         pixWrite(DEBUG_IMAGE_DIR "outbinT.png", pixBigTbin, IFF_PNG);
     }
@@ -253,7 +260,7 @@ int main(int argc, char **argv) {
     //l_int32 innerCropT, innerCropB, innerCropL, innerCropR;
     //FindInnerCrop(pixBigT, threshInitial, cropL, cropR, cropT, cropB, &innerCropL, &innerCropR, &innerCropT, &innerCropB);
 
-    #if WRITE_DEBUG_IMAGES
+    #ifdef WRITE_DEBUG_IMAGES
     {
         //BOX *boxCrop = boxCreate(cropL/8, cropT/8, (cropR-cropL)/8, (cropB-cropT)/8);
 

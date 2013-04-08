@@ -12,38 +12,56 @@ import re
 import sys
 import glob
 import datetime
+from os.path import join, exists
 
 testimg_dir = 'testimg_foldout'
 testrun_dir = 'testrun'
-today_dir   = testrun_dir + '/' + datetime.date.today().isoformat()
-out_dir     = today_dir + '/' + datetime.datetime.now().isoformat()
+today       = datetime.date.today().isoformat()
+now         = datetime.datetime.now().isoformat()
+today_dir   = join(testrun_dir, today)
+out_dir     = join(testrun_dir, today, now)
 autocrop    = '../autoCropFoldout'
 
 proxy_dir   = 'proxy'
 box_dir     = 'box'
 cropped_dir = 'cropped'
+debug_img_dir = 'debug-images'
 
-assert os.path.exists(testimg_dir)
-assert not os.path.exists(out_dir)
+assert exists(testimg_dir)
+assert not exists(out_dir)
 
 files = glob.glob(testimg_dir + "/*.jpg")
 files += glob.glob(testimg_dir + "/*.JPG")
 assert len(files) > 0
 
-if not os.path.exists(today_dir):
+if not exists(today_dir):
     os.mkdir(today_dir)
 
 os.mkdir(out_dir)
-os.mkdir(out_dir + '/' + proxy_dir)
-os.mkdir(out_dir + '/' + box_dir)
-os.mkdir(out_dir + '/' + cropped_dir)
+os.mkdir(join(out_dir, proxy_dir))
+os.mkdir(join(out_dir, box_dir))
+os.mkdir(join(out_dir, cropped_dir))
 
-latest_link = testrun_dir + '/latest'
-if os.path.exists(latest_link):
+if not exists(debug_img_dir):
+    os.mkdir(debug_img_dir)
+
+latest_link = join(testrun_dir, 'latest')
+if os.path.lexists(latest_link):
     ret = os.unlink(latest_link)
-os.symlink(out_dir, latest_link)
+os.symlink(join(today, now), latest_link)
 
 
+# move()
+#_________________________________________________________________________________________
+def move(src, dest):
+    try:
+        os.rename(src, dest)
+    except OSError:
+        sys.exit('Could not move debug image %s. Please make sure you compile with `make CXXFLAGS=-DWRITE_DEBUG_IMAGES`' % src)
+
+
+# __main__
+#_________________________________________________________________________________________
 print "Creating test output in " + out_dir
 
 out_html = out_dir + '/index.html'
@@ -79,14 +97,10 @@ for file in sorted(files):
     grayMode = m.group(1)
     print "grayMode is " + grayMode
 
-    retval = commands.getstatusoutput('cp ./debug-images/out.jpg "%s/%s/%s"'%(out_dir, proxy_dir, base_file))[0]
-    assert (0 == retval)
-
-    retval = commands.getstatusoutput('cp ./debug-images/outbox.jpg "%s/%s/%s"'%(out_dir, box_dir, base_file))[0]
-    assert (0 == retval)
-
-    retval = commands.getstatusoutput('cp ./debug-images/outcrop.jpg "%s/%s/%s"'%(out_dir, cropped_dir, base_file))[0]
-    assert (0 == retval)
+    #move debug images from debug_img_dir into outdir
+    move(join(debug_img_dir, 'out.jpg'),     join(out_dir, proxy_dir, base_file))
+    move(join(debug_img_dir, 'outbox.jpg'),  join(out_dir, box_dir, base_file))
+    move(join(debug_img_dir, 'outcrop.jpg'), join(out_dir, cropped_dir, base_file))
 
     f.write('<tr>\n')
     f.write('<td valign=top>'),
