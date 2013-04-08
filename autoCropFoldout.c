@@ -38,13 +38,22 @@ int main(int argc, char **argv) {
     char        *filein;
     static char  mainName[] = "autoCropFoldout";
     FILE        *fp;
+    long int    should_deskew;
 
-    if (argc != 2) {
-        exit(ERROR_INT(" Syntax:  autoCropFoldout filein.jpg",
+    if ((argc < 2) || (argc > 3)) {
+        exit(ERROR_INT(" Syntax:  autoCropFoldout filein.jpg [should_deskew=1]",
                          mainName, 1));
     }
 
     filein  = argv[1];
+
+    if (argc == 3) {
+        should_deskew = strtol(argv[2], NULL, 10);
+    } else {
+        should_deskew = 1;
+    }
+
+
 
     if ((fp = fopenReadStream(filein)) == NULL) {
         exit(ERROR_INT("image file not found", mainName, 1));
@@ -165,14 +174,17 @@ int main(int argc, char **argv) {
 
     l_float32    angle, conf, textAngle;
 
-    debugstr("calling pixFindSkew\n");
-    if (pixFindSkew(pixBigB, &textAngle, &conf)) {
-      /* an error occured! */
-        debugstr("textAngle=%.2f\ntextConf=%.2f\n", 0.0, -1.0);
-     } else {
-        debugstr("textAngle=%.2f\ntextConf=%.2f\n", textAngle, conf);
+    if (should_deskew) {
+        debugstr("calling pixFindSkew\n");
+        if (pixFindSkew(pixBigB, &textAngle, &conf)) {
+          /* an error occured! */
+            debugstr("textAngle=%.2f\ntextConf=%.2f\n", 0.0, -1.0);
+         } else {
+            debugstr("textAngle=%.2f\ntextConf=%.2f\n", textAngle, conf);
+        }
+    } else {
+        angle = textAngle = conf = 0.0;
     }
-
 
     //Deskew(pixbBig, cropL*8, cropR*8, cropT*8, cropB*8, &skewScore, &skewConf);
 
