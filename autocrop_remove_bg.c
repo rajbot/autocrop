@@ -148,7 +148,7 @@ l_int32 remove_bg_outer_L(PIX *pixb, l_int32 iStart, l_int32 iEnd, l_int32 limit
         }
         //debugstr("O %d: numBlack=%d\n", i, numBlackPels);
         if (numBlackPels<numBlackRequired) {
-            debugstr("remove_bg_outer_L break! (thresh=%d)\n", numBlackRequired);
+            //debugstr("remove_bg_outer_L break! (thresh=%d)\n", numBlackRequired);
             return i;
         }
     }
@@ -175,9 +175,9 @@ l_int32 remove_bg_outer_R(PIX *pixb, l_int32 iStart, l_int32 iEnd, l_int32 limit
                 numBlackPels++;
             }
         }
-        debugstr("R %d: numBlack=%d\n", i, numBlackPels);
+        //debugstr("R %d: numBlack=%d\n", i, numBlackPels);
         if (numBlackPels<numBlackRequired) {
-            debugstr("remove_bg_outer_R break! (thresh=%d)\n", numBlackRequired);
+            //debugstr("remove_bg_outer_R break! (thresh=%d)\n", numBlackRequired);
             return i;
         }
     }
@@ -214,7 +214,7 @@ l_int32 remove_bg_outer(PIX *pixb, l_int32 rotDir, l_uint32 topEdge, l_uint32 bo
         iStart = w-1;
         iEnd   = (l_int32)(w*0.20);
 
-        debugstr("R: iStart=%d, iEnd=%d, limitT=%d, limitB=%d\n", iStart, iEnd, limitT, limitB);
+        //debugstr("R: iStart=%d, iEnd=%d, limitT=%d, limitB=%d\n", iStart, iEnd, limitT, limitB);
 
         return remove_bg_outer_R(pixb, iStart, iEnd, limitT, limitB, numBlackRequired);
 
@@ -222,7 +222,7 @@ l_int32 remove_bg_outer(PIX *pixb, l_int32 rotDir, l_uint32 topEdge, l_uint32 bo
         iStart = 0;
         iEnd   = (l_uint32)(w*0.80);
 
-        debugstr("L: iStart=%d, iEnd=%d, limitT=%d, limitB=%d\n", iStart, iEnd, limitT, limitB);
+        //debugstr("L: iStart=%d, iEnd=%d, limitT=%d, limitB=%d\n", iStart, iEnd, limitT, limitB);
 
         return remove_bg_outer_L(pixb, iStart, iEnd, limitT, limitB, numBlackRequired);
 
