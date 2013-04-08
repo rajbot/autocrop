@@ -3,6 +3,13 @@
 
 #define DEBUG_IMAGE_DIR "./debug-images/"
 
+#define debugstr printf
+//#define debugstr
+
+//Binary PIX structs store black as 1
+#define PEL_IS_BLACK 1
+#define PEL_IS_WHITE 0
+
 #define kGrayModeSingleChannel 1
 #define kGrayModeThreeChannel  3
 

@@ -13,6 +13,8 @@ autoCropFoldout filein.jpg
 #include <float.h>  //for DBL_MAX
 #include <limits.h> //for INT_MAX
 #include "autoCropCommon.h"
+#include "autocrop_remove_bg.h"
+
 
 #define debugstr printf
 //#define debugstr
@@ -35,7 +37,6 @@ int main(int argc, char **argv) {
     PIX         *pixs, *pixd, *pixg;
     char        *filein;
     static char  mainName[] = "autoCropFoldout";
-    l_int32      rotDir;
     FILE        *fp;
 
     if (argc != 2) {
@@ -70,15 +71,6 @@ int main(int argc, char **argv) {
     l_int32 threshInitial = CalculateTreshInitial(pixg, &histmax);
     debugstr("threshInitial is %d\n", threshInitial);
 
-    #if WRITE_DEBUG_IMAGES
-    {
-        PIX *p = pixCopy(NULL, pixg);
-        PIX *p2 = pixThresholdToBinary(p, 158);
-        pixWrite(DEBUG_IMAGE_DIR "outbininit.png", p2, IFF_PNG);
-        pixDestroy(&p);
-        pixDestroy(&p2);
-    }
-    #endif
 
     float delta;
 
@@ -87,16 +79,39 @@ int main(int argc, char **argv) {
     float deltaT, deltaB, deltaV1, deltaV2, deltaBinding, deltaOuter;
     l_uint32 threshOuter, threshT, threshB;
 
-    l_int32 topEdge = RemoveBackgroundTop(pixg, 0, threshInitial);
+
+    /* create bitonal image */
+    PIX *pixb;
+    l_int32    w_8, h_8, d;
+    pixGetDimensions(pixg, &w_8, &h_8, &d);
+
+    pixOtsuAdaptiveThreshold(pixg,
+                             w_8,
+                             h_8,
+                             1,
+                             1,
+                             0.1,
+                             NULL,
+                             &pixb);
+
+    #if WRITE_DEBUG_IMAGES
+    {
+        pixWrite(DEBUG_IMAGE_DIR "outbininit.png", pixb, IFF_PNG);
+    }
+    #endif
+
+
+    //Perform quick removal of background
+    l_int32 topEdge = remove_bg_top(pixb, 0);
     debugstr("topEdge is %d\n", topEdge);
 
-    l_int32 bottomEdge = RemoveBackgroundBottom(pixg, rotDir, threshInitial);
+    l_int32 bottomEdge = remove_bg_bottom(pixb, 0);
     debugstr("bottomEdge is %d\n", bottomEdge);
 
     assert(bottomEdge>topEdge);
 
-    l_int32 rightEdge = RemoveBackgroundOuter(pixg, 1,  topEdge, bottomEdge, threshInitial); //TODO: why not use threshBinding here?
-    l_int32 leftEdge  = RemoveBackgroundOuter(pixg, -1, topEdge, bottomEdge, threshInitial); //TODO: why not use threshBinding here?
+    l_int32 rightEdge = remove_bg_outer(pixb, 1,  topEdge, bottomEdge);
+    l_int32 leftEdge  = remove_bg_outer(pixb, -1, topEdge, bottomEdge);
     debugstr("rightEdge is %d\n", rightEdge);
     debugstr("leftEdge is %d\n", leftEdge);
 
@@ -125,13 +140,27 @@ int main(int argc, char **argv) {
         pixBigG = pixConvertRGBToGray (pixBig, 0.30, 0.60, 0.10);
     }
 
-    //don't rotate foldouts
-    PIX *pixBigR = pixBigG;
 
-    PIX *pixBigC = pixClipRectangle(pixBigR, box, NULL);
-    debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigC), pixGetHeight(pixBigC));
 
-    PIX *pixBigB = pixThresholdToBinary (pixBigC, threshInitial);
+    PIX *pixBigBFull; // = pixThresholdToBinary (pixBigC, threshInitial);
+    pixOtsuAdaptiveThreshold(pixBigG,
+                             w_8,
+                             h_8,
+                             50,
+                             50,
+                             0.1,
+                             NULL,
+                             &pixBigBFull);
+
+    PIX *pixBigB = pixClipRectangle(pixBigBFull, box, NULL);
+    debugstr("croppedWidth = %d, croppedHeight=%d\n", pixGetWidth(pixBigB), pixGetHeight(pixBigB));
+
+    #if WRITE_DEBUG_IMAGES
+    {
+        pixWrite(DEBUG_IMAGE_DIR "outbinfull.png", pixBigBFull, IFF_PNG);
+        pixWrite(DEBUG_IMAGE_DIR "outbinbig.png", pixBigB, IFF_PNG);
+    }
+    #endif
 
 
     l_float32    angle, conf, textAngle;
@@ -152,17 +181,12 @@ int main(int argc, char **argv) {
     angle = textAngle;
     skewMode = kSkewModeText;
 
-    debugstr("rotating bigR by %f\n", angle);
+    debugstr("rotating by %f\n", angle);
 
-    //don't rotate foldouts
-    PIX *pixBigR2 = pixBigG;
-
-    //TODO: why does this segfault when passing in pixBigR?
-    PIX *pixBigT = pixRotate(pixBigR2,
+    PIX *pixBigT = pixRotate(pixBigG,
                     deg2rad*angle,
                     L_ROTATE_AREA_MAP,
                     L_BRING_IN_BLACK,0,0);
-
 
     cropT = topEdge*8;
     cropB = bottomEdge*8;
@@ -174,48 +198,56 @@ int main(int argc, char **argv) {
     l_int32 outerCropT = cropT;
     l_int32 outerCropB = cropB;
 
-    PrintKeyValue_int32("OuterCropL", cropL);
-    PrintKeyValue_int32("OuterCropR", cropR);
-    PrintKeyValue_int32("OuterCropT", cropT);
-    PrintKeyValue_int32("OuterCropB", cropB);
 
 
     debugstr("finding clean lines...\n");
 
     l_int32 w = pixGetWidth(pixBigT);
     l_int32 h = pixGetHeight(pixBigT);
-    //cropR = removeBlackPelsColRight(pixBigT, cropR, (int)(w*0.75), cropT, cropB);
+
     l_int32 limitLeft = calcLimitLeft(w,h,angle);
     l_int32 limitTop  = calcLimitTop(w,h,angle);
 
+    PIX *pixBigTbin;
+    pixOtsuAdaptiveThreshold(pixBigT,
+                             w/2,
+                             h/2,
+                             50,
+                             50,
+                             0.1,
+                             NULL,
+                             &pixBigTbin);
 
-    l_uint32 left, right;
-    l_uint32 threshL, threshR;
+    #if WRITE_DEBUG_IMAGES
+    {
+        pixWrite(DEBUG_IMAGE_DIR "outbinT.png", pixBigTbin, IFF_PNG);
+    }
+    #endif
 
-    left  = cropL;
-    //right = cropL+2*limitLeft;
-    right = left + (l_uint32)((cropR-cropL)*0.10);
-    threshL = threshInitial; //threshBinding;
-    threshR = threshInitial; //threshBinding; //threshOuter; //binding thresh works better
-    cropL = RemoveBlackPelsBlockColLeft(pixBigT, left, right, cropT, cropB, 3, threshL);
-    debugstr("cropL is %d\n", cropL);
 
-    left  = (l_uint32)(cropR - (cropR-cropL)*0.10);
-    right = cropR;
-    cropR = RemoveBlackPelsBlockColRight(pixBigT, right, left, cropT, cropB, 3, threshR);
-    debugstr("cropR is %d\n", cropR);
+    //redo the rough crop on the full-resolution rotated image
+    cropT = remove_bg_top(pixBigTbin, 0);
+    debugstr("new cropT is %d\n", cropT);
 
-    cropT = RemoveBlackPelsBlockRowTop(pixBigT, cropT, cropT+(l_uint32)(h*0.05), cropL, cropR, 3, threshInitial); //we no longer calculate threshT
-    cropB = RemoveBlackPelsBlockRowBot(pixBigT, cropB, cropB-(l_uint32)(h*0.05), cropL, cropR, 3, threshInitial); //we no longer calculate threshB
+    cropB = remove_bg_bottom(pixBigTbin, 0);
+    debugstr("bottomEdge is %d\n", cropB);
 
-    debugstr("adjusted: cL=%d, cR=%d, cT=%d, cB=%d\n", cropL, cropR, cropT, cropB);
+    assert(bottomEdge>topEdge);
+
+    cropR = remove_bg_outer(pixBigTbin, 1,  cropT, cropB);
+    cropL = remove_bg_outer(pixBigTbin, -1, cropT, cropB);
+    debugstr("rightEdge is %d\n", rightEdge);
+    debugstr("leftEdge is %d\n", leftEdge);
+
+
+    debugstr("adjusted: cL=%d, cR=%d, cT=%d, cB=%d limitLeft=%d, limitTop=%d\n", cropL, cropR, cropT, cropB, limitLeft, limitTop);
 
     printf("angle: %.2f\n", angle);
     printf("conf: %.2f\n", conf); //TODO: this is the text deskew angle, but what if we are deskewing using the binding mode?
-    PrintKeyValue_int32("CleanCropL", cropL);
-    PrintKeyValue_int32("CleanCropR", cropR);
-    PrintKeyValue_int32("CleanCropT", cropT);
-    PrintKeyValue_int32("CleanCropB", cropB);
+    PrintKeyValue_int32("OuterCropL", cropL);
+    PrintKeyValue_int32("OuterCropR", cropR);
+    PrintKeyValue_int32("OuterCropT", cropT);
+    PrintKeyValue_int32("OuterCropB", cropB);
 
     //debugstr("finding inner crop box (text block)...\n");
     //l_int32 innerCropT, innerCropB, innerCropL, innerCropR;
@@ -235,7 +267,7 @@ int main(int argc, char **argv) {
 
         //pixRenderBoxArb(pixFinalR, boxCrop, 1, 255, 0, 0);
 
-        Box *boxOuterCrop = boxCreate(outerCropL/8, outerCropT/8, (outerCropR-outerCropL)/8, (outerCropB-outerCropT)/8);
+        Box *boxOuterCrop = boxCreate(cropL/8, cropT/8, (cropR-cropL)/8, (cropB-cropT)/8);
         pixRenderBoxArb(pixFinalR, boxOuterCrop, 1, 0, 0, 255);
 
         /*
@@ -266,7 +298,5 @@ int main(int argc, char **argv) {
 
     }
     #endif
-
-
 
 }

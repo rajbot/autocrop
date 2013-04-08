@@ -1,8 +1,8 @@
 CXX=g++
-CXXFLAGS=-ansi -Werror -D_BSD_SOURCE -DANSI -fPIC -O0 -g -DL_LITTLE_ENDIAN -Ileptonica-1.68/src
+CXXFLAGS=-ansi -Werror -D_BSD_SOURCE -DANSI -fPIC -O3 -DL_LITTLE_ENDIAN -Ileptonica-1.68/src
 LDFLAGS=-ltiff -ljpeg -lpng -lz -lm
 .PHONY=all clean utils test
-COMMON=autoCropCommon.o
+COMMON=autoCropCommon.o autocrop_remove_bg.o
 LIB=leptonica-1.68/lib/nodebug/liblept.a
 BIN=autoCropScribe autoCropFoldout
 
