@@ -26,4 +26,5 @@ clean :
 test : all
 	mkdir -p debug-images/
 	mkdir -p testrun/`date  '+%Y-%m-%d'`
-	./processTestImages.py
+	-(./processTestImages.py && \
+    ./processFoldoutImages.py)
