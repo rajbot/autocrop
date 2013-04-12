@@ -152,9 +152,12 @@ int main(int argc, char **argv) {
 
 
     PIX *pixBigBFull; // = pixThresholdToBinary (pixBigC, threshInitial);
+    l_int32 w = pixGetWidth(pixBigG);
+    l_int32 h = pixGetHeight(pixBigG);
+
     pixOtsuAdaptiveThreshold(pixBigG,
-                             w_8,
-                             h_8,
+                             w,
+                             h,
                              50,
                              50,
                              0.1,
@@ -221,16 +224,16 @@ int main(int argc, char **argv) {
 
     debugstr("finding clean lines...\n");
 
-    l_int32 w = pixGetWidth(pixBigT);
-    l_int32 h = pixGetHeight(pixBigT);
+    w = pixGetWidth(pixBigT);
+    h = pixGetHeight(pixBigT);
 
     l_int32 limitLeft = calcLimitLeft(w,h,angle);
     l_int32 limitTop  = calcLimitTop(w,h,angle);
 
     PIX *pixBigTbin;
     pixOtsuAdaptiveThreshold(pixBigT,
-                             w/2,
-                             h/2,
+                             w,
+                             h,
                              50,
                              50,
                              0.1,
