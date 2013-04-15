@@ -17,13 +17,19 @@
     since there might be bookmarks and other pieces of paper inserted on the binding side.
 
     We then shrink the initial crop box by removing black lines. We consider a line to
-    be black if 90% of the pixels in the line are black.
+    be black if the number of black pixels in the line meets or exceeds black_pixel_percentage.
+
+    For scribe books, we pass in black_pixel_percentage=0.90. This allows for bookmarks
+    or other narrow pieces of paper to be sticking outside the edge of the book.
+
+    For foldouts, we want to crop to the very outside edge of the folio, so we pass in
+    a black_pixel_percentage of 95%.
 */
 
 
 /// remove_bg_top()
 ///____________________________________________________________________________
-l_int32 remove_bg_top(PIX *pixb, l_int32 rotDir) {
+l_int32 remove_bg_top(PIX *pixb, l_int32 rotDir, float black_pixel_percentage) {
 
     l_int32    w, h, d;
     pixGetDimensions(pixb, &w, &h, &d);
@@ -49,7 +55,7 @@ l_int32 remove_bg_top(PIX *pixb, l_int32 rotDir) {
     //printf("T: limitL=%d, limitR=%d, limitB=%d\n", limitL, limitR, limitB);
 
     //number of black pels required for this line to be considered part of the background
-    l_uint32 numBlackRequired   = (l_uint32)(0.90*(limitR-limitL));
+    l_uint32 numBlackRequired   = (l_uint32)(black_pixel_percentage*(limitR-limitL));
 
     l_uint32 i, j;
 
@@ -77,7 +83,7 @@ l_int32 remove_bg_top(PIX *pixb, l_int32 rotDir) {
 
 /// remove_bg_bottom()
 ///____________________________________________________________________________
-l_int32 remove_bg_bottom(PIX *pixb, l_int32 rotDir) {
+l_int32 remove_bg_bottom(PIX *pixb, l_int32 rotDir, float black_pixel_percentage) {
 
     l_int32    w, h, d;
     pixGetDimensions(pixb, &w, &h, &d);
@@ -103,7 +109,7 @@ l_int32 remove_bg_bottom(PIX *pixb, l_int32 rotDir) {
     //printf("B: limitL=%d, limitR=%d, limitT=%d\n", limitL, limitR, limitT);
 
     //number of black pels required for this line to be considered part of the background
-    l_uint32 numBlackRequired   = (l_uint32)(0.90*(limitR-limitL));
+    l_uint32 numBlackRequired   = (l_uint32)(black_pixel_percentage*(limitR-limitL));
 
     l_int32 i, j;
 
@@ -189,7 +195,7 @@ l_int32 remove_bg_outer_R(PIX *pixb, l_int32 iStart, l_int32 iEnd, l_int32 limit
 
 /// remove_bg_outer()
 ///____________________________________________________________________________
-l_int32 remove_bg_outer(PIX *pixb, l_int32 rotDir, l_uint32 topEdge, l_uint32 bottomEdge) {
+l_int32 remove_bg_outer(PIX *pixb, l_int32 rotDir, l_uint32 topEdge, l_uint32 bottomEdge, float black_pixel_percentage) {
 
 
     l_int32 w, h, d;
@@ -207,7 +213,7 @@ l_int32 remove_bg_outer(PIX *pixb, l_int32 rotDir, l_uint32 topEdge, l_uint32 bo
 
 
     //l_int32 initialBlackThresh = 140;
-    l_uint32 numBlackRequired   = (l_uint32)(0.90*(limitB-limitT));
+    l_uint32 numBlackRequired   = (l_uint32)(black_pixel_percentage*(limitB-limitT));
 
 
     if (1 == rotDir) {

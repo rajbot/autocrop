@@ -20,6 +20,8 @@ autoCropFoldout filein.jpg
 //#define debugstr
 //#define WRITE_DEBUG_IMAGES 1
 
+#define black_pixel_percentage_foldout 0.95
+
 static const l_float32  deg2rad            = 3.1415926535 / 180.;
 
 
@@ -111,16 +113,16 @@ int main(int argc, char **argv) {
 
 
     //Perform quick removal of background
-    l_int32 topEdge = remove_bg_top(pixb, 0);
+    l_int32 topEdge = remove_bg_top(pixb, 0, black_pixel_percentage_foldout);
     debugstr("topEdge is %d\n", topEdge);
 
-    l_int32 bottomEdge = remove_bg_bottom(pixb, 0);
+    l_int32 bottomEdge = remove_bg_bottom(pixb, 0, black_pixel_percentage_foldout);
     debugstr("bottomEdge is %d\n", bottomEdge);
 
     assert(bottomEdge>topEdge);
 
-    l_int32 rightEdge = remove_bg_outer(pixb, 1,  topEdge, bottomEdge);
-    l_int32 leftEdge  = remove_bg_outer(pixb, -1, topEdge, bottomEdge);
+    l_int32 rightEdge = remove_bg_outer(pixb, 1,  topEdge, bottomEdge, black_pixel_percentage_foldout);
+    l_int32 leftEdge  = remove_bg_outer(pixb, -1, topEdge, bottomEdge, black_pixel_percentage_foldout);
     debugstr("rightEdge is %d\n", rightEdge);
     debugstr("leftEdge is %d\n", leftEdge);
 
@@ -248,16 +250,16 @@ int main(int argc, char **argv) {
 
 
     //redo the rough crop on the full-resolution rotated image
-    cropT = remove_bg_top(pixBigTbin, 0);
+    cropT = remove_bg_top(pixBigTbin, 0, black_pixel_percentage_foldout);
     debugstr("new cropT is %d\n", cropT);
 
-    cropB = remove_bg_bottom(pixBigTbin, 0);
+    cropB = remove_bg_bottom(pixBigTbin, 0, black_pixel_percentage_foldout);
     debugstr("bottomEdge is %d\n", cropB);
 
     assert(bottomEdge>topEdge);
 
-    cropR = remove_bg_outer(pixBigTbin, 1,  cropT, cropB);
-    cropL = remove_bg_outer(pixBigTbin, -1, cropT, cropB);
+    cropR = remove_bg_outer(pixBigTbin, 1,  cropT, cropB, black_pixel_percentage_foldout);
+    cropL = remove_bg_outer(pixBigTbin, -1, cropT, cropB, black_pixel_percentage_foldout);
     debugstr("rightEdge is %d\n", rightEdge);
     debugstr("leftEdge is %d\n", leftEdge);
 
