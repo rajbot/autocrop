@@ -17,9 +17,9 @@ class TestScribe(unittest.TestCase):
 
     def test_rmtag(self):        
         xmltree = etree.parse(StringIO(XML['rmtag']))
-        assert(len(xmltree.findall("child")) == 2)
+        self.assertTrue(len(xmltree.findall("child")) == 2)
         ps.rmtag("child", xmltree.getroot())
-        assert(not len(xmltree.findall("child")))
+        self.assertTrue(not len(xmltree.findall("child")))
 
     def test_addCropBox(self):
         xmltree = etree.parse(StringIO(XML['rmtag']))
@@ -29,5 +29,13 @@ class TestScribe(unittest.TestCase):
         ps.addCropBox(tag, parent, *xywh)
         child = xmltree.getroot().findall("child")[0]
         for tagname, val in zip(['x', 'y', 'w', 'h'], xywh):
-            assert(len(child.findall(tagname)))
-            assert(int(child.findall(tagname)[0].text) == val)
+            self.assertTrue(len(child.findall(tagname)),
+                            "Expected tag to have children")
+            intval = int(child.findall(tagname)[0].text)
+            self.assertTrue(intval == val, "Tag '%s' expected to have val %s, " \
+                                "instead has val %s" % (tagname, val, intval))
+    
+    def test_crop_score(self):
+        crop_score = ps.crop_score(4, 2, 1)
+        self.assertTrue(crop_score == 3.0,
+                        "Expected crop_score to return 3.0, not %s" % crop_score)
