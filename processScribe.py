@@ -392,7 +392,6 @@ def argparser():
 if __name__ == "__main__":
     parser = argparser()
     args = parser.parse_args()
-    autocrop_bin    = os.path.expanduser('~') + '/gnubook/autoCropScribe'
         
     xmlparser       = ET.XMLParser(remove_blank_text=True) #to enable pretty_printing later
     scandata_etree  = ET.parse(args.xml, xmlparser)
