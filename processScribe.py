@@ -19,6 +19,11 @@ from lxml import etree as ET
 
 __version__ = 0.1
 
+BOOK_DATA = 'bookData'
+BOOK_ID = 'bookData/bookId'
+PAGES = './/page'
+PAGE_BLACKLIST = ['Delete', 'Color Card', 'White Card', 'Foldout']
+
 # removeElements()
 #______________________________________________________________________________
 def removeElements(tag, parent):
@@ -249,7 +254,7 @@ def auto_crop_pass1(id, leafs, jpg_dir):
         print 'Processing leaf %d, pass 1 ' % leafNum
 
         pageType = leaf.findtext('pageType')     
-        if ('Delete' == pageType) or ('Color Card' == pageType) or ('White Card' == pageType) or ('Foldout' == pageType):
+        if pageType in PAGE_BLACKLIST:
             print 'skipping pageType = ' + pageType
             continue #skip first deleted page
 
@@ -336,7 +341,7 @@ def auto_crop_pass2(leafs, crops):
         print 'Processing leaf %d, pass 2 ' % leafNum
 
         pageType = leaf.findtext('pageType')     
-        if ('Delete' == pageType) or ('Color Card' == pageType) or ('White Card' == pageType) or ('Foldout' == pageType):
+        if pageType in PAGE_BLACKLIST:
             print 'skipping pageType = ' + pageType
             continue #skip first deleted page
 
@@ -402,15 +407,15 @@ if __name__ == "__main__":
     xmltree = parsexml(args.xml)
 
     scandata = xmltree.getroot()
-    bookdata = scandata.find('bookData')
-    bid = scandata.findtext('bookData/bookId')
-    leafs = scandata.findall('.//page')
+    bookdata = scandata.find(BOOK_DATA)
+    bid = scandata.findtext(BOOK_ID)
+    pagess = scandata.findall(PAGES)
     
     print 'Autocropping ' + bid
     removeElements('autoCropVersion', bookdata)
     ET.SubElement(bookdata, 'autoCropVersion').text = str(__version__)
     
-    crops = auto_crop_pass1(bid, leafs, args.imgdir)
-    auto_crop_pass2(leafs, crops)
+    crops = auto_crop_pass1(bid, pages, args.imgdir)
+    auto_crop_pass2(pages, crops)
     
     xmltree.write(args.xml, pretty_print=True)
