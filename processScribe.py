@@ -24,42 +24,55 @@ BOOK_ID = 'bookData/bookId'
 PAGES = './/page'
 PAGE_BLACKLIST = ['Delete', 'Color Card', 'White Card', 'Foldout']
 
-# removeElements()
-#______________________________________________________________________________
-def removeElements(tag, parent):
-    elements = parent.findall(tag)
-    for element in elements:
-        parent.remove(element)
+def rmtag(tag, parent):
+    """Remove all occurrences of a tag from its parent
+
+    usage:
+    >>> from StringIO import StringIO
+    >>> from lxml.etree import parse
+    >>> xml = "<parent><child>1</child><child>2</child></parent>"
+    >>> xmltree = etree.parse(StringIO(xml))
+    >>> xmltree.findall("child")
+    [<Element child at 0x2ba9550>, <Element child at 0x2ba95a0>]
+    >>> rmtag("child", xmltree.getroot())
+    >>> xmltree.findall("child")
+    []
+    """
+    for child in parent.findall(tag):
+        parent.remove(child)
 
 # addCropBox()
 #______________________________________________________________________________        
 def addCropBox(tag, parent, x, y, w, h):
-    removeElements(tag, parent)
+    rmtag(tag, parent)
     cropBox = ET.SubElement(parent, tag)
     ET.SubElement(cropBox, 'x').text = str(x)
     ET.SubElement(cropBox, 'y').text = str(y)
     ET.SubElement(cropBox, 'w').text = str(w)
     ET.SubElement(cropBox, 'h').text = str(h)
 
-# get_autocrop_score()
-# return a score between 0 and 5, depending on distance from mean
-#______________________________________________________________________________        
-def get_autocrop_score(length, mean, std_dev):
+def crop_score(length, mean, std_dev):
+    """calculates a score between [0, 5] inclusive, depending on the
+    length's distance from mean
+
+    usage
+    >>> crop_score(4, 2, 1)
+    3.0
+    """
     diff = abs(mean - length)
-    score = 5.0 - (diff/std_dev)
-    if score < 0.0:
-        score = 0.0
-        
-    return score
+    score = 5.0 - (diff / std_dev)
+    return 0.0 if score < 0.0 else score
 
 # addCropBoxAutoDetect()
 #______________________________________________________________________________        
 def addCropBoxAutoDetect(leaf, c, cropx, cropy, cropw, croph, width_mean_xo, height_mean_xo, width_std_dev_xo, height_std_dev_xo):
-    removeElements('cropBoxAutoDetect', leaf)
+    rmtag('cropBoxAutoDetect', leaf)
     cropBox = ET.SubElement(leaf, 'cropBoxAutoDetect')    
 
-    score_width  = get_autocrop_score(c['CleanCropR'] - c['CleanCropL'] + 1, width_mean_xo, width_std_dev_xo)
-    score_height = get_autocrop_score(c['CleanCropB'] - c['CleanCropT'] + 1, height_mean_xo, height_std_dev_xo)
+    score_width  = crop_score(c['CleanCropR'] - c['CleanCropL'] + 1,
+                              width_mean_xo, width_std_dev_xo)
+    score_height = crop_score(c['CleanCropB'] - c['CleanCropT'] + 1,
+                              height_mean_xo, height_std_dev_xo)
     score = score_width + score_height # score ranges from 0 to 10    
     ET.SubElement(cropBox, 'cropScore').text = "%0.2f"%score
 
@@ -365,10 +378,10 @@ def auto_crop_pass2(leafs, crops):
         addCropBox('cropBox', leaf, cropx, cropy, cropw, croph)
         addCropBoxAutoDetect(leaf, c, cropx, cropy, cropw, croph, width_mean_xo, height_mean_xo, width_std_dev_xo, height_std_dev_xo)
 
-        removeElements('skewAngle', leaf)
-        removeElements('skewAngleDetect', leaf)
-        removeElements('skewScore', leaf)
-        removeElements('skewActive', leaf)
+        rmtag('skewAngle', leaf)
+        rmtag('skewAngleDetect', leaf)
+        rmtag('skewScore', leaf)
+        rmtag('skewActive', leaf)
         
         #set skewAngle to autoDetect angle, regardless of score
         ### TODO: the returned score is currently only the textSkew score, but sometimes we use the binding angle
@@ -412,7 +425,7 @@ if __name__ == "__main__":
     pagess = scandata.findall(PAGES)
     
     print 'Autocropping ' + bid
-    removeElements('autoCropVersion', bookdata)
+    rmtag('autoCropVersion', bookdata)
     ET.SubElement(bookdata, 'autoCropVersion').text = str(__version__)
     
     crops = auto_crop_pass1(bid, pages, args.imgdir)
