@@ -17,9 +17,6 @@ import math
 #import xml.etree.ElementTree as ET
 from lxml import etree as ET
 
-if 3 != len(sys.argv):
-    sys.exit('Usage: %s scandata.xml jpg_dir' % sys.argv[0])
-
 AUTOCROP_VERSION = 0.1
 
 # removeElements()
