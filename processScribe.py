@@ -377,16 +377,25 @@ def auto_crop_pass2(leafs, crops):
         #if (4==leafNum):
         #    break
 
+def argparser():
+    """Parser for command line args"""
+    parser = argparse.ArgumentParser(description="Autocrop calculates cropboxes " \
+                                         "and skew angles for each image in " \
+                                         "scandata.xml and wrides them to " \
+                                         "scandata.xml")
+    parser.add_argument('xml', help="scandata.xml file",
+                        type=argparse.FileType('br+'))
+    parser.add_argument('imgdir', help='image directory',
+                        type=os.path.exists)
+    return parser
+
 if __name__ == "__main__":
-    scandata_xml    = sys.argv[1]
-    jpg_dir         = sys.argv[2]
+    parser = argparser()
+    args = parser.parse_args()
     autocrop_bin    = os.path.expanduser('~') + '/gnubook/autoCropScribe'
-    
-    assert os.path.exists(scandata_xml)
-    assert os.path.exists(jpg_dir)
-    
-    parser          = ET.XMLParser(remove_blank_text=True) #to enable pretty_printing later
-    scandata_etree  = ET.parse(scandata_xml, parser)
+        
+    xmlparser       = ET.XMLParser(remove_blank_text=True) #to enable pretty_printing later
+    scandata_etree  = ET.parse(args.xml, xmlparser)
     scandata        = scandata_etree.getroot()
     bookdata        = scandata.find('bookData')
     id              = scandata.findtext('bookData/bookId')
@@ -396,6 +405,6 @@ if __name__ == "__main__":
     removeElements('autoCropVersion', bookdata)
     ET.SubElement(bookdata, 'autoCropVersion').text = str(AUTOCROP_VERSION)
     
-    crops = auto_crop_pass1(id, leafs, jpg_dir)
+    crops = auto_crop_pass1(id, leafs, args.imgdir)
     auto_crop_pass2(leafs, crops)
-    scandata_etree.write(scandata_xml, pretty_print=True)
+    scandata_etree.write(args.xml, pretty_print=True)
