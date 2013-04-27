@@ -21,14 +21,6 @@ if 3 != len(sys.argv):
 
 AUTOCROP_VERSION = 0.1
 
-# getFloatStr()
-#______________________________________________________________________________
-def getFloatStr(label, output):
-    m=re.search('%s: ([-.\d]+)'%label, output)
-    assert(None != m)
-    print "%s is %s" % (label, m.group(1))
-    return m.group(1)
-
 # removeElements()
 #______________________________________________________________________________
 def removeElements(tag, parent):
