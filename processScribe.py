@@ -41,15 +41,22 @@ def rmtag(tag, parent):
     for child in parent.findall(tag):
         parent.remove(child)
 
-# addCropBox()
-#______________________________________________________________________________        
 def addCropBox(tag, parent, x, y, w, h):
+    """Clears/Removes all pre-existing instances of tag from within
+    the parent and replaces them with the the xml markup designating
+    the location and dimentions of cropbox
+
+    params:
+    :param x, y: (x, y) coordinates where to add the cropbox
+    :param w, h: width and height to make the cropbox
+
+    usage:
+    >>> # No example provided
+    """
     rmtag(tag, parent)
     cropBox = ET.SubElement(parent, tag)
-    ET.SubElement(cropBox, 'x').text = str(x)
-    ET.SubElement(cropBox, 'y').text = str(y)
-    ET.SubElement(cropBox, 'w').text = str(w)
-    ET.SubElement(cropBox, 'h').text = str(h)
+    for k, v in zip(('x', 'y', 'w', 'h'), (x, y, w, h)):
+        ET.SubElement(cropBox, k).text = str(v)
 
 def crop_score(length, mean, std_dev):
     """calculates a score between [0, 5] inclusive, depending on the
