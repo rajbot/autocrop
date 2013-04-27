@@ -46,3 +46,6 @@ class TestScribe(unittest.TestCase):
         self.assertTrue("%.2f" % mean == str(2.33) and "%.2f" % var == str(5.56),
                         "Expected mean=2.33, var=5.55 got mean=%.2f, var=%.2f" % \
                             (mean, var))
+
+    def test_addCropBoxAutoDetect(self):
+        pass
