@@ -389,16 +389,24 @@ def argparser():
                         type=os.path.exists)
     return parser
 
+def parsexml(xmlfp):
+    """Returns the parsed lxml etree for a given xml file (fp or
+    filename)
+    """
+    # remove_blank_text to enable pretty_printing later
+    xmlparser = ET.XMLParser(remove_blank_text=True)
+    xmltree = ET.parse(xmlfp, xmlparser)
+    return xmltree
+
 if __name__ == "__main__":
     parser = argparser()
     args = parser.parse_args()
-        
-    xmlparser       = ET.XMLParser(remove_blank_text=True) #to enable pretty_printing later
-    scandata_etree  = ET.parse(args.xml, xmlparser)
-    scandata        = scandata_etree.getroot()
-    bookdata        = scandata.find('bookData')
-    bid             = scandata.findtext('bookData/bookId')
-    leafs           = scandata.findall('.//page')
+    xmltree = parsexml(args.xml)
+
+    scandata = xmltree.getroot()
+    bookdata = scandata.find('bookData')
+    bid = scandata.findtext('bookData/bookId')
+    leafs = scandata.findall('.//page')
     
     print 'Autocropping ' + bid
     removeElements('autoCropVersion', bookdata)
@@ -406,4 +414,5 @@ if __name__ == "__main__":
     
     crops = auto_crop_pass1(bid, leafs, args.imgdir)
     auto_crop_pass2(leafs, crops)
-    scandata_etree.write(args.xml, pretty_print=True)
+    
+    xmltree.write(args.xml, pretty_print=True)
