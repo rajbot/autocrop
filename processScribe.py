@@ -397,13 +397,13 @@ if __name__ == "__main__":
     scandata_etree  = ET.parse(args.xml, xmlparser)
     scandata        = scandata_etree.getroot()
     bookdata        = scandata.find('bookData')
-    id              = scandata.findtext('bookData/bookId')
+    bid             = scandata.findtext('bookData/bookId')
     leafs           = scandata.findall('.//page')
     
-    print 'Autocropping ' + id
+    print 'Autocropping ' + bid
     removeElements('autoCropVersion', bookdata)
     ET.SubElement(bookdata, 'autoCropVersion').text = str(AUTOCROP_VERSION)
     
-    crops = auto_crop_pass1(id, leafs, args.imgdir)
+    crops = auto_crop_pass1(bid, leafs, args.imgdir)
     auto_crop_pass2(leafs, crops)
     scandata_etree.write(args.xml, pretty_print=True)
