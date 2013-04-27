@@ -7,6 +7,7 @@ and skew angle, and writes the results back into scandata.xml.
 These can later be adjusted manually in Republisher.
 """
 
+import argparse
 import commands
 import os
 import re
