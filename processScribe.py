@@ -377,29 +377,25 @@ def auto_crop_pass2(leafs, crops):
         #if (4==leafNum):
         #    break
 
-
-#__main()__
-#______________________________________________________________________________
-scandata_xml    = sys.argv[1]
-jpg_dir         = sys.argv[2]
-autocrop_bin    = os.path.expanduser('~') + '/gnubook/autoCropScribe'
-
-assert os.path.exists(scandata_xml)
-assert os.path.exists(jpg_dir)
-
-parser          = ET.XMLParser(remove_blank_text=True) #to enable pretty_printing later
-scandata_etree  = ET.parse(scandata_xml, parser)
-scandata        = scandata_etree.getroot()
-bookdata        = scandata.find('bookData')
-id              = scandata.findtext('bookData/bookId')
-leafs           = scandata.findall('.//page')
-
-print 'Autocropping ' + id
-removeElements('autoCropVersion', bookdata)
-ET.SubElement(bookdata, 'autoCropVersion').text = str(AUTOCROP_VERSION)
-
-crops = auto_crop_pass1(id, leafs, jpg_dir)
-
-auto_crop_pass2(leafs, crops)
+if __name__ == "__main__":
+    scandata_xml    = sys.argv[1]
+    jpg_dir         = sys.argv[2]
+    autocrop_bin    = os.path.expanduser('~') + '/gnubook/autoCropScribe'
     
-scandata_etree.write(scandata_xml, pretty_print=True)
+    assert os.path.exists(scandata_xml)
+    assert os.path.exists(jpg_dir)
+    
+    parser          = ET.XMLParser(remove_blank_text=True) #to enable pretty_printing later
+    scandata_etree  = ET.parse(scandata_xml, parser)
+    scandata        = scandata_etree.getroot()
+    bookdata        = scandata.find('bookData')
+    id              = scandata.findtext('bookData/bookId')
+    leafs           = scandata.findall('.//page')
+    
+    print 'Autocropping ' + id
+    removeElements('autoCropVersion', bookdata)
+    ET.SubElement(bookdata, 'autoCropVersion').text = str(AUTOCROP_VERSION)
+    
+    crops = auto_crop_pass1(id, leafs, jpg_dir)
+    auto_crop_pass2(leafs, crops)
+    scandata_etree.write(scandata_xml, pretty_print=True)
