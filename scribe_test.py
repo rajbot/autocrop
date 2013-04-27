@@ -39,3 +39,10 @@ class TestScribe(unittest.TestCase):
         crop_score = ps.crop_score(4, 2, 1)
         self.assertTrue(crop_score == 3.0,
                         "Expected crop_score to return 3.0, not %s" % crop_score)
+    
+    def test_mean_var(self):
+        crops = [{'a': 3, 'b': 6}, {'a': 2, 'b': 5}, {'a': 5, 'b': 3}]
+        mean, var = ps.mean_var(crops, 'a', 'b')
+        self.assertTrue("%.2f" % mean == str(2.33) and "%.2f" % var == str(5.56),
+                        "Expected mean=2.33, var=5.55 got mean=%.2f, var=%.2f" % \
+                            (mean, var))
