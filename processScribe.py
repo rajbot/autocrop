@@ -70,43 +70,30 @@ def crop_score(length, mean, std_dev):
     score = 5.0 - (diff / std_dev)
     return 0.0 if score < 0.0 else score
 
-# addCropBoxAutoDetect()
-#______________________________________________________________________________        
-def addCropBoxAutoDetect(leaf, c, cropx, cropy, cropw, croph, width_mean_xo, height_mean_xo, width_std_dev_xo, height_std_dev_xo):
+def addCropBoxAutoDetect(leaf, c, cropx, cropy, cropw, croph,
+                         width_mean_xo, height_mean_xo,
+                         width_std_dev_xo, height_std_dev_xo):
     rmtag('cropBoxAutoDetect', leaf)
     cropBox = ET.SubElement(leaf, 'cropBoxAutoDetect')    
 
-    score_width  = crop_score(c['CleanCropR'] - c['CleanCropL'] + 1,
-                              width_mean_xo, width_std_dev_xo)
-    score_height = crop_score(c['CleanCropB'] - c['CleanCropT'] + 1,
-                              height_mean_xo, height_std_dev_xo)
-    score = score_width + score_height # score ranges from 0 to 10    
-    ET.SubElement(cropBox, 'cropScore').text = "%0.2f"%score
+    crop_width = c['CleanCropR'] - c['CleanCropL'] + 1
+    crop_height = c['CleanCropB'] - c['CleanCropT'] + 1
+    score_width = crop_score(crop_width, width_mean_xo, width_std_dev_xo)
+    score_height = crop_score(crop_height, height_mean_xo, height_std_dev_xo)
+    score = score_width + score_height # score ranges from 0 to 10
+    ET.SubElement(cropBox, 'cropScore').text = "%0.2f" % score
 
     pass2Crop = ET.SubElement(cropBox, 'pass2Crop')
-    ET.SubElement(pass2Crop, 'x').text = str(cropx)
-    ET.SubElement(pass2Crop, 'y').text = str(cropy)
-    ET.SubElement(pass2Crop, 'w').text = str(cropw)
-    ET.SubElement(pass2Crop, 'h').text = str(croph)
-    
-    cleanCrop = ET.SubElement(cropBox, 'cleanCrop')
-    ET.SubElement(cleanCrop, 'l').text = str(c['CleanCropL'])
-    ET.SubElement(cleanCrop, 'r').text = str(c['CleanCropR'])
-    ET.SubElement(cleanCrop, 't').text = str(c['CleanCropT'])
-    ET.SubElement(cleanCrop, 'b').text = str(c['CleanCropB'])
+    for k, v in zip(('x', 'y', 'w', 'h'), (cropx, cropy, cropw, croph)):
+        ET.SubElement(pass2Crop, k).text = str(v)
 
-    outerCrop = ET.SubElement(cropBox, 'outerCrop')
-    ET.SubElement(outerCrop, 'l').text = str(c['OuterCropL'])
-    ET.SubElement(outerCrop, 'r').text = str(c['OuterCropR'])
-    ET.SubElement(outerCrop, 't').text = str(c['OuterCropT'])
-    ET.SubElement(outerCrop, 'b').text = str(c['OuterCropB'])
+    for crop in ('clean', 'outer', 'inner'):
+        # Iterate over borders: top, right, bottom, left
+        for border in ('t', 'r', 'b', 'l'): 
+            cropkey = '%sCrop%s' % (crop.capitalize(), border.capitalize())
+            croptype = ET.SubElement(cropBox, "%sCrop" % crop)
+            ET.SubElement(croptype, border).text = str(c[cropkey])    
 
-    innerCrop = ET.SubElement(cropBox, 'innerCrop')
-    ET.SubElement(innerCrop, 'l').text = str(c['InnerCropL'])
-    ET.SubElement(innerCrop, 'r').text = str(c['InnerCropR'])
-    ET.SubElement(innerCrop, 't').text = str(c['InnerCropT'])
-    ET.SubElement(innerCrop, 'b').text = str(c['InnerCropB'])
-    
 
 # parse_int()
 #_______________________________________________________________________________
