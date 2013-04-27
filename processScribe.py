@@ -17,7 +17,7 @@ import math
 #import xml.etree.ElementTree as ET
 from lxml import etree as ET
 
-AUTOCROP_VERSION = 0.1
+__version__ = 0.1
 
 # removeElements()
 #______________________________________________________________________________
@@ -408,7 +408,7 @@ if __name__ == "__main__":
     
     print 'Autocropping ' + bid
     removeElements('autoCropVersion', bookdata)
-    ET.SubElement(bookdata, 'autoCropVersion').text = str(AUTOCROP_VERSION)
+    ET.SubElement(bookdata, 'autoCropVersion').text = str(__version__)
     
     crops = auto_crop_pass1(bid, leafs, args.imgdir)
     auto_crop_pass2(leafs, crops)
