@@ -152,8 +152,8 @@ def parse_int(key, output, d):
 # recalculate mean/var
 #_______________________________________________________________________________
 def calc_mean_var_xo(crops, keyA, keyB, mean_full, std_dev_full):
-    mean_xo = 0.0;
-    num_leafs = 0;
+    mean_xo = 0.0
+    num_leafs = 0
     for leafnum,c in crops.items():
         w = float(c[keyB] - c[keyA] + 1)
         print "w = %f, mean_full=%f, std_dev_full=%f abs_diff=%f" % (w, mean_full, std_dev_full, abs(w-mean_full)),
@@ -166,7 +166,7 @@ def calc_mean_var_xo(crops, keyA, keyB, mean_full, std_dev_full):
 
     mean_xo /= num_leafs
     
-    var_xo = 0;
+    var_xo = 0
 
     for leafnum,c in crops.items():
         w = float(c[keyB] - c[keyA] + 1)
