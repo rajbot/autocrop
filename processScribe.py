@@ -1,10 +1,14 @@
-#!/usr/bin/python
+#!/usr/bin/env python
+#-*- coding: utf-8 -*-
 
 """
-This script preprocesses images from an IA Scribe bookscanner.
-For each image found in scandata.xml, it calculates a cropbox
-and skew angle, and writes the results back into scandata.xml.
-These can later be adjusted manually in Republisher.
+    processScribe
+    ~~~~~~~~~~~~~
+
+    This script preprocesses images from an IA Scribe bookscanner.
+    For each image found in scandata.xml, it calculates a cropbox
+    and skew angle, and writes the results back into scandata.xml.
+    These can later be adjusted manually in Republisher.
 """
 
 import commands
@@ -21,23 +25,11 @@ if 3 != len(sys.argv):
 
 AUTOCROP_VERSION = 0.1
 
-# getFloatStr()
-#______________________________________________________________________________
-def getFloatStr(label, output):
-    m=re.search('%s: ([-.\d]+)'%label, output)
-    assert(None != m)
-    print "%s is %s" % (label, m.group(1))
-    return m.group(1)
-
-# removeElements()
-#______________________________________________________________________________
 def removeElements(tag, parent):
     elements = parent.findall(tag)
     for element in elements:
         parent.remove(element)
 
-# addCropBox()
-#______________________________________________________________________________        
 def addCropBox(tag, parent, x, y, w, h):
     removeElements(tag, parent)
     cropBox = ET.SubElement(parent, tag)
@@ -46,25 +38,20 @@ def addCropBox(tag, parent, x, y, w, h):
     ET.SubElement(cropBox, 'w').text = str(w)
     ET.SubElement(cropBox, 'h').text = str(h)
 
-# get_autocrop_score()
-# return a score between 0 and 5, depending on distance from mean
-#______________________________________________________________________________        
 def get_autocrop_score(length, mean, std_dev):
     diff = abs(mean - length)
     score = 5.0 - (diff/std_dev)
-    if score < 0.0:
-        score = 0.0
-        
-    return score
+    return 0.0 if score < 0.0 else score
 
-# addCropBoxAutoDetect()
-#______________________________________________________________________________        
-def addCropBoxAutoDetect(leaf, c, cropx, cropy, cropw, croph, width_mean_xo, height_mean_xo, width_std_dev_xo, height_std_dev_xo):
+def addCropBoxAutoDetect(leaf, c, cropx, cropy, cropw, croph, width_mean_xo,
+                         height_mean_xo, width_std_dev_xo, height_std_dev_xo):
     removeElements('cropBoxAutoDetect', leaf)
     cropBox = ET.SubElement(leaf, 'cropBoxAutoDetect')    
 
-    score_width  = get_autocrop_score(c['CleanCropR'] - c['CleanCropL'] + 1, width_mean_xo, width_std_dev_xo)
-    score_height = get_autocrop_score(c['CleanCropB'] - c['CleanCropT'] + 1, height_mean_xo, height_std_dev_xo)
+    score_width  = get_autocrop_score(c['CleanCropR'] - c['CleanCropL'] + 1,
+                                      width_mean_xo, width_std_dev_xo)
+    score_height = get_autocrop_score(c['CleanCropB'] - c['CleanCropT'] + 1,
+                                      height_mean_xo, height_std_dev_xo)
     score = score_width + score_height # score ranges from 0 to 10    
     ET.SubElement(cropBox, 'cropScore').text = "%0.2f"%score
 
@@ -92,19 +79,15 @@ def addCropBoxAutoDetect(leaf, c, cropx, cropy, cropw, croph, width_mean_xo, hei
     ET.SubElement(innerCrop, 't').text = str(c['InnerCropT'])
     ET.SubElement(innerCrop, 'b').text = str(c['InnerCropB'])
     
-
-# parse_int()
-#_______________________________________________________________________________
 def parse_int(key, output, d):
     m=re.search(key + ': (-?\d+)', output)
-    assert(None != m)
+    if m is not None:
+        raise ValueError('Regex in parse_int returned no matches')
     val = int(m.group(1))
     print "%s = %d" % (key, val) 
     d[key] = val
     return val
 
-# calc_mean_var()
-#_______________________________________________________________________________
 def calc_mean_var(crops, keyA, keyB):
     mean = 0.0;
     num_leafs = 0;
@@ -127,11 +110,10 @@ def calc_mean_var(crops, keyA, keyB):
     print 'var = %f' % var
     return mean, var     
 
-# calc_mean_var_xo()
-# exclude outliers that are more than one std dev from mean, and
-# recalculate mean/var
-#_______________________________________________________________________________
 def calc_mean_var_xo(crops, keyA, keyB, mean_full, std_dev_full):
+    """exclude outliers that are more than one std dev from mean, and
+    recalculate mean/var
+    """
     mean_xo = 0.0;
     num_leafs = 0;
     for leafnum,c in crops.items():
@@ -159,9 +141,6 @@ def calc_mean_var_xo(crops, keyA, keyB, mean_full, std_dev_full):
     print 'var_xo = %f' % var_xo
     return mean_xo, var_xo
 
-
-# fit_crop_width_simple()
-#_______________________________________________________________________________
 def fit_crop_width_simple(c, mean_width, width_std_dev, img_width, hand_side):
     clean_width = c['CleanCropR'] - c['CleanCropL'] + 1
     #inner_width = c['InnerCropR'] - c['InnerCropL'] + 1 #WATCH OUT: InnerCropR/L may be -1
@@ -199,8 +178,6 @@ def fit_crop_width_simple(c, mean_width, width_std_dev, img_width, hand_side):
     return cropx, cropw, normalize_width    
 
 
-# fit_crop_height_simple()
-#_______________________________________________________________________________
 def fit_crop_height_simple(c, mean_height, height_std_dev, img_height):
     clean_height = c['CleanCropB'] - c['CleanCropT'] + 1
     #inner_height = c['InnerCropB'] - c['InnerCropT'] + 1 #WATCH OUT: InnerCropR/L may be -1
@@ -237,9 +214,6 @@ def fit_crop_height_simple(c, mean_height, height_std_dev, img_height):
             
     return cropy, croph, normalize_height
 
-
-# get_jpg()
-#______________________________________________________________________________
 def get_jpg(id, leafNum, jpg_dir):
     jpg = pipes.quote('%s/%s_orig_%04d.JPG' % (jpg_dir, id, leafNum))
     if not os.path.exists(jpg):
@@ -249,8 +223,6 @@ def get_jpg(id, leafNum, jpg_dir):
     
     return jpg
     
-# auto_crop_pass1()
-#______________________________________________________________________________
 def auto_crop_pass1(id, leafs, jpg_dir):
     crops = {}
 
@@ -288,15 +260,19 @@ def auto_crop_pass1(id, leafs, jpg_dir):
         print "skewMode is " + skewMode
         
         m=re.search('angle: ([-.\d]+)', output)
-        assert(None != m)
+        if m is not None:
+            raise ValueError('No angle found in auto_crop_pass1')
+            
         textSkew = float(m.group(1))
     
         m=re.search('conf: ([-.\d]+)', output)
-        assert(None != m)
+        if m is not None:
+            raise ValueError('No conf found in auto_crop_pass1')
         textScore = float(m.group(1))
         
         m=re.search('bindingAngle: ([-.\d]+)', output)
-        assert(None != m)
+        if m is not None:
+            raise ValueError('No bindingAngle found in auto_crop_pass1')
         bindingSkew = float(m.group(1))
     
         m=re.search('grayMode: ([\w-]+)', output)
@@ -320,15 +296,9 @@ def auto_crop_pass1(id, leafs, jpg_dir):
         crops[leafNum]['angleConf'] = textScore
         crops[leafNum]['skewMode'] = skewMode
         crops[leafNum]['grayMode'] = grayMode
-
-        #if (4==leafNum):
-        #    break
             
     return crops
 
-
-# auto_crop_pass2()
-#______________________________________________________________________________
 def auto_crop_pass2(leafs, crops):
     width_mean_full, width_var_full     = calc_mean_var(crops, 'CleanCropL', 'CleanCropR')
     height_mean_full, height_var_full   = calc_mean_var(crops, 'CleanCropT', 'CleanCropB')
@@ -387,7 +357,6 @@ def auto_crop_pass2(leafs, crops):
 
 
 #__main()__
-#______________________________________________________________________________
 scandata_xml    = sys.argv[1]
 jpg_dir         = sys.argv[2]
 autocrop_bin    = os.path.expanduser('~') + '/gnubook/autoCropScribe'
@@ -399,14 +368,14 @@ parser          = ET.XMLParser(remove_blank_text=True) #to enable pretty_printin
 scandata_etree  = ET.parse(scandata_xml, parser)
 scandata        = scandata_etree.getroot()
 bookdata        = scandata.find('bookData')
-id              = scandata.findtext('bookData/bookId')
+id_              = scandata.findtext('bookData/bookId')
 leafs           = scandata.findall('.//page')
 
-print 'Autocropping ' + id
+print 'Autocropping ' + id_
 removeElements('autoCropVersion', bookdata)
 ET.SubElement(bookdata, 'autoCropVersion').text = str(AUTOCROP_VERSION)
 
-crops = auto_crop_pass1(id, leafs, jpg_dir)
+crops = auto_crop_pass1(id_, leafs, jpg_dir)
 
 auto_crop_pass2(leafs, crops)
     
