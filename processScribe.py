@@ -17,11 +17,7 @@ import re
 import sys
 import pipes
 import math
-#import xml.etree.ElementTree as ET
 from lxml import etree as ET
-
-if 3 != len(sys.argv):
-    sys.exit('Usage: %s scandata.xml jpg_dir' % sys.argv[0])
 
 AUTOCROP_VERSION = 0.1
 
@@ -38,9 +34,16 @@ def addCropBox(tag, parent, x, y, w, h):
     ET.SubElement(cropBox, 'w').text = str(w)
     ET.SubElement(cropBox, 'h').text = str(h)
 
-def get_autocrop_score(length, mean, std_dev):
+def score(length, mean, std_dev):
+    """calculates a score between [0, 5] inclusive, depending on the
+    length's distance from mean
+    
+    usage
+    >>> crop_score(4, 2, 1)
+    3.0
+    """
     diff = abs(mean - length)
-    score = 5.0 - (diff/std_dev)
+    score = 5.0 - (diff / std_dev)
     return 0.0 if score < 0.0 else score
 
 def addCropBoxAutoDetect(leaf, c, cropx, cropy, cropw, croph, width_mean_xo,
@@ -48,10 +51,10 @@ def addCropBoxAutoDetect(leaf, c, cropx, cropy, cropw, croph, width_mean_xo,
     removeElements('cropBoxAutoDetect', leaf)
     cropBox = ET.SubElement(leaf, 'cropBoxAutoDetect')    
 
-    score_width  = get_autocrop_score(c['CleanCropR'] - c['CleanCropL'] + 1,
-                                      width_mean_xo, width_std_dev_xo)
-    score_height = get_autocrop_score(c['CleanCropB'] - c['CleanCropT'] + 1,
-                                      height_mean_xo, height_std_dev_xo)
+    score_width  = score(c['CleanCropR'] - c['CleanCropL'] + 1,
+                         width_mean_xo, width_std_dev_xo)
+    score_height = score(c['CleanCropB'] - c['CleanCropT'] + 1,
+                         height_mean_xo, height_std_dev_xo)
     score = score_width + score_height # score ranges from 0 to 10    
     ET.SubElement(cropBox, 'cropScore').text = "%0.2f"%score
 
@@ -355,28 +358,29 @@ def auto_crop_pass2(leafs, crops):
         #if (4==leafNum):
         #    break
 
+if __name__ == "__main__":
+    if 3 != len(sys.argv):
+        sys.exit('Usage: %s scandata.xml jpg_dir' % sys.argv[0])
 
-#__main()__
-scandata_xml    = sys.argv[1]
-jpg_dir         = sys.argv[2]
-autocrop_bin    = os.path.expanduser('~') + '/gnubook/autoCropScribe'
+    scandata_xml    = sys.argv[1]
+    jpg_dir         = sys.argv[2]
+    autocrop_bin    = os.path.expanduser('~') + '/gnubook/autoCropScribe'
 
-assert os.path.exists(scandata_xml)
-assert os.path.exists(jpg_dir)
+    if not os.path.exists(scandata_xml):
+        raise IOError('File %s does not exist.' % scandata_xml)
+    if not os.path.exists(jpg_dir):
+        raise IOError('File %s does not exist.' % jpg_dir)
 
-parser          = ET.XMLParser(remove_blank_text=True) #to enable pretty_printing later
-scandata_etree  = ET.parse(scandata_xml, parser)
-scandata        = scandata_etree.getroot()
-bookdata        = scandata.find('bookData')
-id_              = scandata.findtext('bookData/bookId')
-leafs           = scandata.findall('.//page')
+    parser = ET.XMLParser(remove_blank_text=True) #to enable pretty_printing later
+    scandata_etree = ET.parse(scandata_xml, parser)
+    scandata = scandata_etree.getroot()
+    bookdata = scandata.find('bookData')
+    id_ = scandata.findtext('bookData/bookId')
+    leafs = scandata.findall('.//page')
 
-print 'Autocropping ' + id_
-removeElements('autoCropVersion', bookdata)
-ET.SubElement(bookdata, 'autoCropVersion').text = str(AUTOCROP_VERSION)
-
-crops = auto_crop_pass1(id_, leafs, jpg_dir)
-
-auto_crop_pass2(leafs, crops)
-    
-scandata_etree.write(scandata_xml, pretty_print=True)
+    print 'Autocropping ' + id_
+    removeElements('autoCropVersion', bookdata)
+    ET.SubElement(bookdata, 'autoCropVersion').text = str(AUTOCROP_VERSION)
+    crops = auto_crop_pass1(id_, leafs, jpg_dir)
+    auto_crop_pass2(leafs, crops)
+    scandata_etree.write(scandata_xml, pretty_print=True)
